@@ -9,7 +9,7 @@ import { authLogout } from "../core/actions/action";
 import { motion } from "framer-motion";
 const Navbar: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user, isLocked } = useAppSelector((state) => state.user);
+  const { user } = useAppSelector((state) => state.user);
   const role = user?.role;
   const id = user?.id;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -36,7 +36,7 @@ const Navbar: React.FC = () => {
       window.location.href = "/";
     }
   };
-  const renderLinks = (isMobile = false) => {
+  const renderLinks = () => {
     const location = useLocation();
     const currentPath = location.pathname;
 
@@ -228,7 +228,7 @@ const Navbar: React.FC = () => {
           ></div>
 
           <div className="md:hidden fixed top-16 left-4 right-4 z-50 rounded-xl shadow-xl bg-white p-6 space-y-6 transform animate-slideDown">
-            {renderLinks(true)}
+            {/* {renderLinks(true)} */}
 
             <hr className="border-gray-200" />
 

@@ -36,7 +36,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
 
 
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    console.log('domr',formData)
+   e.preventDefault()
     let result = ProjectValidationSchema.safeParse(formData);
     if (!result.success) {
       const errorMessage: { [key: string]: string } = {};

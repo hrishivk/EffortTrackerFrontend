@@ -3,6 +3,7 @@ import { login, setTaskLock } from "../core/actions/action";
 import type { AuthState, UserInfo } from "./types";
 
 
+
 const emptyUser: UserInfo = {
   role: "",
   email: "",
@@ -38,6 +39,7 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(login.fulfilled, (state, action) => {
+         console.log(action.payload)
         const loggedInUser = action.payload.data.data.user;
         const today = new Date().toISOString().split("T")[0];
         const lockedUserId = localStorage.getItem("lockedUserId");
@@ -69,7 +71,7 @@ const authSlice = createSlice({
         state.isLocked = false;
       })
 
-      .addCase(setTaskLock.fulfilled, (state, action) => {
+      .addCase(setTaskLock.fulfilled, (state,) => {
         state.isLocked = true;
         if (state.user && state.user.id) {
           localStorage.setItem("isLocked", "true");

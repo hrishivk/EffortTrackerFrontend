@@ -1,8 +1,8 @@
-import React from "react";
+
 import { useAppSelector } from "../../../store/configureStore";
 
 const WeeklySummary = () => {
-  const { user } = useAppSelector((state) => state.user);
+ 
 
   const weeklyData = [
     { day: "Monday", hours: 8, completed: 5, pending: 2 },

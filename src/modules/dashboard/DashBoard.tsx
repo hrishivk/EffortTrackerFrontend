@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import  { useCallback, useEffect, useState } from "react";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import "@coreui/coreui/dist/css/coreui.min.css";
@@ -21,7 +21,6 @@ import {
 import type { project } from "../../shared/Project/types";
 import { fetchAmUsers } from "../../core/actions/AmAction";
 import type { formUserData } from "../../shared/Table/types";
-import { fetchTask } from "../../core/actions/action";
 ChartJS.register(ArcElement, Tooltip, Legend);
 const renderCustomLabelPlugin = {
   id: "renderCustomLabelPlugin",

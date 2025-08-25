@@ -4,7 +4,7 @@ export interface UserInfo {
   email: string;
   fullName: string;
   image: string;
-  projects?:string
+  projectName?:string
 }
 export interface AuthState {
   user: UserInfo;

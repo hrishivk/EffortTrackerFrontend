@@ -10,22 +10,22 @@ import { useSnackbar } from "../../contexts/SnackbarContext";
 import {addTask,fetchTask,setTaskLock,updateTaskStatus,} from "../../core/actions/action";
 import { useDispatch } from "react-redux";
 import SpinLoader from "../../presentation/SpinLoader";
-import type { project } from "../../shared/Project/types";
 import Dialoge from "../../presentation/Dialog/Dialog";
 import type { taskList } from "./types";
-import { Box,FormControl, InputLabel,Select,MenuItem,Stack,TextField,} from "@mui/material";
+import {  TextField,} from "@mui/material";
 const TaskList: React.FC = () => {
   const { showSnackbar } = useSnackbar();
   const { id: paramId } = useParams<{ id?: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const { user, isLocked } = useAppSelector((state) => state.user);
+
   const id = paramId !== undefined ? Number(paramId) : user?.id;
   const isFromParams = paramId !== undefined;
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [searchTerm, setSearchTerm] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
-  const [project, setProject] = useState<project[]>([]);
+  // const [project, setProject] = useState<project[]>([]);
   const [data, setData] = useState<taskList[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [taskData, setTaskData] = useState<taskList>({
@@ -46,7 +46,7 @@ const TaskList: React.FC = () => {
     try {
       const projectResponse = await fetchExistProjects();
 
-      setProject(projectResponse.data);
+      // setProject(projectResponse.data);
       typeof id === "number"
         ? setData((await fetchTask(selectedDate, id)).data)
         : console.warn("Invalid or missing numeric ID");
@@ -120,6 +120,7 @@ const TaskList: React.FC = () => {
     }
   };
   const handleTaskClick = async (e: React.MouseEvent) => {
+    e.preventDefault()
     try {
       const result = taskValidationSchema.safeParse(taskData);
       if (!result.success) {
@@ -159,6 +160,7 @@ const TaskList: React.FC = () => {
     }
   };
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
     setOpenDialog(true);
   };
   const handleCloseDialog = () => {
@@ -284,8 +286,8 @@ const TaskList: React.FC = () => {
   }, [listAllData]);
 
   if (loading) {
- 
-    return <SpinLoader />;
+
+    return <SpinLoader isLoading={loading} />;
   }
   return (
     <div className="min-h-screen bg-white flex flex-col lg:flex-row max-w-screen-2xl mx-auto">
@@ -493,7 +495,7 @@ const TaskList: React.FC = () => {
                       >
                         <option value="">Select Project</option>
 
-                        <option>{user.projects}</option>
+                        <option>{user.projectName}</option>
                       </select>
                     </td>
                     <td className="px-4 py-4">

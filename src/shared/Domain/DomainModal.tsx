@@ -43,6 +43,7 @@ const DomainModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
   }, []);
 
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
     let result = DomainValidationSchema.safeParse(formData);
     if (!result.success) {
       const errorMessage: { [key: string]: string } = {};

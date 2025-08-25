@@ -1,12 +1,10 @@
-import React, { lazy, type FC } from "react";
+import  { lazy, type FC } from "react";
 import TeamManagerOverview from "../team/TeamMangerOverView";
 import { Footer } from "../layout/Footer";
 import type { AccountManagerViewProps, UserDashboardProps } from "./types";
 const WeeklySummary = lazy(() => import("../widgets/WeeklySummary"));
 const PendingTasks = lazy(() => import("../widgets/PendingTasks"));
 const TaskCompletionLog = lazy(() => import("../widgets/TaskCompletionLog"));
-const TeamOverview = lazy(() => import("../team/TeamOverView"));
-
 const DeveloperOrUserView: FC = () => (
   <>
     <WeeklySummary />
@@ -31,7 +29,7 @@ const DeveloperOrUserView: FC = () => (
     <Footer />
   </>
 );
-const AccountManagerView: FC<AccountManagerViewProps> = ({Dates}) => (
+const AccountManagerView: FC<AccountManagerViewProps> = () => (
   <>
     {/* <TeamOverview Dates={Dates} /> */}
     <Footer />

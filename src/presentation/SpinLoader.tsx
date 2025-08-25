@@ -1,11 +1,11 @@
-import React from "react";
+
 import { Backdrop, CircularProgress } from "@mui/material";
 
 interface LoaderBackdropProps {
   isLoading: boolean;
 }
 
-export default function LoaderBackdrop({ isLoading }: LoaderBackdropProps) {
+export default function SpinLoader({ isLoading }: LoaderBackdropProps) {
   return (
     <Backdrop
       sx={{

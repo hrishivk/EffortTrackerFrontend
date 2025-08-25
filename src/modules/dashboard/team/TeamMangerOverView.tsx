@@ -1,6 +1,6 @@
 import  React,{useState} from "react"
 import { useCallback, useEffect } from "react"
-import { fetchAllUsers, fetfchTaskCount } from "../../../core/actions/spAction"
+import { fetchAllUsers } from "../../../core/actions/spAction"
 import type { formUserData } from "../../../shared/Table/types"
 import type { AccountManagerViewProps } from "../views/types"
 
@@ -25,48 +25,48 @@ const TeamMangerOverView: React.FC <AccountManagerViewProps>= ({Dates}) => {
   }, [listData,Dates])
 
 
-  const getStatusBadge = (start: number, inprogress: number, complete: number) => {
-    if (start === 0 && inprogress === 0) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          All Complete
-        </span>
-      )
-    } else if (start > inprogress) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-          Behind Schedule
-        </span>
-      )
-    } else if (inprogress > 0) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          In Progress
-        </span>
-      )
-    }
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
-        Pending
-      </span>
-    )
-  }
+  // const getStatusBadge = (start: number, inprogress: number, complete: number) => {
+  //   if (start === 0 && inprogress === 0) {
+  //     return (
+  //       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+  //         All Complete
+  //       </span>
+  //     )
+  //   } else if (start > inprogress) {
+  //     return (
+  //       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+  //         Behind Schedule
+  //       </span>
+  //     )
+  //   } else if (inprogress > 0) {
+  //     return (
+  //       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+  //         In Progress
+  //       </span>
+  //     )
+  //   }
+  //   return (
+  //     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
+  //       Pending
+  //     </span>
+  //   )
+  // }
 
-  const getCompletionPercentage = (complete: number, total: number) => {
-    return Math.round((complete / total) * 100)
-  }
+  // const getCompletionPercentage = (complete: number, total: number) => {
+  //   return Math.round((complete / total) * 100)
+  // }
 
-  const ProgressBar = ({ value }: { value: number }) => (
-    <div className="flex items-center space-x-2">
-      <div className="flex-1 bg-gray-200 rounded-full h-2">
-        <div
-          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-          style={{ width: `${Math.min(value, 100)}%` }}
-        />
-      </div>
-      <span className="text-sm font-medium text-gray-600 min-w-[40px]">{value}%</span>
-    </div>
-  )
+  // const ProgressBar = ({ value }: { value: number }) => (
+  //   <div className="flex items-center space-x-2">
+  //     <div className="flex-1 bg-gray-200 rounded-full h-2">
+  //       <div
+  //         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+  //         style={{ width: `${Math.min(value, 100)}%` }}
+  //       />
+  //     </div>
+  //     <span className="text-sm font-medium text-gray-600 min-w-[40px]">{value}%</span>
+  //   </div>
+  // )
 
   const UserAvatar = ({ user, avatar }: { user: string ;avatar: string|undefined }) => {
     return (
@@ -117,7 +117,6 @@ const TeamMangerOverView: React.FC <AccountManagerViewProps>= ({Dates}) => {
                 <th className="font-semibold text-gray-700 py-4 px-4 text-center">Yet to Start</th>
                 <th className="font-semibold text-gray-700 py-4 px-4 text-center">In Progress</th>
                 <th className="font-semibold text-gray-700 py-4 px-4 text-center">Completed</th>
-                <th className="font-semibold text-gray-700 py-4 px-4 text-center">Total hours Logged</th>
               </tr>
             </thead>
             <tbody>
