@@ -49,32 +49,32 @@ const TeamOverview: React.FC = () => {
     },
   ]
 
-  const getStatusBadge = (start: number, inprogress: number) => {
-    if (start === 0 && inprogress === 0) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          All Complete
-        </span>
-      )
-    } else if (start > inprogress) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-          Behind Schedule
-        </span>
-      )
-    } else if (inprogress > 0) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          In Progress
-        </span>
-      )
-    }
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
-        Pending
-      </span>
-    )
-  }
+  // const getStatusBadge = (start: number, inprogress: number) => {
+  //   if (start === 0 && inprogress === 0) {
+  //     return (
+  //       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+  //         All Complete
+  //       </span>
+  //     )
+  //   } else if (start > inprogress) {
+  //     return (
+  //       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+  //         Behind Schedule
+  //       </span>
+  //     )
+  //   } else if (inprogress > 0) {
+  //     return (
+  //       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+  //         In Progress
+  //       </span>
+  //     )
+  //   }
+  //   return (
+  //     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
+  //       Pending
+  //     </span>
+  //   )
+  // }
 
   const getCompletionPercentage = (complete: number, total: number) => {
     return Math.round((complete / total) * 100)
