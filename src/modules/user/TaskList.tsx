@@ -44,7 +44,7 @@ const TaskList: React.FC = () => {
   };
   const listAllData = useCallback(async () => {
     try {
-      const projectResponse = await fetchExistProjects();
+      // const projectResponse = await fetchExistProjects();
 
       // setProject(projectResponse.data);
       typeof id === "number"

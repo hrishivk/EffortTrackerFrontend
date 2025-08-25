@@ -49,7 +49,7 @@ const TeamOverview: React.FC = () => {
     },
   ]
 
-  const getStatusBadge = (start: number, inprogress: number, complete: number) => {
+  const getStatusBadge = (start: number, inprogress: number) => {
     if (start === 0 && inprogress === 0) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -186,7 +186,7 @@ const TeamOverview: React.FC = () => {
                     <ProgressBar value={getCompletionPercentage(member.complete, member.total)} />
                   </td>
                   <td className="py-4 px-4 text-center">
-                    {getStatusBadge(member.start, member.inprogress, member.complete)}
+                    {/* {getStatusBadge(member.start, member.inprogress, member.complete)} */}
                   </td>
                 </tr>
               ))}
