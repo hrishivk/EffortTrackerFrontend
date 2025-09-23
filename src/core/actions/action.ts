@@ -6,7 +6,7 @@ import type { taskList } from "../../modules/user/types";
 
 export const login = createAsyncThunk(
   "auth/login",
-  async (data: { [key: string]: string | number }, { rejectWithValue }) => {
+  async (data: { [key: string]: string }, { rejectWithValue }) => {
     try {
       const respnse = await apiserviceMethood.login("/login", data);
       return respnse;
@@ -49,7 +49,7 @@ export const addTask=async(data:taskList)=>{
     throw error
   }
 }
-export const fetchTask = async (date: Date, id: number) => {
+export const fetchTask = async (date: Date, id: string) => {
   try {
     const response = await userServiceMethood.listTask('/task-list', date, id);
     return response.data;
@@ -60,7 +60,7 @@ export const fetchTask = async (date: Date, id: number) => {
 };
 export const setTaskLock = createAsyncThunk(
   "task/setLock",
-  async ({ date, id }: { date: Date; id: number }, {rejectWithValue}) => {
+  async ({ date, id }: { date: Date; id: string }, {rejectWithValue}) => {
     try {
       console.log("Locking with date:", date);
       const response = await userServiceMethood.taskLock(`/task-lock?id=${id}`, date);
@@ -78,7 +78,7 @@ export const setTaskLock = createAsyncThunk(
   }
 );
 
-export const updateTaskStatus=async(taskId:number, newStatus:string)=>{
+export const updateTaskStatus=async(taskId:string, newStatus:string)=>{
   try {
     const response= await userServiceMethood.editTask(`/updateTask?id=${taskId}`,newStatus,)
     return response.data
