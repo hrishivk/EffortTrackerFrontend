@@ -6,7 +6,7 @@ import type { taskList } from "../../modules/user/types";
 
 export const login = createAsyncThunk(
   "auth/login",
-  async (data: { [key: string]: string }, { rejectWithValue }) => {
+  async (data: any, { rejectWithValue }) => {
     try {
       const respnse = await apiserviceMethood.login("/login", data);
       return respnse;
