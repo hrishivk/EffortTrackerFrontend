@@ -1,11 +1,11 @@
 import axios from "axios";
 import type { taskList } from "../../modules/user/types";
+import { API_URL } from "../../config/apiEndpoints";
 
 
-const API_URL = "http://localhost:7001/user";
 
 const apiservice = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URL.userService,
   withCredentials: true, 
 });
 export const userServiceMethood = {
@@ -15,7 +15,7 @@ export const userServiceMethood = {
       headers: { "Content-Type": "application/json" },
     });
   },
-listTask: (url: string, date: Date, id: number) => {
+listTask: (url: string, date: Date, id: string) => {
   return apiservice.get(url, {
     params: {
       date: date.toISOString(),

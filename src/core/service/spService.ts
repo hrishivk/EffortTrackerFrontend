@@ -1,8 +1,8 @@
 import axios from "axios";
 import type { UserData } from "../types";
-const API_URL = "http://localhost:7001/auth-role-sp";
+import { API_URL } from "../../config/apiEndpoints";
 const apiservice = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URL.spService,
   withCredentials: true,
 });
 export const spserviceMethood = {
