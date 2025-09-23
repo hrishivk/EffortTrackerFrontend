@@ -2,30 +2,37 @@ import React, { useCallback, useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { CCardBody, CCard } from "@coreui/react";
-// import { fetchExistProjects } from "../../core/actions/spAction";
 import { useAppSelector, type AppDispatch } from "../../store/configureStore";
 import { useParams } from "react-router-dom";
-import {taskValidationSchema,taskWithDateValidationSchema,} from "../../utils/validation/Validation";
+import {
+  taskValidationSchema,
+  taskWithDateValidationSchema,
+} from "../../utils/validation/Validation";
 import { useSnackbar } from "../../contexts/SnackbarContext";
-import {addTask,fetchTask,setTaskLock,updateTaskStatus,} from "../../core/actions/action";
+import {
+  addTask,
+  fetchTask,
+  setTaskLock,
+  updateTaskStatus,
+} from "../../core/actions/action";
 import { useDispatch } from "react-redux";
 import SpinLoader from "../../presentation/SpinLoader";
 import Dialoge from "../../presentation/Dialog/Dialog";
 import type { taskList } from "./types";
-import {  TextField,} from "@mui/material";
+import { TextField } from "@mui/material";
+
 const TaskList: React.FC = () => {
   const { showSnackbar } = useSnackbar();
   const { id: paramId } = useParams<{ id?: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const { user, isLocked } = useAppSelector((state) => state.user);
-
-  const id = paramId !== undefined ? Number(paramId) : user?.id;
+  const id: string = paramId ?? String(user?.id ?? "");
   const isFromParams = paramId !== undefined;
+
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [searchTerm, setSearchTerm] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
-  // const [project, setProject] = useState<project[]>([]);
   const [data, setData] = useState<taskList[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [taskData, setTaskData] = useState<taskList>({
@@ -42,17 +49,18 @@ const TaskList: React.FC = () => {
       date.getFullYear() === today.getFullYear()
     );
   };
+
   const listAllData = useCallback(async () => {
     try {
-      // const projectResponse = await fetchExistProjects();
-
-      // setProject(projectResponse.data);
-      typeof id === "number"
-        ? setData((await fetchTask(selectedDate, id)).data)
-        : console.warn("Invalid or missing numeric ID");
+      if (id) {
+        const response = await fetchTask(selectedDate, id);
+        setData(response.data);
+      } else {
+        console.warn("Missing user ID");
+      }
     } catch (error: any) {
       console.log(error);
-      if (error.message == "Request failed with status code 304") {
+      if (error.message === "Request failed with status code 304") {
         setData([]);
         showSnackbar({
           message: "No tasks found for the chosen date",
@@ -60,25 +68,22 @@ const TaskList: React.FC = () => {
         });
       }
     }
-  }, [selectedDate, id]);
+  }, [selectedDate, id, showSnackbar]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
   ) => {
-    try {
-      setTaskData((prevState) => ({
-        ...prevState,
-        [e.target.name]: e.target.value,
-      }));
-    } catch (error) {
-      console.log(error);
-    }
+    setTaskData((prevState) => ({
+      ...prevState,
+      [e.target.name]: e.target.value,
+    }));
   };
+
   const handleStatusChange = async (
-    taskId: number | undefined,
+    taskId: string | undefined,
     newStatus: string
   ) => {
-    console.log("enterrrrr", newStatus);
-    if (taskId === undefined) {
+    if (!taskId) {
       console.warn("Task ID is undefined");
       return;
     }
@@ -88,22 +93,25 @@ const TaskList: React.FC = () => {
         await listAllData();
       }
       setData((prevData) =>
-        prevData.map((task) =>
+        prevData.map((task:any) =>
           task.id === taskId ? { ...task, status: newStatus } : task
         )
       );
     } catch (error: any) {
+      console.log(error);
       showSnackbar({
-        message: error.response.data.message,
+        message: error.response?.data?.message || "Failed to update status",
         severity: "error",
       });
     }
   };
+
   const handleDateChange = (date: Date) => {
     const dateString = date.toISOString();
     const validationResult = taskWithDateValidationSchema.safeParse({
       dueDate: dateString,
     });
+
     if (!validationResult.success) {
       const errorMessage: { [key: string]: string } = {};
       validationResult.error.errors.forEach((err) => {
@@ -114,13 +122,13 @@ const TaskList: React.FC = () => {
       setFieldErrors(errorMessage);
       const firstErrorMessage = Object.values(errorMessage)[0];
       showSnackbar({ message: firstErrorMessage, severity: "error" });
-      return;
     } else {
       setSelectedDate(date);
     }
   };
+
   const handleTaskClick = async (e: React.MouseEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
       const result = taskValidationSchema.safeParse(taskData);
       if (!result.success) {
@@ -134,73 +142,74 @@ const TaskList: React.FC = () => {
         const firstErrorMessage = Object.values(errorMessage)[0];
         showSnackbar({ message: firstErrorMessage, severity: "error" });
         return;
-      } else {
-        const response = await addTask(taskData);
-        if (response.success) {
-          showSnackbar({
-            message:
-              " Success: Task created successfully and ready for tracking",
-            severity: "success",
-          });
-          setTaskData({
-            userId: id,
-            project: "",
-            description: "",
-            priority: "",
-          });
-          await listAllData();
-        }
+      }
+
+      const response = await addTask(taskData);
+      if (response.success) {
+        showSnackbar({
+          message:
+            "Success: Task created successfully and ready for tracking",
+          severity: "success",
+        });
+        setTaskData({
+          userId: id,
+          project: "",
+          description: "",
+          priority: "",
+        });
+        await listAllData();
       }
     } catch (error: any) {
       console.log(error);
       showSnackbar({
-        message: error.response.data.message,
+        message: error.response?.data?.message || "Failed to add task",
         severity: "info",
       });
     }
   };
-  const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault()
+  const handleSubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     setOpenDialog(true);
   };
+
   const handleCloseDialog = () => {
     setOpenDialog(false);
   };
   const handleConfirmLock = async () => {
     try {
-      typeof id === "number"
-        ? await dispatch(setTaskLock({ date: selectedDate, id })).then(
-            (result) =>
-              setTaskLock.fulfilled.match(result)
-                ? showSnackbar({
-                    message:
-                      " Success: All tasks have been locked successfully and are now read-only.",
-                    severity: "success",
-                  })
-                : showSnackbar({
-                    message: ` Failed to lock tasks: ${
-                      result.payload || result.error.message
-                    }`,
-                    severity: "error",
-                  })
-          )
-        : console.warn("Invalid or missing numeric ID");
+      if (id) {
+        await dispatch(setTaskLock({ date: selectedDate, id })).then((result) =>
+          setTaskLock.fulfilled.match(result)
+            ? showSnackbar({
+                message:
+                  "Success: All tasks have been locked successfully and are now read-only.",
+                severity: "success",
+              })
+            : showSnackbar({
+                message: `Failed to lock tasks: ${
+                  result.payload || result.error.message
+                }`,
+                severity: "error",
+              })
+        );
+      } else {
+        console.warn("Missing user ID");
+      }
     } catch (error) {
       console.error("Unexpected error:", error);
       showSnackbar({
-        message: " An unexpected error occurred while locking tasks.",
+        message: "An unexpected error occurred while locking tasks.",
         severity: "error",
       });
     } finally {
       setOpenDialog(false);
     }
   };
-  const filterData = data.filter((task) => {
-    const searchMatch = task.description
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    return searchMatch;
-  });
+
+  const filterData = data.filter((task) =>
+    task.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const exportToCSV = () => {
     if (!filterData || filterData.length === 0) return;
 
@@ -259,7 +268,7 @@ const TaskList: React.FC = () => {
         r.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
       ),
     ].join("\n");
-    console.log(csvContent);
+
     const BOM = "\uFEFF";
     const blob = new Blob([BOM + csvContent], {
       type: "text/csv;charset=utf-8;",
@@ -286,7 +295,6 @@ const TaskList: React.FC = () => {
   }, [listAllData]);
 
   if (loading) {
-
     return <SpinLoader isLoading={loading} />;
   }
   return (
@@ -315,7 +323,7 @@ const TaskList: React.FC = () => {
                 <button
                   className="rx-loader-btn cursor-pointer text-white !rounded-[20px] px-6 py-2 text-sm font-inherit border-0 
                 bg-gradient-to-br from-[#a855f7] to-[#d8b4fe] bg-[length:200%_auto] bg-left 
-                transition-all duration-300 ease-in-out hover:bg-right"
+                transition-all duration-300 ease-in-out "
                   onClick={handleTaskClick}
                 >
                   + Add Task
@@ -370,7 +378,7 @@ const TaskList: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {data.length > 0 ? (
-                  filterData.map((task, index) => (
+                  filterData.map((task:any, index) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-4">{task.project}</td>
                       <td className="px-4 py-4 text-purple-600">
