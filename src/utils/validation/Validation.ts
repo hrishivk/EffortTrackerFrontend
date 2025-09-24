@@ -29,11 +29,14 @@ export const baseValidationSchema=z.object({
   projects:z.string().min(1,'Project required'), 
 
 })
-export const taskValidationSchema=z.object({
-  project:z.string().min(1,"Project required"),
-  description:z.string().min(10,"Description is required"),
-  priority:z.enum(["High","Medium","Low"]),
-})
+export const taskValidationSchema = z.object({
+  project: z.string().min(1, "Project required"),
+  description: z.string().min(10, "Description is required"),
+  priority: z.enum(["High", "Medium", "Low"], {
+    required_error: "Priority is required",
+  }),
+});
+
 export const ProjectValidationSchema=z.object({
   name:z.string().min(1,"Project name is required"),
   description:z.string().min(10,"Desctiption is required")

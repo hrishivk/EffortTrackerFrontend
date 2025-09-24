@@ -44,6 +44,7 @@ const TaskList: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [searchTerm, setSearchTerm] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+  console.log();
   const [data, setData] = useState<taskList[]>([]);
   const [project, setProject] = useState<project[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -539,7 +540,7 @@ const TaskList: React.FC = () => {
                       </FormControl>
                     </td>
 
-                   <td className="px-6 py-4 !min-w-[250px]">
+                    <td className="px-6 py-4 !min-w-[250px]">
                       <TextField
                         fullWidth
                         name="description"
@@ -562,7 +563,7 @@ const TaskList: React.FC = () => {
                         }}
                       />
                     </td>
-                        <td className="px-6 py-4 !min-w-[200px]">
+                    <td className="px-6 py-4 !min-w-[200px]">
                       <FormControl
                         fullWidth
                         size="small"
@@ -588,6 +589,9 @@ const TaskList: React.FC = () => {
                           <MenuItem value="Medium">Medium</MenuItem>
                           <MenuItem value="Low">Low</MenuItem>
                         </Select>
+                        {fieldErrors.priority && (
+                          <FormHelperText>Priority is required</FormHelperText>
+                        )}
                       </FormControl>
                     </td>
                     <td className=" py-4"></td>
