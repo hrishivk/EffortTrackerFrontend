@@ -7,7 +7,7 @@ import {
   CFormInput,
   CFormLabel,
 } from "@coreui/react";
-import { FormControl, InputLabel, MenuItem, Select, type SelectChangeEvent } from "@mui/material";
+import { FormControl, MenuItem, Select, type SelectChangeEvent } from "@mui/material";
 import {
   baseValidationSchema,
   uservalidationSchema,
