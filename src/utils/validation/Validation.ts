@@ -18,14 +18,6 @@ export const uservalidationSchema=z.object({
     invalid_type_error: 'Invalid role selected',
   }),
   projects:z.string().min(1,'Project required'),
-  profile: z
-  .custom<File>((file) => file instanceof File, "Image must be a file")
-  .refine((file) => file.size <= 1024 * 1024 * 5, "Max image size is 5MB.")
-  .refine(
-    (file) =>
-      ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type),
-    "Only .jpg, .jpeg, .png and .webp formats are supported."
-  ).refine((file) => file.size <= 5 * 1024 * 1024, "File must be under 5MB.")
 })
 export const baseValidationSchema=z.object({
     fullName:z.string().min(1,"full name is required").regex(/^[A-Za-z\s]+$/, "Full name must contain only letters "),
