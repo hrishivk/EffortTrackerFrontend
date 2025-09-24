@@ -7,6 +7,5 @@ export interface UserData {
   password: string;
   role: string;
   projects: string;
-  profile: File | null;
   manager_id?: string | number | null;
 }

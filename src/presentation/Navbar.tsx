@@ -2,11 +2,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FiBell, FiMenu, FiX } from "react-icons/fi";
 import logo from "../assets/img/RX.svg";
+import prLogo from "../assets/img/prLogo.png";
 import { useAppSelector, type AppDispatch } from "../store/configureStore";
 import { useDispatch } from "react-redux";
 import { reset } from "../reducers/authSlice";
 import { authLogout } from "../core/actions/action";
-import { motion } from "framer-motion";
 const Navbar: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useAppSelector((state) => state.user);
@@ -97,23 +97,21 @@ const Navbar: React.FC = () => {
 
   const ProfileImage = (
     <img
-      src={user?.image || "/default-avatar.png"}
+      src={prLogo}
       alt="Profile"
-      className="w-9 h-9 rounded-full object-cover cursor-pointer"
+      className="w-9 h-10 rounded-full object-cover cursor-pointer"
       onClick={() => setProfileMenuOpen((prev) => !prev)}
     />
   );
 
   const ProfileDropdown = (
     <>
-   
       <div className="absolute right-0 mt-4 w-80 bg-white border border-gray-100 rounded-xl shadow-2xl ring-1 ring-black/5 z-50 text-sm transition-all duration-300 ease-out animate-fadeSlideDown">
-        {/* Header */}
         <div className="flex items-center gap-4 px-6 py-4 border-b">
           <img
-            src={user?.image || "/default-avatar.png"}
+            src={prLogo}
             alt="Avatar"
-            className="w-12 h-12 rounded-full object-cover shadow-sm border-2 border-[#AD21DB]"
+            className="w-13 h-14 rounded-full object-cover   "
           />
           <div className="flex flex-col justify-center">
             <p className="text-base font-semibold text-gray-900">
@@ -201,18 +199,6 @@ const Navbar: React.FC = () => {
 
         <div className="hidden md:flex items-center space-x-10 text-base text-black text-md font-bold">
           {renderLinks()}
-          <div className="relative">
-            <motion.div
-              whileHover={{ rotate: [0, -10, 10, -10, 10, 0] }}
-              transition={{ duration: 0.5 }}
-              className="rounded-full p-2 hover: cursor-pointer"
-            >
-              <FiBell size={20} />
-            </motion.div>
-            <div className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md">
-              {3}
-            </div>
-          </div>
           <div className="relative" ref={profileRef}>
             {ProfileImage}
             {profileMenuOpen && ProfileDropdown}
@@ -238,7 +224,7 @@ const Navbar: React.FC = () => {
               </button>
 
               <div className="relative" ref={profileRef}>
-                {ProfileImage}
+                {prLogo}
                 {profileMenuOpen && ProfileDropdown}
               </div>
             </div>

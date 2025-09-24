@@ -22,7 +22,7 @@ export const apiserviceMethood = {
 
   createUser: (url: string, data: UserData) => {
     return apiservice.post(url, data, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: { "Content-Type": "application/json" },
     });
   },
 
