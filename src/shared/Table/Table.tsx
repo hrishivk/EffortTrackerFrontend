@@ -44,10 +44,12 @@ import Dialoge from "../../presentation/Dialog/Dialog";
 import ProjectModal from "../Project/ProjectModal";
 import DomainModal from "../Domain/DomainModal";
 import type { formUserData } from "./types";
+import { useNavigate } from "react-router-dom";
 
 dayjs.extend(relativeTime);
 const TableList: React.FC = () => {
   const { showSnackbar } = useSnackbar();
+   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.user);
   const role = user?.role;
   const id = user?.id;
@@ -66,7 +68,6 @@ const TableList: React.FC = () => {
   const [selectedStatus, setselectedStatus] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  console.log(data);
   const listAllUsers = async () => {
     const response =
       role === "SP"
@@ -101,7 +102,6 @@ const TableList: React.FC = () => {
   }, [searchTerm, selectedRole, selectedProject]);
 
   const filteredData = data.filter((user) => {
-    console.log("user", user);
 
     const roleMatch =
       selectedRole === "All Roles" || user.role === selectedRole;
@@ -203,7 +203,7 @@ const TableList: React.FC = () => {
 
   const handleClick = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    window.location.href = `/TaskList/${id}`;
+   navigate(`/taskList/${id}`)
   };
 
   if (loading) {
@@ -289,13 +289,7 @@ const TableList: React.FC = () => {
                   "& .MuiOutlinedInput-notchedOutline": {
                     borderColor: "#D1D5DB",
                   },
-                  "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#8B5CF6",
-                  },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#8B5CF6",
-                    boxShadow: "0 0 5px #8B5CF6",
-                  },
+              
                 }}
               >
                 <MenuItem value="All Projects">All Projects</MenuItem>
@@ -320,14 +314,7 @@ const TableList: React.FC = () => {
                   backgroundColor: "#F9F9FB",
                   "& .MuiOutlinedInput-notchedOutline": {
                     borderColor: "#D1D5DB",
-                  },
-                  "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#8B5CF6",
-                  },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#8B5CF6",
-                    boxShadow: "0 0 5px #8B5CF6",
-                  },
+                  }
                 }}
               >
                 <MenuItem value="All Roles">All Roles</MenuItem>
