@@ -106,27 +106,32 @@ const DomainModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
               style={{ backgroundColor: "#f2ebf5", padding: "14px" }}
             />
           </div>
-          <div className="mb-3 px-20 text-lg">
-            <h4 className="text-lg font-semibold mb-3">Existing Domain</h4>
-          </div>
+          {domain.length > 0 && (
+  <>
+    <div className="mb-3 px-20 text-lg">
+      <h4 className="text-lg font-semibold mb-3">Existing Domain</h4>
+    </div>
 
-          <div className="mt-6 px-10 mr-8">
-            <div className="max-h-80 overflow-y-auto pr-2">
-              <ul className="space-y-3">
-                {domain.map((item, index) => (
-                  <li
-                    key={index}
-                    className="bg-[#f9f1fc] p-3 rounded-md shadow-sm"
-                  >
-                    <div className="font-bold text-base">{item.name}</div>
-                    <div className="text-sm text-gray-700">
-                      {item.description}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+    <div className="mt-6 px-10 mr-8">
+      <div className="max-h-80 overflow-y-auto pr-2">
+        <ul className="space-y-3">
+          {domain.map((item, index) => (
+            <li
+              key={index}
+              className="bg-[#f9f1fc] p-3 rounded-md shadow-sm"
+            >
+              <div className="font-bold text-base">{item.name}</div>
+              <div className="text-sm text-gray-700">
+                {item.description}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </>
+)}
+
         </CForm>
       </CModalBody>
       <CModalFooter className="px-6 pb-4 mr-20 border-0">

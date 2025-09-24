@@ -72,9 +72,7 @@ a {
   transition: background-color 0.3s ease;
 }
 .rx-loader-btn:hover {
-  animation: pulse-shadow 1.5s infinite;
-  background-position: right center; /* reinforce background shift */
-  background-size: 200% auto;
+   background-color: rgb(136, 90, 150);
 }
 
 @keyframes pulse-shadow {

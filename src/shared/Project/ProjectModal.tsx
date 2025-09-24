@@ -11,7 +11,11 @@ import {
 import type { project, ProjectModalProps } from "./types";
 import { useSnackbar } from "../../contexts/SnackbarContext";
 import type { Domain } from "../Domain/types";
-import { addProject, fetchExistDomains, fetchExistProjects } from "../../core/actions/spAction";
+import {
+  addProject,
+  fetchExistDomains,
+  fetchExistProjects,
+} from "../../core/actions/spAction";
 import { ProjectValidationSchema } from "../../utils/validation/Validation";
 
 const ProjectModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
@@ -34,9 +38,8 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
     }
   }, []);
 
-
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-   e.preventDefault()
+    e.preventDefault();
     let result = ProjectValidationSchema.safeParse(formData);
     if (!result.success) {
       const errorMessage: { [key: string]: string } = {};
@@ -49,30 +52,26 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
       showSnackbar({ message: firstErrorMessage, severity: "error" });
     } else {
       try {
-         const response = await addProject(formData);
-      console.log(response);
-      if (
-        response.success &&
-        response.message == "Project created successfull"
-      ) {
-        onClose();
+        const response = await addProject(formData);
+        console.log(response);
+        if (
+          response.success &&
+          response.message == "Project created successfull"
+        ) {
+          onClose();
+          showSnackbar({
+            message: "Project Created Successfully",
+            severity: "success",
+          });
+        }
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error.message;
+
         showSnackbar({
-          message: "Project Created Successfully",
-          severity: "success",
+          message: errorMessage,
+          severity: "error",
         });
       }
-      } catch (error:any) {
-         const errorMessage =
-        error?.response?.data?.message ||
-        error.message 
-  
-      showSnackbar({
-        message: errorMessage,
-        severity: "error",
-      });
-        
-      }
-     
     }
   };
   const handleChange = (
@@ -140,31 +139,36 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
               style={{ backgroundColor: "#f2ebf5", padding: "14px" }}
             />
           </div>
-        <div className="mb-3 px-20 text-lg">
-  <h4 className="text-lg font-semibold mb-3">
-    Existing Demo Projects
-  </h4>
-</div>
+          {project.length > 0 && (
+            <>
+              <div className="mb-3 px-20 text-lg">
+                <h4 className="text-lg font-semibold mb-3">
+                  Existing Demo Projects
+                </h4>
+              </div>
 
-<div className="mt-6 px-10 mr-8">
-  {/* Scrollable container */}
-  <div className="max-h-80 overflow-y-auto pr-2">
-    <ul className="space-y-3">
-      {project.map((project, index) => (
-        <li
-          key={index}
-          className="bg-[#f9f1fc] p-3 rounded-md shadow-sm"
-        >
-          <div className="font-bold text-base">{project.name}</div>
-          <div className="text-sm text-gray-700">
-            {project.description}
-          </div>
-        </li>
-      ))}
-    </ul>
-  </div>
-</div>
-
+              <div className="mt-6 px-10 mr-8">
+                {/* Scrollable container */}
+                <div className="max-h-80 overflow-y-auto pr-2">
+                  <ul className="space-y-3">
+                    {project.map((project, index) => (
+                      <li
+                        key={index}
+                        className="bg-[#f9f1fc] p-3 rounded-md shadow-sm"
+                      >
+                        <div className="font-bold text-base">
+                          {project.name}
+                        </div>
+                        <div className="text-sm text-gray-700">
+                          {project.description}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </>
+          )}
         </CForm>
       </CModalBody>
       <CModalFooter className="px-6 pb-4 mr-20 border-0">
