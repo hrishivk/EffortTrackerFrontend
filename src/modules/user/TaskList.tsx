@@ -16,6 +16,7 @@ import {
   Select,
   MenuItem,
   FormHelperText,
+  OutlinedInput,
 } from "@mui/material";
 import {
   addTask,
@@ -85,7 +86,9 @@ const TaskList: React.FC = () => {
 
   const handleChange = (
     e:
-      | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+      | React.ChangeEvent<
+          HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+        >
       | SelectChangeEvent<string>
   ) => {
     setTaskData((prevState) => ({
@@ -516,6 +519,13 @@ const TaskList: React.FC = () => {
                           name="project"
                           value={taskData.project || ""}
                           onChange={handleChange}
+                          input={
+                            <OutlinedInput
+                              sx={{
+                                borderRadius: "8px",
+                              }}
+                            />
+                          }
                         >
                           {project.map((item) => (
                             <MenuItem key={item.id} value={item.name}>
@@ -530,35 +540,55 @@ const TaskList: React.FC = () => {
                     </td>
 
                     <td className="px-4 py-4">
-                      <input
-                        type="text"
+                      <TextField
+                        fullWidth
                         name="description"
-                        value={taskData.description}
+                        label="Task Description"
                         placeholder="Enter task description"
+                        value={taskData.description}
                         onChange={handleChange}
-                        className={`elegant-input w-full rounded-md border px-3 py-2 ${
+                        error={Boolean(fieldErrors.description)}
+                        helperText={
                           fieldErrors.description
-                            ? "!border-red-500"
-                            : "border-gray-300"
-                        }`}
+                            ? "Description is required"
+                            : ""
+                        }
+                        variant="outlined"
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: "8px",
+                          },
+                        }}
                       />
                     </td>
                     <td className="px-4 py-4 !min-w-[180px]">
-                      <select
-                        name="priority"
-                        value={taskData.priority}
-                        onChange={handleChange}
-                        className={`elegant-input w-full rounded-md border px-3 py-2 ${
-                          fieldErrors.priority
-                            ? "!border-red-500"
-                            : "border-gray-300"
-                        }`}
+                      <FormControl
+                        fullWidth
+                        size="small"
+                        error={Boolean(fieldErrors.priority)}
                       >
-                        <option value="">Select Priority</option>
-                        <option value="High">High</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Low">Low</option>
-                      </select>
+                        <InputLabel id="priority-select-label">
+                          Select Priority
+                        </InputLabel>
+                        <Select
+                          labelId="priority-select-label"
+                          name="priority"
+                          value={taskData.priority || ""}
+                          onChange={handleChange}
+                          input={
+                            <OutlinedInput
+                              label="Select Priority"
+                              sx={{ borderRadius: "8px" }}
+                            />
+                          }
+                        >
+                          <MenuItem value="">Select Priority</MenuItem>
+                          <MenuItem value="High">High</MenuItem>
+                          <MenuItem value="Medium">Medium</MenuItem>
+                          <MenuItem value="Low">Low</MenuItem>
+                        </Select>
+                      </FormControl>
                     </td>
                     <td className=" py-4"></td>
                     <td className=" py-4"></td>
