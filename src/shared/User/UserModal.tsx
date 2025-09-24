@@ -176,7 +176,7 @@ const handleChange = (
               />
               <button
                 type="button"
-                className="absolute right-28 top-[57%]  transform -translate-y-1/2 text-gray-600"
+                className="absolute right-28 top-[60%]  transform -translate-y-1/2 text-gray-600"
                 onClick={() => setShowPassword((prev) => !prev)}
                 tabIndex={-1}
               >
