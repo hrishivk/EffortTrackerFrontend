@@ -310,7 +310,7 @@ const TaskList: React.FC = () => {
     setLoading(true);
     fetchData();
     setLoading(false);
-  }, [listAllData]);
+  }, [selectedDate]);
 
   if (loading) {
     return <SpinLoader isLoading={loading} />;
