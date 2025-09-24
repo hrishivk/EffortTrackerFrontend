@@ -47,7 +47,7 @@ export const spserviceMethood = {
   })},
   editUser:(url:string,data:UserData)=>{return apiservice.post(url,data,{
     headers: {
-      "Content-Type": "multipart/form-data",
+     "Content-Type": "application/json",
     },
   })},
   unBlock:(url:string,)=>{return apiservice.patch(url,{

@@ -36,6 +36,7 @@ import {
   fetchUser,
   UnblockUser,
 } from "../../core/actions/spAction";
+import prLogo from "../../assets/img/prLogo.png";
 import { fetchAmUsers } from "../../core/actions/AmAction";
 import UserModal from "../User/UserModal";
 import type { project } from "../Project/types";
@@ -352,7 +353,7 @@ const TableList: React.FC = () => {
                   <CTableRow key={index}>
                     <CTableDataCell>
                       <div className="d-flex align-items-center gap-2">
-                        <CAvatar src={user.image} size="md" />
+                        <CAvatar src={prLogo} size="md" />
                         {user.fullName}
                       </div>
                     </CTableDataCell>

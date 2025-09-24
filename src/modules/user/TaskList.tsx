@@ -10,30 +10,43 @@ import {
 } from "../../utils/validation/Validation";
 import { useSnackbar } from "../../contexts/SnackbarContext";
 import {
+  type SelectChangeEvent,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+} from "@mui/material";
+import {
   addTask,
   fetchTask,
   setTaskLock,
   updateTaskStatus,
 } from "../../core/actions/action";
+
 import { useDispatch } from "react-redux";
 import SpinLoader from "../../presentation/SpinLoader";
 import Dialoge from "../../presentation/Dialog/Dialog";
 import type { taskList } from "./types";
 import { TextField } from "@mui/material";
+import { fetchExistProjects } from "../../core/actions/spAction";
+import type { project } from "../../shared/Project/types";
 
 const TaskList: React.FC = () => {
   const { showSnackbar } = useSnackbar();
   const { id: paramId } = useParams<{ id?: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const { user, isLocked } = useAppSelector((state) => state.user);
+
   const id: string = paramId ?? String(user?.id ?? "");
   const isFromParams = paramId !== undefined;
-
+  const role = user.role;
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [searchTerm, setSearchTerm] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
   const [data, setData] = useState<taskList[]>([]);
+  const [project, setProject] = useState<project[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [taskData, setTaskData] = useState<taskList>({
     userId: id,
@@ -53,6 +66,8 @@ const TaskList: React.FC = () => {
   const listAllData = useCallback(async () => {
     try {
       if (id) {
+        const projectResponse = await fetchExistProjects();
+        setProject(projectResponse.data);
         const response = await fetchTask(selectedDate, id);
         setData(response.data);
       } else {
@@ -71,7 +86,9 @@ const TaskList: React.FC = () => {
   }, [selectedDate, id, showSnackbar]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
+    e:
+      | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+      | SelectChangeEvent<string>
   ) => {
     setTaskData((prevState) => ({
       ...prevState,
@@ -93,7 +110,7 @@ const TaskList: React.FC = () => {
         await listAllData();
       }
       setData((prevData) =>
-        prevData.map((task:any) =>
+        prevData.map((task: any) =>
           task.id === taskId ? { ...task, status: newStatus } : task
         )
       );
@@ -147,8 +164,7 @@ const TaskList: React.FC = () => {
       const response = await addTask(taskData);
       if (response.success) {
         showSnackbar({
-          message:
-            "Success: Task created successfully and ready for tracking",
+          message: "Success: Task created successfully and ready for tracking",
           severity: "success",
         });
         setTaskData({
@@ -356,9 +372,7 @@ const TaskList: React.FC = () => {
               }}
             />
 
-            <div className="flex flex-col sm:flex-row sm:!space-x-4 space-y-4 sm:space-y-0 mt-6 mb-6">
-           
-            </div>
+            <div className="flex flex-col sm:flex-row sm:!space-x-4 space-y-4 sm:space-y-0 mt-6 mb-6"></div>
             <p className="text-black text-xl font-bold">
               Tasks for {selectedDate.toDateString()}
             </p>
@@ -378,7 +392,7 @@ const TaskList: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {data.length > 0 ? (
-                  filterData.map((task:any, index) => (
+                  filterData.map((task: any, index) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-4">{task.project}</td>
                       <td className="px-4 py-4 text-purple-600">
@@ -488,24 +502,35 @@ const TaskList: React.FC = () => {
                     </td>
                   </tr>
                 )}
-                {isToday(selectedDate) && !isFromParams && (
+                {isToday(selectedDate) && (
                   <tr className="animate-rowEnter !w-full transition-all duration-500 ease-in-out bg-[#EFD1FA]/90 backdrop-blur-lg rounded-xl border-t border-purple-300 group">
                     <td className="px-4 py-4 !min-w-[180px]">
-                      <select
-                        name="project"
-                        value={taskData.project}
-                        onChange={handleChange}
-                        className={`elegant-input w-full rounded-md border  py-2 ${
-                          fieldErrors.project
-                            ? "!border-red-500"
-                            : "border-gray-300"
-                        }`}
+                      <FormControl
+                        fullWidth
+                        size="small"
+                        error={Boolean(fieldErrors.project)}
                       >
-                        <option value="">Select Project</option>
-
-                        <option>{user.projectName}</option>
-                      </select>
+                        <InputLabel id="project-select-label">
+                          Select Project
+                        </InputLabel>
+                        <Select
+                          labelId="project-select-label"
+                          name="project"
+                          value={taskData.project || ""}
+                          onChange={handleChange}
+                        >
+                          {project.map((item) => (
+                            <MenuItem key={item.id} value={item.name}>
+                              {item.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {fieldErrors.project && (
+                          <FormHelperText>{fieldErrors.project}</FormHelperText>
+                        )}
+                      </FormControl>
                     </td>
+
                     <td className="px-4 py-4">
                       <input
                         type="text"

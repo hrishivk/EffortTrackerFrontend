@@ -80,7 +80,7 @@ const handleChange = (
     const schema = data ? baseValidationSchema : uservalidationSchema;
   
     const result = schema.safeParse(formData);
-     console.log(result.success)
+  
     if (!result.success) {
       const errorMessage: { [key: string]: string } = {};
       result.error.errors.forEach((err) => {

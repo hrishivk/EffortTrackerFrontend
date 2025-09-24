@@ -26,25 +26,7 @@ export const baseValidationSchema=z.object({
     required_error: 'Role is required',
     invalid_type_error: 'Invalid role selected',
   }),
-  projects:z.string().min(1,'Project required'),
-   profile: z
-    .union([
-      z
-        .string()
-        .refine(
-          (val) => /\.(jpe?g|png|webp)$/i.test(val),
-          "Only .jpg, .jpeg, .png and .webp formats are supported."
-        ),
-      z
-        .instanceof(File)
-        .refine(
-          (file) =>
-            ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(
-              file.type
-            ),
-          "Only .jpg, .jpeg, .png and .webp formats are supported."
-        ).refine((file) => file.size <= 5 * 1024 * 1024, "File must be under 5MB."),
-    ])
+  projects:z.string().min(1,'Project required'), 
 
 })
 export const taskValidationSchema=z.object({

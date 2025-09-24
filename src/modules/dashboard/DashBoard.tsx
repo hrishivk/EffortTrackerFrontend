@@ -395,37 +395,37 @@ const listCount = useCallback(async () => {
               <div className="bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Total Tasks</div>
                 <div className="text-2xl font-bold text-gray-800">
-                  {dataCount.reduce(
+                  {/* {dataCount.reduce(
                     (sum, item) => sum + Number(item.count || 0),
                     0
-                  )}
+                  )} */}0
                 </div>
               </div>
 
               <div className="bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Yet to start</div>
                 <div className="text-2xl font-bold text-gray-800">
-                  {dataCount[1]?.count || 0}
+                  {/* {dataCount[1]?.count || 0} */}0
                 </div>
               </div>
 
               <div className="bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 rounded-lg p-4">
                 <div className="text-sm text-gray-600">In progress</div>
                 <div className="text-2xl font-bold text-gray-800">
-                  {dataCount[2]?.count || 0}
+                  {/* {dataCount[2]?.count || 0} */}0
                 </div>
               </div>
 
               <div className="bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Completed</div>
                 <div className="text-2xl font-bold text-gray-800">
-                  {dataCount[3]?.count || 0}
+                  {/* {dataCount[3]?.count || 0} */}0
                 </div>
               </div>
 
               <div className="bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Total Hours</div>
-                <div className="text-2xl font-bold text-gray-800">54</div>
+                <div className="text-2xl font-bold text-gray-800">0</div>
               </div>
             </div>
           ) : (
