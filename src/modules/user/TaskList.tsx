@@ -505,7 +505,7 @@ const TaskList: React.FC = () => {
                 )}
                 {isToday(selectedDate) && (
                   <tr className="animate-rowEnter !w-full transition-all duration-500 ease-in-out bg-[#EFD1FA]/90 backdrop-blur-lg rounded-xl border-t border-purple-300 group">
-                    <td className="px-4 py-4 !min-w-[180px]">
+                    <td className="px-6 py-4 !min-w-[200px]">
                       <FormControl
                         fullWidth
                         size="small"
@@ -539,7 +539,7 @@ const TaskList: React.FC = () => {
                       </FormControl>
                     </td>
 
-                    <td className="px-4 py-4">
+                   <td className="px-6 py-4 !min-w-[250px]">
                       <TextField
                         fullWidth
                         name="description"
@@ -562,7 +562,7 @@ const TaskList: React.FC = () => {
                         }}
                       />
                     </td>
-                    <td className="px-4 py-4 !min-w-[180px]">
+                        <td className="px-6 py-4 !min-w-[200px]">
                       <FormControl
                         fullWidth
                         size="small"
