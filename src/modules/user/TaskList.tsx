@@ -37,10 +37,8 @@ const TaskList: React.FC = () => {
   const { id: paramId } = useParams<{ id?: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const { user, isLocked } = useAppSelector((state) => state.user);
-
   const id: string = paramId ?? String(user?.id ?? "");
   const isFromParams = paramId !== undefined;
-  const role = user.role;
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [searchTerm, setSearchTerm] = useState("");
