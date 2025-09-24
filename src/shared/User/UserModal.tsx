@@ -7,6 +7,7 @@ import {
   CFormInput,
   CFormLabel,
 } from "@coreui/react";
+import { FormControl, InputLabel, MenuItem, Select, type SelectChangeEvent } from "@mui/material";
 import {
   baseValidationSchema,
   uservalidationSchema,
@@ -29,14 +30,12 @@ const UserModal: React.FC<UserModalProps> = ({
   const roleOptions = ["USER", "DEVLOPER"];
   const { user } = useAppSelector((state) => state.user);
   const role = user?.role;
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [formData, setFormData] = useState<UserData>({
     fullName: "",
     email: "",
     password: "",
     role: "",
     projects: "",
-    profile: null,
     manager_id: user?.id,
   });
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -50,35 +49,16 @@ const UserModal: React.FC<UserModalProps> = ({
         password: data.pas,
         role: data.role || "",
         projects: data.projects || "",
-        profile: data.image || "",
         manager_id: data.manager_id || user?.id || "",
       });
-      setPreviewImage(data.image);
     }
   }, []);
   const [project, setProject] = useState<project[]>([]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
-    if (
-      type === "file" &&
-      e.target instanceof HTMLInputElement &&
-      e.target.files
-    ) {
-      const file = e.target.files[0];
-      console.log("file", file);
-      if (file) {
-        const previewUrl = URL.createObjectURL(file);
-        setPreviewImage(previewUrl);
-        setFormData((prev) => ({
-          ...prev,
-          [name]: file,
-        }));
-      }
-      return;
-    }
+const handleChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement> | SelectChangeEvent<string>
+) => {
+    const { name, value } = e.target;
     const transformMap: { [key: string]: (val: string) => string | number } = {
       roles: (val) => val.toUpperCase(),
       email: (val) => val.trim(),
@@ -98,9 +78,9 @@ const UserModal: React.FC<UserModalProps> = ({
     e.preventDefault();
 
     const schema = data ? baseValidationSchema : uservalidationSchema;
-
+  
     const result = schema.safeParse(formData);
-
+     console.log(result.success)
     if (!result.success) {
       const errorMessage: { [key: string]: string } = {};
       result.error.errors.forEach((err) => {
@@ -125,7 +105,6 @@ const UserModal: React.FC<UserModalProps> = ({
         });
         onClose();
         onUpdate();
-        setPreviewImage(null);
       }
     } catch (error: any) {
       const errorMessage =
@@ -197,7 +176,7 @@ const UserModal: React.FC<UserModalProps> = ({
               />
               <button
                 type="button"
-                className="absolute right-28 top-[52%]  transform -translate-y-1/2 text-gray-600"
+                className="absolute right-28 top-[57%]  transform -translate-y-1/2 text-gray-600"
                 onClick={() => setShowPassword((prev) => !prev)}
                 tabIndex={-1}
               >
@@ -205,48 +184,41 @@ const UserModal: React.FC<UserModalProps> = ({
               </button>
             </div>
           )}
-          {!data &&
-            (role === "SP" ? (
-              <div className="mb-3 px-20 text-lg">
-                <CFormLabel htmlFor="roles">Roles</CFormLabel>
-                <select
+
+          {!data && (
+            <div className="mb-3 px-20 text-lg">
+                 <CFormLabel>Role</CFormLabel>
+              <FormControl fullWidth variant="outlined" sx={{ minWidth: 200 }}>
+                <Select
+                  labelId="role-label"
                   id="role"
                   name="role"
-                  className="form-select text-base rounded px-3 py-2 w-full"
+                  value={formData.role || ""}
                   onChange={handleChange}
-                  style={{
+                  label="Roles"
+                  sx={{
                     backgroundColor: "#f2ebf5",
-                    border: "1px solid #ced4da",
-                    padding: "14px",
+                    borderRadius: "8px",
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#ced4da",
+                    },
                   }}
                 >
-                  <option value="">Select role</option>
-                  <option value="AM">AM</option>
-                </select>
-              </div>
-            ) : (
-              <div className="mb-3 px-20 text-lg">
-                <CFormLabel htmlFor="roles">Roles</CFormLabel>
-                <select
-                  id="role"
-                  name="role"
-                  className="form-select text-base rounded px-3 py-2 w-full"
-                  onChange={handleChange}
-                  style={{
-                    backgroundColor: "#f2ebf5",
-                    border: "1px solid #ced4da",
-                    padding: "14px",
-                  }}
-                >
-                  <option value="">Select role</option>
-                  {roleOptions.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
+                  <MenuItem value=""></MenuItem>
+                  {role === "SP" ? (
+                    <MenuItem value="AM">AM</MenuItem>
+                  ) : (
+                    roleOptions.map((r) => (
+                      <MenuItem key={r} value={r}>
+                        {r}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            </div>
+          )}
+
           <div className="mb-3 px-20 text-lg">
             <CFormLabel>Projects</CFormLabel>
             <div className="max-h-60 overflow-y-auto border rounded p-3 bg-white shadow-sm">
@@ -275,30 +247,6 @@ const UserModal: React.FC<UserModalProps> = ({
                 ))}
               </div>
             </div>
-          </div>
-          <div className="mb-3 px-20  flex flex-col  gap-3">
-            <input
-              type="file"
-              id="avatarUpload"
-              name="profile"
-              accept="image/*"
-              onChange={handleChange}
-              hidden
-            />
-            <label
-              htmlFor="avatarUpload"
-              className="cursor-pointer px-6 py-3 rounded-xl bg-[#f2ebf5] text-black font-semibold text-sm shadow-sm hover:shadow-md transition"
-              style={{ backgroundColor: "#f2ebf5", padding: "14px" }}
-            >
-              Upload Avatar
-            </label>
-            {previewImage && (
-              <img
-                src={previewImage}
-                alt="Profile Preview"
-                className="w-24 h-24 rounded-full object-cover shadow"
-              />
-            )}
           </div>
         </CForm>
       </CModalBody>
