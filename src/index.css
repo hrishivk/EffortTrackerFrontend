@@ -100,3 +100,24 @@ a {
 .animate-fadeSlideDown {
   animation: fadeSlideDown 0.3s ease forwards;
 }
+@layer utilities {
+  @media only screen and (-webkit-min-device-pixel-ratio: 2) and (min-resolution: 192dpi) {
+    .mac-fix {
+      @apply max-w-lg px-8 py-2 rounded-3xl;
+      height: 400px; 
+      min-height: 470px; 
+    }
+    .mac-form-fix {
+      @apply space-y-4; 
+    }
+    .mac-logo-fix {
+      @apply w-14 h-14 -mt-4  mx-auto flex items-center justify-center;
+    }
+    .mac-logo-fix img {
+      @apply w-10 h-12 object-contain;
+    }
+    .mac-top{
+      margin-top: 2px;
+    }
+  }
+}

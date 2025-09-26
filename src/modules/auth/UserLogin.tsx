@@ -28,7 +28,6 @@ const UserLogin: React.FC = () => {
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     const result = loginValidationSchema.safeParse(formData);
-
     if (!result.success) {
       const errorMessages: { [key: string]: string } = {};
       result.error.errors.forEach((err) => {
@@ -41,7 +40,6 @@ const UserLogin: React.FC = () => {
     } else {
       try {
         const response = await dispatch(login(formData));
-
         if (login.fulfilled.match(response)) {
           const payload = response.payload as LoginResponse;
           const role = payload.data?.data?.user?.role;
@@ -96,15 +94,15 @@ const UserLogin: React.FC = () => {
     >
       <div className="container px-4 md:px-8">
         <div className="flex justify-center mb-6">
-          <div className="w-18 h-18   bg-white rounded-full shadow-lg flex items-center justify-center">
-            <img src={RXLogo} className="w-14 h-14 object-contain" />
+          <div className="w-18 h-18  bg-white rounded-full shadow-lg flex items-center justify-center mac-logo-fix">
+            <img src={RXLogo} className="w-12 h-12 object-contain" />
           </div>
         </div>
-        <div className="w-full max-w-2xl bg-white rounded-3xl shadow-lg p-6  max-w-2xl   sm:p-8 backdrop-blur-sm bg-opacity-90 mx-auto relative ">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl text-[#333333] font-medium mb-8 sm:mb-12 text-center">
+        <div className="w-full max-w-2xl bg-white rounded-3xl shadow-lg p-6  max-w-2xl   sm:p-8 backdrop-blur-sm bg-opacity-90 mx-auto relative mac-fix ">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl text-[#333333] font-medium mb-8 sm:mb-8 text-center">
             Sign-in
           </h2>
-          <form className="space-y-4">
+          <form className="space-y-4 mac-form-fix">
             <div>
               <label className="text-sm sm:text-base md:text-lg block mb-1 font-normal text-[#666666]">
               Email
@@ -112,7 +110,7 @@ const UserLogin: React.FC = () => {
               <input
                 type="email"
                 name="email"
-                className="w-full px-3 font-medium sm:px-4 py-3 sm:py-4 border rounded-xl text-md sm:text-base"
+                className="w-full px-3 font-medium sm:px-4 py-3 sm:py-3 border rounded-xl text-md sm:text-base"
                 placeholder="Enter your email"
                 onChange={handleChange}
               />
@@ -124,7 +122,7 @@ const UserLogin: React.FC = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
-                className="w-full px-3 font-medium sm:px-4 py-3 sm:py-4 border rounded-xl pr-12 text-sm sm:text-base"
+                className="w-full px-3 font-medium sm:px-4 py-3 sm:py-3 border rounded-xl pr-12 text-sm sm:text-base"
                 placeholder="Enter your password"
                 onChange={handleChange}
               />
@@ -139,7 +137,7 @@ const UserLogin: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="w-full text-base cursor-pointer sm:text-lg font-medium px-4 py-3 sm:py-4 bg-[#AE22DC] text-white rounded-4xl mt-4 hover:bg-[#bb3ce6] transition"
+              className="w-full text-base cursor-pointer sm:text-lg font-medium px-4 py-3 sm:py-3 bg-[#AE22DC] text-white rounded-4xl mt-4 hover:bg-[#bb3ce6] transition"
               onClick={handleClick}
             >
               Log in
@@ -158,7 +156,7 @@ const UserLogin: React.FC = () => {
             .
           </p>
 
-          <div className="text-right mt-6 sm:mt-8 mr-2 sm:mr-4">
+          <div className="text-right mt-6 sm:mt-8 mr-2 sm:mr-4 mac-top">
             <a
               href="#"
               className="text-sm sm:text-base text-gray-700 hover:underline hover:text-gray-600"
