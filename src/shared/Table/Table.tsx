@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { Pencil, Trash2, Lock, Unlock } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import "@coreui/coreui/dist/css/coreui.min.css";
 import {
   Box,
@@ -137,17 +137,17 @@ const TableList: React.FC = () => {
     setselectedStatus("delete");
     setOpenDialog(true);
   };
-  const handleClickBlock = (id: string, status: boolean) => {
-    setSelectedUserId(id);
-    setselectedStatus(status ? "block" : "unblock");
-    setOpenDialog(true);
-  };
-  const handleClickUnBlock = (id: string, status: boolean) => {
-    console.log("enter unblock", id);
-    setSelectedUserId(id);
-    setselectedStatus(status ? "block" : "unblock");
-    setOpenDialog(true);
-  };
+  // const handleClickBlock = (id: string, status: boolean) => {
+  //   setSelectedUserId(id);
+  //   setselectedStatus(status ? "block" : "unblock");
+  //   setOpenDialog(true);
+  // };
+  // const handleClickUnBlock = (id: string, status: boolean) => {
+  //   console.log("enter unblock", id);
+  //   setSelectedUserId(id);
+  //   setselectedStatus(status ? "block" : "unblock");
+  //   setOpenDialog(true);
+  // };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
