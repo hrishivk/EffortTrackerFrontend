@@ -200,6 +200,7 @@ const TableList: React.FC = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  console.log(currentItems)
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
   const handleClick = (e: React.MouseEvent, id: string) => {
@@ -358,7 +359,8 @@ const TableList: React.FC = () => {
                       </div>
                     </CTableDataCell>
                     <CTableDataCell>{user.email}</CTableDataCell>
-                    <CTableDataCell>{user.Project.name}</CTableDataCell>
+                 <CTableDataCell>{user.Project?.name || "No Project"}</CTableDataCell>
+
                     <CTableDataCell>
                       <span className="badge text-bg-light">{user.role}</span>
                     </CTableDataCell>
@@ -412,7 +414,7 @@ const TableList: React.FC = () => {
                               className="text-red-500 group-hover:text-red-700 transition"
                             />
                           </button>
-                          {!user.isBlocked ? (
+                          {/* {!user.isBlocked ? (
                             <button
                               className="group p-1.5 rounded-md hover:bg-gray-100 transition"
                               title="Unblock"
@@ -436,7 +438,7 @@ const TableList: React.FC = () => {
                                 }
                               />
                             </button>
-                          )}
+                          )} */}
                         </div>
                       </CTableDataCell>
                     )}
