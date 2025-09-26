@@ -133,7 +133,7 @@ const handleChange = (
   }, [visible, listAllData]);
 
   return (
-    <CModal visible={visible} onClose={onClose} size="lg" className="mt-34">
+    <CModal visible={visible} onClose={onClose} size="lg" alignment="center">
       <CModalBody>
         <CForm>
           <div className="w-full ml-20 mt-2 mb-8 text-3xl font-bold">
@@ -176,7 +176,7 @@ const handleChange = (
               />
               <button
                 type="button"
-                className="absolute right-28 top-[60%]  transform -translate-y-1/2 text-gray-600"
+                className="absolute right-28 top-[56%]  transform -translate-y-1/2 text-gray-600"
                 onClick={() => setShowPassword((prev) => !prev)}
                 tabIndex={-1}
               >

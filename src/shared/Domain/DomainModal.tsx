@@ -79,7 +79,7 @@ const DomainModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
   }, [visible, listAllDomains]);
 
   return (
-    <CModal visible={visible} onClose={onClose} size="lg" className="mt-34">
+    <CModal visible={visible} onClose={onClose} size="lg" alignment="center">
       <CModalBody>
         <CForm>
           <div className="w-full ml-20 mt-2 mb-8 text-3xl font-bold">
