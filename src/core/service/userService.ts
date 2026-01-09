@@ -15,11 +15,12 @@ export const userServiceMethood = {
       headers: { "Content-Type": "application/json" },
     });
   },
-listTask: (url: string, date: Date, id: string) => {
+listTask: (url: string, date: Date, id: string,role:string) => {
   return apiservice.get(url, {
     params: {
       date: date.toISOString(),
       id: id,
+      role:role
     },
     headers: {
       "Content-Type": "application/json",

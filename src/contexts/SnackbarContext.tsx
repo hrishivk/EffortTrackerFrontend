@@ -23,8 +23,6 @@ export const SnackbarProvider: React.FC<{ children: ReactNode }> = ({ children }
   setSeverity(severity);
   setOpen(true);
 };
-
-
   const handleClose = () => {
     setOpen(false);
   };

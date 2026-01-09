@@ -46,11 +46,10 @@ import ProjectModal from "../Project/ProjectModal";
 import DomainModal from "../Domain/DomainModal";
 import type { formUserData } from "./types";
 import { useNavigate } from "react-router-dom";
-
 dayjs.extend(relativeTime);
 const TableList: React.FC = () => {
   const { showSnackbar } = useSnackbar();
-   const navigate = useNavigate();
+  const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.user);
   const role = user?.role;
   const id = user?.id;
@@ -103,7 +102,6 @@ const TableList: React.FC = () => {
   }, [searchTerm, selectedRole, selectedProject]);
 
   const filteredData = data.filter((user) => {
-
     const roleMatch =
       selectedRole === "All Roles" || user.role === selectedRole;
 
@@ -200,12 +198,12 @@ const TableList: React.FC = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-  console.log(currentItems)
+  console.log(currentItems);
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
   const handleClick = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-   navigate(`/taskList/${id}`)
+    navigate(`/taskList/${id}`);
   };
 
   if (loading) {
@@ -291,7 +289,6 @@ const TableList: React.FC = () => {
                   "& .MuiOutlinedInput-notchedOutline": {
                     borderColor: "#D1D5DB",
                   },
-              
                 }}
               >
                 <MenuItem value="All Projects">All Projects</MenuItem>
@@ -316,7 +313,7 @@ const TableList: React.FC = () => {
                   backgroundColor: "#F9F9FB",
                   "& .MuiOutlinedInput-notchedOutline": {
                     borderColor: "#D1D5DB",
-                  }
+                  },
                 }}
               >
                 <MenuItem value="All Roles">All Roles</MenuItem>
@@ -359,7 +356,9 @@ const TableList: React.FC = () => {
                       </div>
                     </CTableDataCell>
                     <CTableDataCell>{user.email}</CTableDataCell>
-                 <CTableDataCell>{user.Project?.name || "No Project"}</CTableDataCell>
+                    <CTableDataCell>
+                      {user.Project?.name || "No Project"}
+                    </CTableDataCell>
 
                     <CTableDataCell>
                       <span className="badge text-bg-light">{user.role}</span>

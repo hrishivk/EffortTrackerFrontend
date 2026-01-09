@@ -1,32 +1,28 @@
 import axios from "axios";
-import type { taskList } from "../../modules/user/types";
 import type { UserData } from "../types";
 import { API_URL } from "../../config/apiEndpoints";
 
-
-const apiservice = axios.create({
+const apiService = axios.create({
   baseURL: API_URL.apiService,
-  withCredentials: true, 
+  withCredentials: true,
+});
+const spService = axios.create({
+  baseURL: API_URL.spService,
+  withCredentials: true,
 });
 export const apiserviceMethood = {
   login: (url: string, data: { [key: string]: string | number }) => {
-    return apiservice.post(url, data, {
+    return apiService.post(url, data, {
       headers: { "Content-Type": "application/json" },
     });
   },
-  createTask: (url: string, data:taskList) => {
-    return apiservice.post(url, data, {
-      headers: { "Content-Type": "application/json" },
-    });
-  },
-
   createUser: (url: string, data: UserData) => {
-    return apiservice.post(url, data, {
+    return spService.post(url, data, {
       headers: { "Content-Type": "application/json" },
     });
   },
 
   logout: (url: string) => {
-    return apiservice.post(url); 
+    return apiService.post(url);
   },
 };

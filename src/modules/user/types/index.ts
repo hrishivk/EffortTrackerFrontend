@@ -1,6 +1,7 @@
 export type taskList = {
     id?: number |undefined;
-  userId: string | number | null |undefined 
+  created_by?: string | number | null |undefined 
+  assigned_to?: string | number | null |undefined 
   project: string;
   description: string;
   priority: string;
@@ -9,4 +10,5 @@ export type taskList = {
   end_time?:string
   isLocked?:boolean
   totalTime?:string
+
 };

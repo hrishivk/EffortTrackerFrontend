@@ -22,7 +22,6 @@ export const login = createAsyncThunk(
     }
   }
 );
-
 export const adduser = async (data: UserData) => {
   try {
     const response = await apiserviceMethood.createUser("/addUser", data);
@@ -49,9 +48,9 @@ export const addTask=async(data:taskList)=>{
     throw error
   }
 }
-export const fetchTask = async (date: Date, id: string) => {
+export const fetchTask = async (date: Date, id: string,role:string) => {
   try {
-    const response = await userServiceMethood.listTask('/task-list', date, id);
+    const response = await userServiceMethood.listTask('/task-list', date, id,role);
     return response.data;
   } catch (error) {
     console.log(error);

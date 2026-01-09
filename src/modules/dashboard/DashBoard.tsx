@@ -67,7 +67,6 @@ const UserDashboard = () => {
   const { user } = useAppSelector((state) => state.user);
   const role = user.role;
   const id = user?.id;
-
   const listData = useCallback(async () => {
     try {
       const projectResponse = await fetchExistProjects();
@@ -121,8 +120,6 @@ const listCount = useCallback(async () => {
       const centerX = left + width / 2;
       const centerY = top + height / 2;
       const radius = Math.min(width, height) / 6;
-
-
       const total = dataCount.reduce(
         (sum, item) => sum + Number(item.count || 0),
         0
@@ -143,7 +140,6 @@ const listCount = useCallback(async () => {
       ctx.restore();
     },
   };
-
   const roleTitles: RoleTitles = {
     USER: "User Dashboard",
     DEVLOPER: "User Dashboard",
@@ -180,7 +176,6 @@ const listCount = useCallback(async () => {
           <h1 className="!text-4xl !font-bold text-gray-900 mt-6 mb-2">
             {dashboardTitle}
           </h1>
-
           <p className="text-[#7D6387] !text-lg mb-8">
             Manage your tasks and track the open
           </p>

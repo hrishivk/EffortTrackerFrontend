@@ -1,4 +1,4 @@
-import  { lazy, type FC } from "react";
+import { lazy, type FC } from "react";
 import TeamManagerOverview from "../team/TeamMangerOverView";
 import { Footer } from "../layout/Footer";
 import type { AccountManagerViewProps, UserDashboardProps } from "./types";
@@ -35,13 +35,13 @@ const AccountManagerView: FC<AccountManagerViewProps> = () => (
     <Footer />
   </>
 );
-const SupervisorView: FC<AccountManagerViewProps> = ({Dates}) => (
+const SupervisorView: FC<AccountManagerViewProps> = ({ Dates }) => (
   <>
     <TeamManagerOverview Dates={Dates} />
     <Footer />
   </>
 );
-const DashboardRole: FC<UserDashboardProps> = ({ role,Dates }) => {
+const DashboardRole: FC<UserDashboardProps> = ({ role, Dates }) => {
   const isDeveloperOrUser = role === "DEVLOPER" || role === "USER";
   const isAccountManager = role === "AM";
   const isSupervisor = role === "SP";
@@ -49,7 +49,7 @@ const DashboardRole: FC<UserDashboardProps> = ({ role,Dates }) => {
   return (
     <div className="space-y-6">
       {isDeveloperOrUser && <DeveloperOrUserView />}
-      {isAccountManager && <AccountManagerView Dates={Dates}/>}
+      {isAccountManager && <AccountManagerView Dates={Dates} />}
       {isSupervisor && <SupervisorView Dates={Dates} />}
     </div>
   );

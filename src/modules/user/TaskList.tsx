@@ -44,15 +44,16 @@ const TaskList: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [searchTerm, setSearchTerm] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
-  console.log();
+
   const [data, setData] = useState<taskList[]>([]);
   const [project, setProject] = useState<project[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [taskData, setTaskData] = useState<taskList>({
-    userId: id,
+    created_by: user?.id,
+    assigned_to:paramId ||user?.id,
     project: "",
     description: "",
-    priority: "",
+    priority: "",   
   });
   const isToday = (date: Date) => {
     const today = new Date();
@@ -68,7 +69,7 @@ const TaskList: React.FC = () => {
       if (id) {
         const projectResponse = await fetchExistProjects();
         setProject(projectResponse.data);
-        const response = await fetchTask(selectedDate, id);
+        const response = await fetchTask(selectedDate, id,user?.role);
         setData(response.data);
       } else {
         console.warn("Missing user ID");
@@ -170,7 +171,8 @@ const TaskList: React.FC = () => {
           severity: "success",
         });
         setTaskData({
-          userId: id,
+         created_by: user?.id,
+          assigned_to:paramId,
           project: "",
           description: "",
           priority: "",
@@ -230,7 +232,6 @@ const TaskList: React.FC = () => {
 
   const exportToCSV = () => {
     if (!filterData || filterData.length === 0) return;
-
     const headers = [
       "Project",
       "Task Description",
