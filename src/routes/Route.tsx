@@ -1,29 +1,44 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom"; // ONLY import Route and Routes
+import { Routes, Route, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+
 const Login = React.lazy(() => import("../modules/auth/UserLogin"));
 const Navbar = React.lazy(() => import("../presentation/Navbar"));
 const ProtectedRoute = React.lazy(() => import("./ProtectRoute"));
+
 import routes from "./RoleRoutes/roleRoute";
+import PageWrapper from "../presentation/PageWraper";
 
 const Routers = () => {
+  const location = useLocation();
+
   return (
-    <Routes>
-      <Route path="/" element={<Login />} />
-      {routes.map((route, idx) => (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
         <Route
-          key={idx}
-          path={route.path}
+          path="/"
           element={
-            <ProtectedRoute>
-              <>
-                <Navbar />
-                <route.element />
-              </>
-            </ProtectedRoute>
+            <PageWrapper>
+              <Login />
+            </PageWrapper>
           }
         />
-      ))}
-    </Routes>
+        {routes.map((route, idx) => (
+          <Route
+            key={idx}
+            path={route.path}
+            element={
+              <ProtectedRoute>
+                <Navbar />
+                <PageWrapper>
+                  <route.element />
+                </PageWrapper>
+              </ProtectedRoute>
+            }
+          />
+        ))}
+      </Routes>
+    </AnimatePresence>
   );
 };
 
