@@ -252,15 +252,15 @@ const handleChange = (
       </CModalBody>
       <CModalFooter className="px-6 pb-4 mr-20 border-0 ">
         <button
-          style={{ borderRadius: "8px" }}
+          style={{ borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
           onClick={onClose}
-          className="bg-[#F0EBF2] text-black px-6 py-2 text-lg rounded-md"
+          className="bg-[#F0EBF2] text-black"
         >
           Cancel
         </button>
         <button
-          style={{ borderRadius: "8px" }}
-          className="bg-[#AD21DB] text-white px-6 py-2 text-lg rounded-md"
+          style={{ borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
+          className="bg-[#AD21DB] text-white"
           onClick={handleClick}
         >
           {data ? "Edit User" : "Add User"}

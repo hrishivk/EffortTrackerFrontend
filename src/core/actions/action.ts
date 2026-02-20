@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { apiserviceMethood } from "../service/apiService";
+import { spserviceMethood } from "../service/spService";
 import { userServiceMethood } from "../service/userService";
 import type { UserData } from "../types";
 import type { taskList } from "../../modules/user/types";
@@ -22,9 +23,9 @@ export const login = createAsyncThunk(
     }
   }
 );
-export const adduser = async (data: UserData) => {
+export const adduser = async (data: any) => {
   try {
-    const response = await apiserviceMethood.createUser("/addUser", data);
+    const response = await spserviceMethood.addUser("/add-user", data);
     return response.data;
   } catch (error) {
      throw error

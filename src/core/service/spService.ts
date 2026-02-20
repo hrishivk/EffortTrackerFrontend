@@ -1,10 +1,14 @@
 import axios from "axios";
 import type { UserData } from "../types";
 import { API_URL } from "../../config/apiEndpoints";
+import { handleAuthError } from "./interceptors";
+
 const apiservice = axios.create({
   baseURL: API_URL.spService,
   withCredentials: true,
 });
+
+apiservice.interceptors.response.use((res) => res, handleAuthError);
 export const spserviceMethood = {
  addDomain: (url: string, data: { [key: string]: string | number }) => {
   return apiservice.post(url, data, {
@@ -69,5 +73,31 @@ export const spserviceMethood = {
     headers: {
       "Content-Type": "application/json",
     },
+  })},
+  deleteDomain:(url:string)=>{return apiservice.delete(url,{
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })},
+  addUser:(url:string,data:any)=>{return apiservice.post(url,data,{
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })},
+  getProjectMembers:(url:string)=>{return apiservice.get(url,{
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })},
+  assignProjectMembers:(url:string,data:{project_id:string;user_ids:string[]})=>{return apiservice.post(url,data,{
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })},
+  removeProjectMembers:(url:string,data:{project_id:string;user_ids:string[]})=>{return apiservice.delete(url,{
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data,
   })}
 };

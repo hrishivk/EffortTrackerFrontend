@@ -1,11 +1,10 @@
-
 import { Backdrop, CircularProgress } from "@mui/material";
 
 interface LoaderBackdropProps {
-  isLoading: boolean;
+  isLoading?: boolean;
 }
 
-export default function SpinLoader({ isLoading }: LoaderBackdropProps) {
+export default function SpinLoader({ isLoading = false }: LoaderBackdropProps) {
   return (
     <Backdrop
       sx={{
@@ -18,9 +17,7 @@ export default function SpinLoader({ isLoading }: LoaderBackdropProps) {
       <CircularProgress
         size={60}
         thickness={4}
-        sx={{
-          color: "#fff",
-        }}
+        sx={{ color: "#fff" }}
       />
     </Backdrop>
   );

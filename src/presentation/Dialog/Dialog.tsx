@@ -10,7 +10,7 @@ import React from "react";
 import type { DialogeProps } from "./types";
 
 const Dialoge: React.FC<DialogeProps> = ({ open, data, onClose, onConfirm }) => {
-  const mode = (data === "block" || data === "unblock")
+  const mode = (data === "block" || data === "unblock" || data === "remove")
     ? data
     : data
     ? "delete"
@@ -36,6 +36,11 @@ const Dialoge: React.FC<DialogeProps> = ({ open, data, onClose, onConfirm }) => 
       title: "Confirm Lock",
       message: "Are you sure you want to lock all tasks? This action cannot be undone.",
       confirmLabel: "Yes, Lock Task",
+    },
+    remove: {
+      title: "Confirm Remove",
+      message: "Are you sure you want to remove this member from the project?",
+      confirmLabel: "Yes, Remove",
     },
   }[mode];
 

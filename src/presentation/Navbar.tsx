@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FiBell, FiMenu, FiX } from "react-icons/fi";
-import logo from "../assets/img/RX.svg";
+import logo from "../assets/img/logo2.png.png";
 import prLogo from "../assets/img/prLogo.png";
 import { useAppSelector, type AppDispatch } from "../store/configureStore";
 import { useDispatch } from "react-redux";

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import bg from "../../assets/img/bg.png.png";
-import RXLogo from "../../assets/img/RX.svg"
+import RXLogo from "../../assets/img/logo2.png.png";
 import { loginValidationSchema } from "../../utils/validation/Validation";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../store/configureStore";
@@ -43,7 +43,7 @@ const UserLogin: React.FC = () => {
         if (login.fulfilled.match(response)) {
           const payload = response.payload as LoginResponse;
           const role = payload.data?.data?.user?.role;
-          console.log(response)
+          console.log(response);
           if (role) {
             setRole(role);
             showSnackbar({ message: "Login success", severity: "success" });
@@ -70,8 +70,8 @@ const UserLogin: React.FC = () => {
     };
     const roleRedirects: Record<string, string> = Object.fromEntries(
       Object.entries(roleGroups).flatMap(([path, roles]) =>
-        roles.map((role) => [role, path])
-      )
+        roles.map((role) => [role, path]),
+      ),
     );
     if (role) {
       const redirectPath = roleRedirects[role];
@@ -86,65 +86,69 @@ const UserLogin: React.FC = () => {
     if (role) {
       redirectRolePage();
     }
-  },[role]);
+  }, [role]);
   return (
     <div
       className="w-full h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center"
       style={{ backgroundImage: `url(${bg})` }}
     >
-      <div className="container px-4 md:px-8">
-        <div className="flex justify-center mb-6">
-          <div className="w-18 h-18  bg-white rounded-full shadow-lg flex items-center justify-center mac-logo-fix">
-            <img src={RXLogo} className="w-12 h-12 object-contain" />
+      <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-2xl px-4 sm:px-6 mx-auto">
+        <div className="flex justify-center mb-4 sm:mb-6">
+          <div className="w-14 h-14 sm:w-18 sm:h-18 bg-white rounded-full shadow-lg flex items-center justify-center">
+            <img
+              src={RXLogo}
+              className="w-9 h-9 sm:w-12 sm:h-12 object-contain"
+            />
           </div>
         </div>
-        <div className="w-full max-w-2xl bg-white rounded-3xl shadow-lg p-6  max-w-2xl   sm:p-8 backdrop-blur-sm bg-opacity-90 mx-auto relative mac-fix ">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl text-[#333333] font-medium mb-8 sm:mb-8 text-center">
+
+        <div className="w-full bg-white/95 rounded-2xl sm:rounded-3xl shadow-lg py-6 sm:py-8 px-5 sm:px-10 md:px-14 relative">
+          <h2 className="text-xl sm:text-2xl md:text-3xl text-[#333333] font-medium mb-6 sm:mb-8 text-center">
             Sign-in
           </h2>
-          <form className="space-y-4 mac-form-fix">
+          <form className="space-y-4 sm:space-y-5">
             <div>
-              <label className="text-sm sm:text-base md:text-lg block mb-1 font-normal text-[#666666]">
-              Email
+              <label className="text-xs sm:text-sm block mb-1 sm:mb-1.5 font-normal text-[#666666]">
+                Email
               </label>
               <input
                 type="email"
                 name="email"
-                className="w-full px-3 font-medium sm:px-4 py-3 sm:py-3 border rounded-xl text-md sm:text-base"
+                className="w-full px-3 py-2 sm:py-2.5 font-medium text-xs sm:text-sm border border-black rounded-lg bg-transparent outline-none focus:border-[#AE22DC] transition-colors"
                 placeholder="Enter your email"
                 onChange={handleChange}
               />
             </div>
             <div className="relative">
-              <label className="text-sm sm:text-base md:text-lg block mb-1 font-normal text-[#666666]">
-               Password
+              <label className="text-xs sm:text-sm block mb-1 sm:mb-1.5 font-normal text-[#666666]">
+                Password
               </label>
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
-                className="w-full px-3 font-medium sm:px-4 py-3 sm:py-3 border rounded-xl pr-12 text-sm sm:text-base"
+                className="w-full px-3 py-2 sm:py-2.5 pr-10 font-medium text-xs sm:text-sm border border-black rounded-lg bg-transparent outline-none focus:border-[#AE22DC] transition-colors"
                 placeholder="Enter your password"
                 onChange={handleChange}
               />
               <button
                 type="button"
-                className="absolute right-4 top-[70%]  transform -translate-y-1/2 text-gray-600"
+                className="absolute right-3 bottom-2 sm:bottom-2.5 text-gray-500"
                 onClick={() => setShowPassword((prev) => !prev)}
                 tabIndex={-1}
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             <button
               type="submit"
-              className="w-full text-base cursor-pointer sm:text-lg font-medium px-4 py-3 sm:py-3 bg-[#AE22DC] text-white rounded-4xl mt-4 hover:bg-[#bb3ce6] transition"
+              className="w-full text-sm sm:text-base md:text-lg cursor-pointer font-medium px-4 py-3 bg-[#AE22DC] text-white rounded-xl mt-4 hover:bg-[#bb3ce6] shadow-md"
               onClick={handleClick}
             >
               Log in
             </button>
           </form>
 
-          <p className="mt-6 text-sm sm:text-base text-[#333333] text-center">
+          <p className="mt-4 sm:mt-6 text-[10px] sm:text-xs md:text-sm text-[#333333] text-center">
             By continuing, you agree to the{" "}
             <a href="#" className="underline hover:text-gray-600">
               Terms of Use
@@ -156,10 +160,10 @@ const UserLogin: React.FC = () => {
             .
           </p>
 
-          <div className="text-right mt-6 sm:mt-8 mr-2 sm:mr-4 mac-top">
+          <div className="text-right mt-4 sm:mt-6">
             <a
               href="#"
-              className="text-sm sm:text-base text-gray-700 hover:underline hover:text-gray-600"
+              className="text-xs sm:text-sm text-gray-700 hover:underline hover:text-gray-600"
             >
               Forgot password?
             </a>

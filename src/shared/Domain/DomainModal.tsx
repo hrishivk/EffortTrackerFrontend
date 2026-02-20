@@ -136,16 +136,16 @@ const DomainModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
       </CModalBody>
       <CModalFooter className="px-6 pb-4 mr-20 border-0">
         <button
-          className="bg-[#F0EBF2] text-black px-6 py-2 text-lg rounded-md"
+          className="bg-[#F0EBF2] text-black"
           onClick={onClose}
-          style={{ borderRadius: "8px" }}
+          style={{ borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
         >
           Cancel
         </button>
         <button
-          className="bg-[#AD21DB] text-white px-6 py-2 text-lg rounded-md"
+          className="bg-[#AD21DB] text-white"
           onClick={handleClick}
-          style={{ borderRadius: "8px" }}
+          style={{ borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
         >
           Add Domain
         </button>

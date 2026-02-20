@@ -1,17 +1,26 @@
 import { spserviceMethood } from "../service/spService";
+import { userServiceMethood } from "../service/userService";
 import type { UserData } from "../types";
 
 export const addDomain = async (data: { [key: string]: string | number }) => {
   try {
-    const response = await spserviceMethood.addDomain("/addDomain", data);
+    const response = await spserviceMethood.addDomain("/domain", data);
     return response.data;
   } catch (error) {
     throw error
    }
 };
+export const deleteDomain = async (id: string) => {
+  try {
+    const response = await spserviceMethood.deleteDomain(`/domain?id=${id}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 export const fetchExistDomains=async()=>{
   try {
-    const repsonse=await spserviceMethood.listAllDomain("/list-domain")
+    const repsonse=await spserviceMethood.listAllDomain("/list-domains")
     return repsonse.data
   } catch (error) {
      console.log(error)
@@ -19,8 +28,17 @@ export const fetchExistDomains=async()=>{
 }
 export const fetchExistProjects=async()=>{
   try {
-    const repsonse=await spserviceMethood.listAllProject("/list-projects")
-    return repsonse.data
+    const repsonse=await spserviceMethood.listAllProject("/project-domain")
+    console.log('response',repsonse.data)
+    return repsonse.data; 
+  } catch (error) {
+     throw error
+  }
+}
+export const fetchAllExistProjects=async()=>{
+  try {
+    const repsonse=await userServiceMethood.listProjects("/list-projects")
+    return repsonse.data;
   } catch (error) {
      throw error
   }
@@ -36,10 +54,42 @@ export const fetchUser=async(id:string)=>{
 }
 export const fetchAllUsers=async()=>{
   try {
-    const repsonse=await spserviceMethood.listUser("/list-User")
-    return repsonse.data
+    const repsonse=await spserviceMethood.listUser("/list-users")
+    return { data: repsonse.data.data.users }
   } catch (error) {
      throw error
+  }
+}
+
+export interface FetchUsersParams {
+  search?: string;
+  role?: string;
+  project_id?: string;
+  isBlocked?: string;
+  page?: number;
+  limit?: number;
+}
+
+export const fetchUsers = async (params: FetchUsersParams = {}) => {
+  try {
+    const query = new URLSearchParams();
+    if (params.search) query.set("search", params.search);
+    if (params.role) query.set("role", params.role);
+    if (params.project_id) query.set("project_id", params.project_id);
+    if (params.isBlocked) query.set("isBlocked", params.isBlocked);
+    if (params.page) query.set("page", String(params.page));
+    if (params.limit) query.set("limit", String(params.limit));
+    const qs = query.toString();
+    const url = `/list-users${qs ? `?${qs}` : ""}`;
+    const response = await spserviceMethood.listUser(url);
+    return response.data.data as {
+      users: import("../../shared/User/types").formUserData[];
+      totalRecords: number;
+      totalPages: number;
+      currentPage: number;
+    };
+  } catch (error) {
+    throw error;
   }
 }
 export const fetfchTaskCount=async(data:string,role:string,id:number)=>{
@@ -53,7 +103,7 @@ export const fetfchTaskCount=async(data:string,role:string,id:number)=>{
 
 export const addProject=async(data:{[key:string]:string|number})=>{
   try {
-    const response=await spserviceMethood.addProject("/addProject",data)
+    const response=await spserviceMethood.addProject("/project",data)
     return response.data
   } catch (error) {
    throw error
@@ -95,6 +145,30 @@ export const BlockUser=async(id:string)=>{
     return response.data
   } catch (error) {
     throw error
-    
+
+  }
+}
+export const fetchProjectMembers=async(projectId:string)=>{
+  try {
+    const response=await spserviceMethood.getProjectMembers(`/project-members?project_id=${projectId}`)
+    return response.data
+  } catch (error) {
+    throw error
+  }
+}
+export const assignProjectMembers=async(projectId:string,userIds:string[])=>{
+  try {
+    const response=await spserviceMethood.assignProjectMembers("/project-members",{project_id:projectId,user_ids:userIds})
+    return response.data
+  } catch (error) {
+    throw error
+  }
+}
+export const removeProjectMembers=async(projectId:string,userIds:string[])=>{
+  try {
+    const response=await spserviceMethood.removeProjectMembers("/project-members",{project_id:projectId,user_ids:userIds})
+    return response.data
+  } catch (error) {
+    throw error
   }
 }

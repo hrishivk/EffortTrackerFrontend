@@ -173,16 +173,16 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
       </CModalBody>
       <CModalFooter className="px-6 pb-4 mr-20 border-0">
         <button
-          style={{ borderRadius: "8px" }}
-          className="bg-[#F0EBF2] text-black px-20 py-2 text-lg rounded-md hover:bg-[#e0dbe8] transition-colors duration-200"
+          style={{ borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
+          className="bg-[#F0EBF2] text-black hover:bg-[#e0dbe8] transition-colors duration-200"
           onClick={onClose}
         >
           Cancel
         </button>
 
         <button
-          style={{ borderRadius: "8px" }}
-          className="bg-[#AD21DB] text-white px-18 py-2 rounded-lg hover:bg-[#911bb9] transition-colors duration-200"
+          style={{ borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
+          className="bg-[#AD21DB] text-white hover:bg-[#911bb9] transition-colors duration-200"
           onClick={handleClick}
         >
           Add Project

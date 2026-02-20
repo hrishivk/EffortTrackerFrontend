@@ -3,7 +3,7 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 
 const Login = React.lazy(() => import("../modules/auth/UserLogin"));
-const Navbar = React.lazy(() => import("../presentation/Navbar"));
+const AppLayout = React.lazy(() => import("../presentation/AppLayout"));
 const ProtectedRoute = React.lazy(() => import("./ProtectRoute"));
 
 import routes from "./RoleRoutes/roleRoute";
@@ -29,10 +29,11 @@ const Routers = () => {
             path={route.path}
             element={
               <ProtectedRoute>
-                <Navbar />
-                <PageWrapper>
-                  <route.element />
-                </PageWrapper>
+                <AppLayout>
+                  <PageWrapper>
+                    <route.element />
+                  </PageWrapper>
+                </AppLayout>
               </ProtectedRoute>
             }
           />

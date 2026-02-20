@@ -1,8 +1,8 @@
 import { amServiceMethood } from "../service/amService"
 
-export const fetchAmUsers=async(id:string)=>{
+export const fetchAmUsers=async()=>{
   try {
-    const repsonse=await amServiceMethood.listAllUsers(`/list-am-User?id=${id}`)
+    const repsonse=await amServiceMethood.listAllUsers("/list-am-User")
     return repsonse.data
   } catch (error) {
      console.log(error)

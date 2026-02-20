@@ -17,7 +17,6 @@ export const uservalidationSchema=z.object({
     required_error: 'Role is required',
     invalid_type_error: 'Invalid role selected',
   }),
-  projects:z.string().min(1,'Project required'),
 })
 export const baseValidationSchema=z.object({
     fullName:z.string().min(1,"full name is required").regex(/^[A-Za-z\s]+$/, "Full name must contain only letters "),

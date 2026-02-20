@@ -340,9 +340,8 @@ const TaskList: React.FC = () => {
               <h1 className="text-2xl sm:text-3xl font-semibold">Task List</h1>
               {isToday(selectedDate) && (
                 <button
-                  className="rx-loader-btn cursor-pointer text-white !rounded-[20px] px-6 py-2 text-sm font-inherit border-0 
-                bg-gradient-to-br from-[#a855f7] to-[#d8b4fe] bg-[length:200%_auto] bg-left 
-                transition-all duration-300 ease-in-out "
+                  className="rx-loader-btn cursor-pointer text-white border-0 transition-all duration-300 ease-in-out"
+                  style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
                   onClick={handleTaskClick}
                 >
                   + Add Task
@@ -360,8 +359,11 @@ const TaskList: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               sx={{
                 backgroundColor: "#F0EBF2",
-                borderRadius: 6,
+                borderRadius: "8px",
                 "& .MuiOutlinedInput-root": {
+                  borderRadius: "8px",
+                  fontSize: 13,
+                  fontWeight: 600,
                   "& fieldset": {
                     border: "none",
                   },
@@ -372,6 +374,7 @@ const TaskList: React.FC = () => {
                     border: "none",
                   },
                 },
+                "& .MuiInputBase-input": { padding: "6px 12px", fontSize: 13, fontWeight: 600 },
               }}
             />
 
@@ -615,8 +618,8 @@ const TaskList: React.FC = () => {
           {isToday(selectedDate) && (
             <div className="flex flex-row space-x-4  sm:!flex-row  justify-end items-center space-y-2 sm:space-y-0 sm:!space-x-4 mt-4">
               <button
-                className="rx-loader-btn cursor-pointer text-black font-medium !rounded-[20px] px-6 py-2 text-sm font-inherit border-0 transition-all duration-300 ease-in-out"
-                style={{ backgroundColor: "#F0E8F2" }}
+                className="rx-loader-btn cursor-pointer text-black border-0 transition-all duration-300 ease-in-out"
+                style={{ backgroundColor: "#F0E8F2", borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
                 onClick={exportToCSV}
               >
                 Export to CSV
@@ -627,9 +630,8 @@ const TaskList: React.FC = () => {
                 !isFromParams && (
                   <>
                     <button
-                      className="rx-loader-btn cursor-pointer text-white !rounded-[20px] px-6 py-2 text-sm font-inherit border-0 
-                              bg-gradient-to-br from-[#a855f7] to-[#d8b4fe] bg-[length:200%_auto] bg-left 
-                              transition-all duration-300 ease-in-out hover:bg-right"
+                      className="rx-loader-btn cursor-pointer text-white border-0 transition-all duration-300 ease-in-out"
+                      style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
                       onClick={handleSubmit}
                     >
                       Submit All

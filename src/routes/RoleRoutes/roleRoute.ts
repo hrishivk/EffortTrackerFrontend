@@ -1,47 +1,69 @@
 
 import React from 'react'
-import RxLoader from '../../presentation/Loader'
 const Dashboard=React.lazy(()=>import('../../modules/dashboard/DashBoard'))
 const TeamManagement=React.lazy(()=>import('../../modules/am/TeamManagement'))
 const userMangement=React.lazy(()=>import('../../modules/sp/UserManagement'))
+const DomainProject=React.lazy(()=>import('../../modules/sp/DomainProject'))
+const CreateProject=React.lazy(()=>import('../../modules/sp/CreateProject'))
+const CreateUser=React.lazy(()=>import('../../modules/sp/CreateUser'))
+const CreateDomain=React.lazy(()=>import('../../modules/sp/CreateDomain'))
 const TaskList=React.lazy(()=>import('../../modules/user/TaskList'))
 
 const routes = [
   {
-    path: '/Sp/dashboard',
+    path: '/sp/dashboard',
     name: 'Super Admin Dashboard',
     element: Dashboard,
-    role: 'SP',
+    role: 'sp',
   },
+
   {
-    path: '/Sp/loader',
-    name: 'Super Admin Dashboard',
-    element: RxLoader,
-    role: 'SP',
-  },
-  {
-    path: '/Sp/userMangement',
+    path: '/sp/userMangement',
     name: 'Super Admin Dashboard',
     element: userMangement,
-    role: 'SP',
+    role: 'sp',
   },
   {
-    path: '/Am/dashboard',
+    path: '/am/dashboard',
     name: 'Admin_Manager',
     element: Dashboard,
-    role: 'AM',
+    role: 'am',
   },
   {
-    path: '/Am/TeamManagement',
+    path: '/am/TeamManagement',
     name: 'Admin_Manager',
     element: TeamManagement,
-    role: 'AM',
+    role: 'am',
   },
   {
-    path: '/Am/TaskList',
+    path: '/am/TaskList',
     name: 'Admin_Manager',
     element: TaskList,
-    role: 'AM',
+    role: 'am',
+  },
+  {
+    path: '/:role/domain-project',
+    name: 'Domain & Projects',
+    element: DomainProject,
+    roles: ['sp', 'am'],
+  },
+  {
+    path: '/:role/create-project',
+    name: 'Create Project',
+    element: CreateProject,
+    roles: ['sp', 'am'],
+  },
+  {
+    path: '/:role/create-user',
+    name: 'Create User',
+    element: CreateUser,
+    roles: ['sp', 'am'],
+  },
+  {
+    path: '/:role/create-domain',
+    name: 'Create Domain',
+    element: CreateDomain,
+    roles: ['sp', 'am'],
   },
  {
   path: '/*/dashboard',
@@ -53,7 +75,7 @@ const routes = [
   path: '/taskList/:id?',
   name: 'User Dashboard',
   element: TaskList,
-  roles: ['USER', 'DEVLOPER','AM'],
+  roles: ['USER', 'DEVLOPER','am'],
 }
 ]
 export default routes
