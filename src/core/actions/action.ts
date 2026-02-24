@@ -49,9 +49,9 @@ export const addTask=async(data:taskList)=>{
     throw error
   }
 }
-export const fetchTask = async (date: Date, id: string,role:string) => {
+export const fetchTask = async (date: Date, id: string, role: string, filters?: { assigned_to?: string; project?: string }) => {
   try {
-    const response = await userServiceMethood.listTask('/task-list', date, id,role);
+    const response = await userServiceMethood.listTask('/task-list', date, id, role, filters);
     return response.data;
   } catch (error) {
     console.log(error);

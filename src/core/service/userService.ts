@@ -16,16 +16,20 @@ export const userServiceMethood = {
       headers: { "Content-Type": "application/json" },
     });
   },
-listTask: (url: string, date: Date, id: string,role:string) => {
+listTask: (url: string, date: Date, id: string, role: string, filters?: { assigned_to?: string; project?: string }) => {
   return apiservice.get(url, {
     params: {
       date: date.toISOString(),
       id: id,
-      role:role
+      role: role,
+      ...(filters?.assigned_to ? { assigned_to: filters.assigned_to } : {}),
+      ...(filters?.project ? { project: filters.project } : {}),
+      _t: Date.now(),
     },
     headers: {
       "Content-Type": "application/json",
-      "Cache-Control": "no-store", 
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
     },
   });
 },

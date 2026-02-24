@@ -69,7 +69,7 @@ export const spserviceMethood = {
       "Content-Type": "application/json",
     },
   })},
-  deleteUser:(url:string)=>{return apiservice.get(url,{
+  deleteUser:(url:string)=>{return apiservice.delete(url,{
     headers: {
       "Content-Type": "application/json",
     },
@@ -99,5 +99,15 @@ export const spserviceMethood = {
       "Content-Type": "application/json",
     },
     data,
+  })},
+  updateProjectStatus:(url:string,data:{status:string})=>{return apiservice.patch(url,data,{
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })},
+  getProjectStats:(url:string)=>{return apiservice.get(url,{
+    headers: {
+      "Content-Type": "application/json",
+    },
   })}
 };

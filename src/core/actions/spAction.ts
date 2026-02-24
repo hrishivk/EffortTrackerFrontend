@@ -35,9 +35,10 @@ export const fetchExistProjects=async()=>{
      throw error
   }
 }
-export const fetchAllExistProjects=async()=>{
+export const fetchAllExistProjects=async(search?:string)=>{
   try {
-    const repsonse=await userServiceMethood.listProjects("/list-projects")
+    const query = search ? `?search=${encodeURIComponent(search)}` : "";
+    const repsonse=await userServiceMethood.listProjects(`/list-projects${query}`)
     return repsonse.data;
   } catch (error) {
      throw error
@@ -167,6 +168,22 @@ export const assignProjectMembers=async(projectId:string,userIds:string[])=>{
 export const removeProjectMembers=async(projectId:string,userIds:string[])=>{
   try {
     const response=await spserviceMethood.removeProjectMembers("/project-members",{project_id:projectId,user_ids:userIds})
+    return response.data
+  } catch (error) {
+    throw error
+  }
+}
+export const updateProjectStatus=async(projectId:string,status:string)=>{
+  try {
+    const response=await spserviceMethood.updateProjectStatus(`/project-status?id=${projectId}`,{status})
+    return response.data
+  } catch (error) {
+    throw error
+  }
+}
+export const fetchProjectStats=async()=>{
+  try {
+    const response=await spserviceMethood.getProjectStats("/project-stats")
     return response.data
   } catch (error) {
     throw error

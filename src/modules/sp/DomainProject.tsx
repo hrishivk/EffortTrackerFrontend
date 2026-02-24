@@ -23,9 +23,12 @@ import GanttChart from "../../shared/GhantChart/types/GhantChart";
 import {
   fetchAllExistProjects,
   fetchAllUsers,
+  fetchUsers,
   fetchProjectMembers,
   assignProjectMembers,
   removeProjectMembers,
+  updateProjectStatus,
+  fetchProjectStats,
 } from "../../core/actions/spAction";
 import { getProjectColumns } from "./domainProjectColumns";
 import { useSnackbar } from "../../contexts/SnackbarContext";
@@ -69,26 +72,7 @@ const menuProps = {
   },
 };
 
-const phaseData: PhaseItem[] = [
-  { label: "Planning & Scoping", count: 4, color: "#7c3aed", max: 10 },
-  { label: "Development / Execution", count: 8, color: "#a855f7", max: 10 },
-  { label: "Quality Assurance", count: 3, color: "#6366f1", max: 10 },
-];
-
-const criticalUpdates: CriticalUpdate[] = [
-  {
-    title: "E-commerce Refresh",
-    description:
-      "Scope creep detected. Requires executive review of Phase 2 features.",
-    type: "warning",
-  },
-  {
-    title: "Security Audit Phase 1",
-    description:
-      "All high-risk vulnerabilities patched. Final report delivered to CTO.",
-    type: "success",
-  },
-];
+// Phase data & critical updates are now computed from real projects inside the component
 
 
 const StatCard = ({
@@ -156,20 +140,20 @@ const StatCard = ({
         {icon}
       </div>
     </div>
+
   </div>
 );
 
-
-// ─── Helper: check if user is assigned to a project ────────────
 const isUserInProject = (user: formUserData, projectId: any): boolean => {
   const pid = String(projectId);
   if (!user.projects || !Array.isArray(user.projects)) return false;
   return user.projects.some((p) => String(p.id) === pid);
 };
 
-// ─── Expanded Row: Project Members ──────────────────────────────
-const ProjectExpandedRow = ({ row }: { row: ProjectRow }) => {
+const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: () => void }) => {
   const { showSnackbar } = useSnackbar();
+  const loggedInRole = useSelector((state: any) => state.user.user.role);
+  const isSP = loggedInRole?.toUpperCase() === "SP";
   const [users, setUsers] = useState<formUserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [removeTarget, setRemoveTarget] = useState<formUserData | null>(null);
@@ -181,14 +165,20 @@ const ProjectExpandedRow = ({ row }: { row: ProjectRow }) => {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchAllUsers();
-      setUsers(res.data || []);
+      if (isSP) {
+        const res = await fetchUsers({ role: "AM" });
+        setUsers(res.users || []);
+      } else {
+        const res = await fetchAllUsers();
+        const allUsers: formUserData[] = res.data || [];
+        setUsers(allUsers.filter((u) => u.role === "USER" || u.role === "DEVLOPER"));
+      }
     } catch {
       showSnackbar({ message: "Failed to load users", severity: "error" });
     } finally {
       setLoading(false);
     }
-  }, [showSnackbar]);
+  }, [showSnackbar, isSP]);
 
   useEffect(() => {
     loadUsers();
@@ -203,6 +193,7 @@ const ProjectExpandedRow = ({ row }: { row: ProjectRow }) => {
       await removeProjectMembers(String(row.id), [String(removeTarget.id)]);
       showSnackbar({ message: `${removeTarget.fullName} removed`, severity: "success" });
       await loadUsers();
+      onRefresh?.();
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Failed to remove member";
       showSnackbar({ message: msg, severity: "error" });
@@ -225,6 +216,7 @@ const ProjectExpandedRow = ({ row }: { row: ProjectRow }) => {
       showSnackbar({ message: `${selectedUserIds.length} member(s) assigned`, severity: "success" });
       setAssignOpen(false);
       await loadUsers();
+      onRefresh?.();
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Failed to assign members";
       showSnackbar({ message: msg, severity: "error" });
@@ -256,25 +248,33 @@ const ProjectExpandedRow = ({ row }: { row: ProjectRow }) => {
     );
   }
 
+  const isActive = (row.status || "").toLowerCase().replace(/\s+/g, "_") === "active";
+
   return (
     <div className="p-3">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h6 className="fw-bold mb-0" style={{ fontSize: 14, color: "#374151" }}>
           Team Members ({assignedMembers.length})
         </h6>
-        <button
-          className="btn btn-sm text-white"
-          style={{
-            backgroundColor: "#7c3aed",
-            borderRadius: 6,
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "4px 12px",
-          }}
-          onClick={handleOpenAssign}
-        >
-          + Assign Members
-        </button>
+        {isActive ? (
+          <button
+            className="btn btn-sm text-white"
+            style={{
+              backgroundColor: "#7c3aed",
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "4px 12px",
+            }}
+            onClick={handleOpenAssign}
+          >
+            + Assign Members
+          </button>
+        ) : (
+          <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>
+            Only active projects can assign members
+          </span>
+        )}
       </div>
 
       {assignedMembers.length === 0 ? (
@@ -345,7 +345,7 @@ const ProjectExpandedRow = ({ row }: { row: ProjectRow }) => {
         PaperProps={{ sx: { borderRadius: 3 } }}
       >
         <DialogTitle sx={{ fontWeight: 700, fontSize: 16 }}>
-          Assign Members to {row.name}
+          {isSP ? "Assign Managers (AM)" : "Assign Members"} to {row.name}
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -439,27 +439,51 @@ const ProjectExpandedRow = ({ row }: { row: ProjectRow }) => {
 
 const DomainProject = () => {
   const navigate = useNavigate();
+  const { showSnackbar } = useSnackbar();
   const { role: urlRole } = useParams();
   const role = useSelector((state: any) => state.user.user.role);
   const isAM = role?.toUpperCase() === "AM";
   const currentRole = urlRole || (isAM ? "am" : "sp");
-  const tabs = isAM ? allTabs : allTabs.filter((t) => t.key === "overview");
+  const tabs = allTabs;
   const [activeTab, setActiveTab] = useState<DomainTab>("overview");
   const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [rawProjects, setRawProjects] = useState<any[]>([]);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusDialog, setStatusDialog] = useState<{ open: boolean; projectId: number | null; projectName: string; current: string }>({
+    open: false, projectId: null, projectName: "", current: "",
+  });
+  const [statusLoading, setStatusLoading] = useState(false);
   const [dateFilter, setDateFilter] = useState("2023");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [stats, setStats] = useState<{
+    projects: { total: number; active: number; on_hold: number; paused: number; completed: number };
+    activeResources: number;
+    totalTasks: number;
+    completedTasks: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    fetchProjectStats()
+      .then((res) => setStats(res?.data || null))
+      .catch(() => {});
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
-      const response = await fetchAllExistProjects();
+      const response = await fetchAllExistProjects(debouncedSearch || undefined);
       if (response?.data) {
         const mapped: ProjectRow[] = response.data.map((p: any) => ({
           id: p.id,
           name: p.name || "",
           dueDate: p.end_date || p.dueDate || "-",
-          clientDepartment: p.client_department || p.domain?.name || "-",
+          clientDepartment: p.client_department || p.clientDepartment || p.domain?.name || "-",
           status: (p.status || "ACTIVE").toUpperCase(),
           progress: p.progress ?? 0,
           teamAssigned: (p.teamAssigned || []).map((u: any) =>
@@ -469,15 +493,56 @@ const DomainProject = () => {
           ),
         }));
         setProjects(mapped);
+        setRawProjects(response.data);
       }
     } catch (error) {
       console.log(error);
     }
-  }, []);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Compute phase distribution from real projects
+  const totalProjectCount = projects.length || 1;
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "_");
+  const activeCount = projects.filter((p) => norm(p.status) === "active").length;
+  const onHoldCount = projects.filter((p) => norm(p.status) === "on_hold").length;
+  const pausedCount = projects.filter((p) => norm(p.status) === "paused").length;
+  const completedCount = projects.filter((p) => norm(p.status) === "completed").length;
+
+  const phaseData: PhaseItem[] = [
+    { label: "Active", count: activeCount, color: "#7c3aed", max: totalProjectCount },
+    { label: "On Hold", count: onHoldCount, color: "#ea580c", max: totalProjectCount },
+    { label: "Paused", count: pausedCount, color: "#d97706", max: totalProjectCount },
+    { label: "Completed", count: completedCount, color: "#16a34a", max: totalProjectCount },
+  ];
+
+  // Compute critical updates from real projects
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const criticalUpdates: CriticalUpdate[] = [
+    ...projects
+      .filter((p) => {
+        if (p.status === "COMPLETED") return false;
+        const end = p.dueDate && p.dueDate !== "-" ? new Date(p.dueDate) : null;
+        return end && end < now;
+      })
+      .map((p) => ({
+        title: p.name,
+        description: `Overdue — was due ${p.dueDate}. Current progress: ${p.progress}%`,
+        type: "warning" as const,
+      })),
+    ...projects
+      .filter((p) => p.status === "COMPLETED" || p.progress >= 100)
+      .map((p) => ({
+        title: p.name,
+        description: `Completed successfully. Final progress: ${p.progress}%`,
+        type: "success" as const,
+      })),
+  ];
 
   return (
     <div className="container py-4">
@@ -577,12 +642,6 @@ const DomainProject = () => {
                   >
                     + Create Projects
                   </button>
-                  <button
-                    className="btn text-white"
-                    style={{ backgroundColor: "#7c3aed", borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
-                  >
-                    + Create Task
-                  </button>
                 </>
               )}
               {!isAM && (
@@ -644,42 +703,42 @@ const DomainProject = () => {
       </div>
 
       {/* Stat Cards — Overview only */}
-      {activeTab === "overview" && isAM && (
+      {activeTab === "overview" && (
         <div className="scrollbar-hide" style={{ display: "flex", gap: 16, marginBottom: 24, overflowX: "auto", paddingBottom: 4 }}>
           <div style={{ minWidth: 200, flex: "1 0 auto" }}>
             <StatCard
               title="Active Projects"
-              value={12}
-              subtitle="+2 this month"
+              value={stats?.projects.active ?? 0}
+              subtitle={`${stats?.projects.total ?? 0} total projects`}
               accentColor="#7c3aed"
-              icon={<span>✅</span>}
+              icon={<span>&#9989;</span>}
             />
           </div>
           <div style={{ minWidth: 200, flex: "1 0 auto" }}>
             <StatCard
               title="On Hold"
-              value={3}
+              value={stats?.projects.on_hold ?? 0}
               subtitle="Awaiting feedback"
               accentColor="#f59e0b"
-              icon={<span>⏸️</span>}
+              icon={<span>&#9208;&#65039;</span>}
             />
           </div>
           <div style={{ minWidth: 200, flex: "1 0 auto" }}>
             <StatCard
               title="Total Completion"
-              value="84%"
-              progress={84}
+              value={stats && stats.totalTasks > 0 ? `${Math.round((stats.completedTasks / stats.totalTasks) * 100)}%` : "0%"}
+              progress={stats && stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}
               accentColor="#10b981"
-              icon={<span>📊</span>}
+              icon={<span>&#128202;</span>}
             />
           </div>
           <div style={{ minWidth: 200, flex: "1 0 auto" }}>
             <StatCard
               title="Active Resources"
-              value={24}
+              value={stats?.activeResources ?? 0}
               subtitle="Allocated across teams"
               accentColor="#6366f1"
-              icon={<span>👥</span>}
+              icon={<span>&#128101;</span>}
             />
           </div>
         </div>
@@ -687,27 +746,42 @@ const DomainProject = () => {
 
       {activeTab === "Gantt chart" && (
         <div className="mb-4">
-          <GanttChart />
+          <GanttChart
+            projects={rawProjects.map((p: any) => ({
+              id: p.id,
+              name: p.name || "",
+              start_date: p.start_date || p.startDate,
+              end_date: p.end_date || p.dueDate,
+              status: p.status || "active",
+              progress: p.progress ?? 0,
+            }))}
+            onProjectClick={(projectName) => {
+              navigate(`/${currentRole}/dashboard?viewProject=${encodeURIComponent(projectName)}&tab=gantt`);
+            }}
+          />
         </div>
       )}
 
-      {(() => {
-        const filteredProjects = projects.filter(
-          (p) =>
-            !search ||
-            p.name.toLowerCase().includes(search.toLowerCase()) ||
-            p.clientDepartment.toLowerCase().includes(search.toLowerCase())
-        );
+      {activeTab === "overview" && (() => {
         const handleManageMembers = (projectId: number) => {
-          const idx = filteredProjects.findIndex((p) => p.id === projectId);
+          const idx = projects.findIndex((p) => p.id === projectId);
           setExpandedIndex(expandedIndex === idx ? null : idx);
+        };
+        const handleStatusClick = (projectId: number, currentStatus: string) => {
+          const proj = projects.find((p) => p.id === projectId);
+          setStatusDialog({
+            open: true,
+            projectId,
+            projectName: proj?.name || "",
+            current: currentStatus.toLowerCase().replace(/\s+/g, "_"),
+          });
         };
         return (
           <TableList
-            columns={getProjectColumns(handleManageMembers)}
-            data={filteredProjects}
+            columns={getProjectColumns(handleManageMembers, handleStatusClick)}
+            data={projects}
             expandable={{
-              renderExpandedRow: (row) => <ProjectExpandedRow row={row} />,
+              renderExpandedRow: (row) => <ProjectExpandedRow row={row} onRefresh={fetchData} />,
               accordion: true,
               expandedIndex,
               onExpandChange: setExpandedIndex,
@@ -716,6 +790,7 @@ const DomainProject = () => {
         );
       })()}
 
+      {activeTab === "overview" && (
       <div className="d-flex flex-column flex-lg-row gap-4 mt-4">
    
         <div
@@ -775,49 +850,153 @@ const DomainProject = () => {
             CRITICAL PROJECT UPDATES
           </h3>
           <div className="d-flex flex-column gap-3">
-            {criticalUpdates.map((update, i) => (
-              <div
-                key={i}
-                className="d-flex align-items-start gap-3 p-3 rounded-3"
-                style={{
-                  backgroundColor:
-                    update.type === "warning" ? "#fef2f2" : "#f0fdf4",
-                  border: `1px solid ${update.type === "warning" ? "#fecaca" : "#bbf7d0"}`,
-                }}
-              >
-                <span style={{ fontSize: 18, flexShrink: 0 }}>
-                  {update.type === "warning" ? "⚠️" : "✅"}
-                </span>
-                <div>
-                  <p
-                    className="mb-0"
-                    style={{ fontWeight: 600, fontSize: 13, color: "#111827" }}
-                  >
-                    {update.title}
-                  </p>
-                  <p
-                    className="mb-0"
-                    style={{ fontSize: 12, color: "#6b7280" }}
-                  >
-                    {update.description}
-                  </p>
+            {criticalUpdates.length > 0 ? (
+              criticalUpdates.map((update, i) => (
+                <div
+                  key={i}
+                  className="d-flex align-items-start gap-3 p-3 rounded-3"
+                  style={{
+                    backgroundColor:
+                      update.type === "warning" ? "#fef2f2" : "#f0fdf4",
+                    border: `1px solid ${update.type === "warning" ? "#fecaca" : "#bbf7d0"}`,
+                  }}
+                >
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>
+                    {update.type === "warning" ? "⚠️" : "✅"}
+                  </span>
+                  <div>
+                    <p
+                      className="mb-0"
+                      style={{ fontWeight: 600, fontSize: 13, color: "#111827" }}
+                    >
+                      {update.title}
+                    </p>
+                    <p
+                      className="mb-0"
+                      style={{ fontSize: 12, color: "#6b7280" }}
+                    >
+                      {update.description}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-            <button
-              className="btn btn-link p-0 text-decoration-none"
-              style={{
-                color: "#7c3aed",
-                fontSize: 13,
-                fontWeight: 500,
-                textAlign: "center",
-              }}
-            >
-              View All Activity
-            </button>
+              ))
+            ) : (
+              <p style={{ fontSize: 13, color: "#9ca3af", textAlign: "center" }}>
+                No critical updates at the moment.
+              </p>
+            )}
           </div>
         </div>
       </div>
+      )}
+      <Dialog
+        open={statusDialog.open}
+        onClose={() => setStatusDialog({ open: false, projectId: null, projectName: "", current: "" })}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3, overflow: "visible" } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, fontSize: 16, pb: 1 }}>
+          Change Project Status
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 16px" }}>
+            Update status for <strong style={{ color: "#111827" }}>{statusDialog.projectName}</strong>
+          </p>
+          <div className="d-flex flex-column gap-2">
+            {[
+              { value: "active", label: "Active", desc: "Project is in progress", color: "#059669", bg: "#ecfdf5" },
+              { value: "on_hold", label: "On Hold", desc: "Temporarily paused, awaiting input", color: "#ea580c", bg: "#fff7ed" },
+              { value: "paused", label: "Paused", desc: "Work stopped, needs review", color: "#d97706", bg: "#fef3c7" },
+              { value: "completed", label: "Completed", desc: "All tasks finished", color: "#16a34a", bg: "#f0fdf4" },
+            ].map((opt) => {
+              const isSelected = opt.value === statusDialog.current;
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => {
+                    if (!isSelected) setStatusDialog((prev) => ({ ...prev, current: opt.value }));
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    border: isSelected ? `2px solid ${opt.color}` : "1px solid #e5e7eb",
+                    backgroundColor: isSelected ? opt.bg : "#fff",
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      border: isSelected ? `5px solid ${opt.color}` : "2px solid #d1d5db",
+                      backgroundColor: isSelected ? "#fff" : "transparent",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#111827" }}>{opt.label}</div>
+                    <div style={{ fontSize: 11, color: "#6b7280" }}>{opt.desc}</div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: opt.color,
+                      backgroundColor: opt.bg,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    {opt.label.toUpperCase()}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setStatusDialog({ open: false, projectId: null, projectName: "", current: "" })}
+            sx={{ color: "#6b7280", textTransform: "none", fontWeight: 600 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={statusLoading}
+            onClick={async () => {
+              if (!statusDialog.projectId) return;
+              setStatusLoading(true);
+              try {
+                await updateProjectStatus(String(statusDialog.projectId), statusDialog.current);
+                showSnackbar({ message: `Status updated to ${statusDialog.current.replace("_", " ").toUpperCase()}`, severity: "success" });
+                setStatusDialog({ open: false, projectId: null, projectName: "", current: "" });
+                fetchData();
+                fetchProjectStats().then((res) => setStats(res?.data || null)).catch(() => {});
+              } catch (error: any) {
+                const msg = error?.response?.data?.message || "Failed to update status";
+                showSnackbar({ message: msg, severity: "error" });
+              } finally {
+                setStatusLoading(false);
+              }
+            }}
+            variant="contained"
+            sx={{
+              backgroundColor: "#7c3aed",
+              "&:hover": { backgroundColor: "#6d28d9" },
+              textTransform: "none",
+              fontWeight: 600,
+            }}
+          >
+            {statusLoading ? "Updating..." : "Update Status"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

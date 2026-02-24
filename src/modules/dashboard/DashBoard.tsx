@@ -9,16 +9,15 @@ import {
   BarElement,
 } from "chart.js";
 import { motion } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
 
 import { useAppSelector } from "../../store/configureStore";
 import type { RoleTitles } from "./types";
 import {
-  Box,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
-  Stack,
 } from "@mui/material";
 import {
   fetchAllExistProjects,
@@ -32,7 +31,7 @@ import {
   StatCard,
   UpcomingDeadlines,
 } from "./widgets/CommonWidgets";
-import { MyFocusToday } from "./widgets/UserWidgets";
+import { WeeklyProgressChart, MyActiveTasks } from "./widgets/UserWidgets";
 import {
   SpTeamPerformance,
   TaskCompletionTrend,
@@ -43,6 +42,7 @@ import {
   UpcomingTeamEvents,
   AmTeamPerformance,
 } from "./widgets/AmWidgets";
+import MyTasksView from "./widgets/MyTasksView";
 
 ChartJS.register(
   ArcElement,
@@ -76,11 +76,26 @@ const UserDashboard = () => {
   const [page, setPage] = useState(1);
   const [project, setProject] = useState<project[]>([]);
   const [users, setUsers] = useState<formUserData[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "myTasks">("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewUserId = searchParams.get("viewUser") || "";
+  const viewProject = searchParams.get("viewProject") || "";
+  const viewTab = searchParams.get("tab") || "";
+  const [activeTab, setActiveTab] = useState<"overview" | "myTasks">(
+    viewUserId || viewProject || viewTab === "myTasks" ? "myTasks" : "overview"
+  );
+
+  // Switch to myTasks tab when viewUser, viewProject, or tab param changes
+  useEffect(() => {
+    if (viewUserId || viewProject || viewTab === "myTasks") {
+      setActiveTab("myTasks");
+    }
+  }, [viewUserId, viewProject, viewTab]);
   const [dataCount, setCount] = useState<{ status: string; count: string }[]>(
     [],
   );
   const [dateData, setDateData] = useState<string>("All Dates");
+  const [projectFilter, setProjectFilter] = useState<string>("");
+  const [userFilter, setUserFilter] = useState<string>("");
   const tabs = [
     { key: "overview" as const, label: "Overview" },
     { key: "myTasks" as const, label: "My Tasks" },
@@ -147,7 +162,17 @@ const UserDashboard = () => {
             return (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  if (tab.key === "overview") {
+                    if (viewUserId) searchParams.delete("viewUser");
+                    if (viewProject) searchParams.delete("viewProject");
+                    if (viewTab) searchParams.delete("tab");
+                    if (viewUserId || viewProject || viewTab) {
+                      setSearchParams(searchParams, { replace: true });
+                    }
+                  }
+                }}
                 className={`relative px-1 pb-3 text-sm font-semibold transition-colors duration-200 ${
                   isActive
                     ? "text-gray-900"
@@ -174,162 +199,174 @@ const UserDashboard = () => {
             );
           })}
         </div>
-        <div>
-          <h2 className="fw-bold mb-1" style={{ fontSize: "1.65rem" }}>
-            {dashboardTitle}
-          </h2>
-           <p className="text-muted mt-2 mb-0"  style={{ fontSize: "0.95rem" }}>
-            Real-time insights into team performance and project progress.
-          </p>
-        </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={3}>
-            <Box sx={{ minWidth: 200 }}>
-              <FormControl fullWidth size="small" sx={commonFormControlSx}>
-                <InputLabel>Project</InputLabel>
-                <Select label="Project" MenuProps={commonMenuProps}>
-                  <MenuItem value="">All Projects</MenuItem>
-                  {project.map((item, index) => (
-                    <MenuItem key={index} value={item.name}>
-                      {item.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
+        {activeTab === "myTasks" ? (
+          <MyTasksView viewUserId={viewUserId} viewProject={viewProject} viewTab={viewTab} />
+        ) : (
+          <>
+            <div>
+              <h2 className="fw-bold mb-1" style={{ fontSize: "1.65rem" }}>
+                {dashboardTitle}
+              </h2>
+              <p className="text-muted mt-2 mb-0" style={{ fontSize: "0.95rem" }}>
+                Real-time insights into team performance and project progress.
+              </p>
+            </div>
 
-            {(role === "SP" || role === "AM") && (
-              <Box sx={{ minWidth: 200 }}>
+            {/* Filters */}
+            {/* <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
+              <div className="d-flex gap-3">
                 <FormControl fullWidth size="small" sx={commonFormControlSx}>
-                  <InputLabel>User</InputLabel>
-                  <Select label="User" MenuProps={commonMenuProps}>
-                    {users.map((item, index) => (
-                      <MenuItem key={index} value={item.fullName}>
-                        {item.fullName}
+                  <InputLabel>Project</InputLabel>
+                  <Select label="Project" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} MenuProps={commonMenuProps}>
+                    <MenuItem value="">All Projects</MenuItem>
+                    {project.map((item, index) => (
+                      <MenuItem key={index} value={item.name}>
+                        {item.name}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
-              </Box>
-            )}
 
-            <Box sx={{ minWidth: 200 }}>
-              <FormControl fullWidth size="small" sx={commonFormControlSx}>
-                <Select
-                  value={dateData}
-                  onChange={(e) => setDateData(e.target.value)}
-                  MenuProps={commonMenuProps}
-                >
-                  <MenuItem value="All Dates">All Dates</MenuItem>
-                  <MenuItem value="thisWeek">This Week</MenuItem>
-                  <MenuItem value="thisMonth">This Month</MenuItem>
-                  <MenuItem value="thisYear">This Year</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
+                {(role === "SP" || role === "AM") && (
+                  <FormControl fullWidth size="small" sx={commonFormControlSx}>
+                    <InputLabel>User</InputLabel>
+                    <Select label="User" value={userFilter} onChange={(e) => setUserFilter(e.target.value)} MenuProps={commonMenuProps}>
+                      <MenuItem value="">All Users</MenuItem>
+                      {users.map((item, index) => (
+                        <MenuItem key={index} value={item.fullName}>
+                          {item.fullName}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
 
-            <Box sx={{ minWidth: 200 }}>
-              <FormControl fullWidth size="small" sx={commonFormControlSx}>
-                <Select
-                  value={dateData}
-                  onChange={(e) => setDateData(e.target.value)}
-                  MenuProps={commonMenuProps}
-                >
-                  <MenuItem value="Task Status">Task Status</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-          </Stack>
-        </div>
+                <FormControl fullWidth size="small" sx={commonFormControlSx}>
+                  <Select
+                    value={dateData}
+                    onChange={(e) => setDateData(e.target.value)}
+                    MenuProps={commonMenuProps}
+                  >
+                    <MenuItem value="All Dates">All Dates</MenuItem>
+                    <MenuItem value="thisWeek">This Week</MenuItem>
+                    <MenuItem value="thisMonth">This Month</MenuItem>
+                    <MenuItem value="thisYear">This Year</MenuItem>
+                  </Select>
+                </FormControl>
 
-        <div>
-          <h2
-            className="fw-bold text-gray-800 mb-4"
-            style={{ fontSize: "1.25rem" }}
-          >
-            Team Overview
-          </h2>
-          <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:gap-5 sm:overflow-visible sm:pb-0 scrollbar-hide">
-            <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-              <StatCard
-                title="Total Tasks"
-                value={totalTasks}
-                subText="Across all projects"
-                icon="📋"
-                iconBg="bg-indigo-50"
-                iconColor="text-indigo-600"
-              />
-            </div>
-            <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-              <StatCard
-                title="Yet To Start"
-                value={yetToStart}
-                subText=" assignment"
-                icon="⏳"
-                iconBg="bg-orange-50"
-                iconColor="text-orange-600"
-              />
-            </div>
-            <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-              <StatCard
-                title="In Progress"
-                value={inProgress}
-                subText="Currently active"
-                icon="🔄"
-                iconBg="bg-blue-50"
-                iconColor="text-blue-600"
-              />
-            </div>
-            <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-              <StatCard
-                title="Completed"
-                value={completed}
-                subText="Successfully done"
-                icon="✅"
-                iconBg="bg-green-50"
-                iconColor="text-green-600"
-              />
-            </div>
-            <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-              <StatCard
-                title="Total Hours"
-                value={totalHours}
-                subText="Estimated effort"
-                icon="⏱️"
-                iconBg="bg-pink-50"
-                iconColor="text-pink-600"
-              />
-            </div>
-          </div>
-        </div>
+                <FormControl fullWidth size="small" sx={commonFormControlSx}>
+                  <Select
+                    value={dateData}
+                    onChange={(e) => setDateData(e.target.value)}
+                    MenuProps={commonMenuProps}
+                  >
+                    <MenuItem value="Task Status">Task Status</MenuItem>
+                  </Select>
+                </FormControl>
+              </div>
+            </div> */}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {(role === "USER" || role === "Devloper") && <MyFocusToday />}
-          {role === "SP" && (
-            <TaskStatusDistribution
-              completed={completed}
-              inProgress={inProgress}
-              yetToStart={yetToStart}
-              totalTasks={totalTasks}
-            />
-          )}
-          {role === "AM" && <TeamCapacityByDepartment />}
-          <RecentActivityFeed />
-        </div>
+            {/* {(role === "SP" || role === "AM") && (
+            <div>
+              <h2
+                className="fw-bold text-gray-800 mb-4"
+                style={{ fontSize: "1.25rem" }}
+              >
+                Team Overview
+              </h2>
+              <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:gap-5 sm:overflow-visible sm:pb-0 scrollbar-hide">
+                <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
+                  <StatCard
+                    title="Total Tasks"
+                    value={totalTasks}
+                    subText="Across all projects"
+                    icon="📋"
+                    iconBg="bg-indigo-50"
+                    iconColor="text-indigo-600"
+                  />
+                </div>
+                <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
+                  <StatCard
+                    title="Yet To Start"
+                    value={yetToStart}
+                    subText=" assignment"
+                    icon="⏳"
+                    iconBg="bg-orange-50"
+                    iconColor="text-orange-600"
+                  />
+                </div>
+                <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
+                  <StatCard
+                    title="In Progress"
+                    value={inProgress}
+                    subText="Currently active"
+                    icon="🔄"
+                    iconBg="bg-blue-50"
+                    iconColor="text-blue-600"
+                  />
+                </div>
+                <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
+                  <StatCard
+                    title="Completed"
+                    value={completed}
+                    subText="Successfully done"
+                    icon="✅"
+                    iconBg="bg-green-50"
+                    iconColor="text-green-600"
+                  />
+                </div>
+                <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
+                  <StatCard
+                    title="Total Hours"
+                    value={totalHours}
+                    subText="Estimated effort"
+                    icon="⏱️"
+                    iconBg="bg-pink-50"
+                    iconColor="text-pink-600"
+                  />
+                </div>
+              </div>
+            </div>
+            )} */}
 
-        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-          <div className="flex-[3] min-w-0">
-            {role === "SP" && <TaskCompletionTrend />}
-            {role === "AM" && <UpcomingTeamEvents />}
-          </div>
-          <div className="flex-[2] min-w-0">
-            <UpcomingDeadlines />
-          </div>
-        </div>
-        {role === "SP" && <SpTeamPerformance page={page} setPage={setPage} />}
-        {role === "AM" && <AmTeamPerformance page={page} setPage={setPage} />}
+            {/* {(role === "USER" || role === "DEVLOPER") && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <WeeklyProgressChart />
+                <MyActiveTasks onViewAll={() => setActiveTab("myTasks")} />
+              </div>
+            )} */}
+
+            {/* {(role === "SP" || role === "AM") && (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  {role === "SP" && (
+                    <TaskStatusDistribution
+                      completed={completed}
+                      inProgress={inProgress}
+                      yetToStart={yetToStart}
+                      totalTasks={totalTasks}
+                    />
+                  )}
+                  {role === "AM" && <TeamCapacityByDepartment />}
+                  <RecentActivityFeed />
+                </div>
+
+                <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+                  <div className="flex-[3] min-w-0">
+                    {role === "SP" && <TaskCompletionTrend />}
+                    {role === "AM" && <UpcomingTeamEvents />}
+                  </div>
+                  <div className="flex-[2] min-w-0">
+                    <UpcomingDeadlines />
+                  </div>
+                </div>
+              </>
+            )} */}
+            {/* {role === "SP" && <SpTeamPerformance page={page} setPage={setPage} />}
+            {role === "AM" && <AmTeamPerformance page={page} setPage={setPage} />} */}
+          </>
+        )}
       </div>
     </div>
   );

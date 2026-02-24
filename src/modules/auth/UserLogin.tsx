@@ -66,7 +66,7 @@ const UserLogin: React.FC = () => {
     const roleGroups: { [path: string]: string[] } = {
       "/Sp/dashboard": ["SP"],
       "/Am/dashboard": ["AM"],
-      "/*/dashboard": ["USER", "DEVLOPER"],
+      "/user/dashboard": ["USER", "DEVLOPER"],
     };
     const roleRedirects: Record<string, string> = Object.fromEntries(
       Object.entries(roleGroups).flatMap(([path, roles]) =>
@@ -141,7 +141,8 @@ const UserLogin: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="w-full text-sm sm:text-base md:text-lg cursor-pointer font-medium px-4 py-3 bg-[#AE22DC] text-white rounded-xl mt-4 hover:bg-[#bb3ce6] shadow-md"
+              className="w-full text-sm sm:text-base md:text-lg cursor-pointer font-medium px-4 py-3 bg-[#AE22DC] text-white mt-4 hover:bg-[#bb3ce6] shadow-md"
+              style={{ borderRadius: 50 }}
               onClick={handleClick}
             >
               Log in

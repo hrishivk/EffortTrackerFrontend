@@ -4,7 +4,6 @@ import { useSelector } from "react-redux";
 import {
   FormControl,
   InputAdornment,
-  InputLabel,
   MenuItem,
   Select,
   TextField,
@@ -15,7 +14,9 @@ import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import LinkIcon from "@mui/icons-material/Link";
 
-import { addProject, fetchAllUsers, fetchExistDomains } from "../../core/actions/spAction";
+import { addProject, assignProjectMembers, fetchUsers, fetchAllUsers, fetchExistDomains } from "../../core/actions/spAction";
+import { ProjectValidationSchema } from "../../utils/validation/Validation";
+import { useSnackbar } from "../../contexts/SnackbarContext";
 import type { AvailableMember, ProjectFormData } from "./types";
 import type { formUserData } from "../../shared/User/types";
 import type { Domain } from "../../shared/Domain/types";
@@ -37,11 +38,33 @@ const inputSx = {
   "& .MuiSelect-select": { padding: "6px 12px" },
 };
 
+const errorSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "8px",
+    backgroundColor: "#fef2f2",
+    fontSize: 13,
+    fontWeight: 600,
+    "& fieldset": { borderColor: "#ef4444" },
+    "&:hover fieldset": { borderColor: "#dc2626" },
+    "&.Mui-focused fieldset": {
+      borderColor: "#dc2626",
+      boxShadow: "0 0 0 2px rgba(239,68,68,0.12)",
+    },
+  },
+  "& .MuiInputBase-input": { padding: "6px 12px", fontSize: 13, fontWeight: 600 },
+  "& .MuiSelect-select": { padding: "6px 12px" },
+};
+
 const menuProps = {
   PaperProps: {
     sx: { borderRadius: 3, boxShadow: "0px 8px 30px rgba(0,0,0,0.08)" },
   },
 };
+
+const ErrorText = ({ message }: { message?: string }) =>
+  message ? (
+    <p style={{ fontSize: 11, color: "#ef4444", fontWeight: 500, margin: "4px 0 0" }}>{message}</p>
+  ) : null;
 
 const CreateProject = () => {
   const navigate = useNavigate();
@@ -50,6 +73,7 @@ const CreateProject = () => {
   const role = user?.role;
   const isAM = role?.toUpperCase() === "AM";
   const currentRole = urlRole || (isAM ? "am" : "sp");
+  const { showSnackbar } = useSnackbar();
 
   const [form, setForm] = useState<ProjectFormData>({
     name: "",
@@ -60,6 +84,7 @@ const CreateProject = () => {
     domainId: "",
     teamMembers: [],
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [domains, setDomains] = useState<Domain[]>([]);
 
   const [members, setMembers] = useState<AvailableMember[]>([]);
@@ -67,13 +92,24 @@ const CreateProject = () => {
 
   const fetchMembers = useCallback(async () => {
     try {
-      const response = await fetchAllUsers();
-      if (response?.data?.length) {
+      const isSP = role?.toUpperCase() === "SP";
+      const response = isSP
+        ? await fetchUsers({ role: "AM" })
+        : await fetchAllUsers();
+
+      const allUsers: formUserData[] = isSP ? response?.users : response?.data;
+      if (allUsers?.length) {
+        const filtered = isSP
+          ? allUsers
+          : allUsers.filter(
+              (u) => u.role === "USER" || u.role === "DEVLOPER"
+            );
         setMembers(
-          response.data.map((u: formUserData) => ({
+          filtered.map((u: formUserData) => ({
             id: u.id || "",
             fullName: u.fullName,
             role: u.role,
+            department: u.department || "",
             isOnLeave: u.isBlocked,
           }))
         );
@@ -81,7 +117,7 @@ const CreateProject = () => {
     } catch (error) {
       console.log(error);
     }
-  }, []);
+  }, [role]);
 
   const fetchDomains = useCallback(async () => {
     try {
@@ -98,7 +134,18 @@ const CreateProject = () => {
   }, [fetchMembers, fetchDomains]);
 
   const handleChange = (field: keyof ProjectFormData, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "category" && value !== prev.category) {
+        next.teamMembers = [];
+      }
+      return next;
+    });
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const toggleMember = (id: string) => {
@@ -117,7 +164,13 @@ const CreateProject = () => {
     }));
   };
 
-  const filteredMembers = members.filter(
+  const categoryMembers = form.category
+    ? members.filter(
+        (m) => m.department?.toLowerCase() === form.category.toLowerCase()
+      )
+    : members;
+
+  const filteredMembers = categoryMembers.filter(
     (m) =>
       m.fullName.toLowerCase().includes(memberSearch.toLowerCase()) ||
       m.role.toLowerCase().includes(memberSearch.toLowerCase())
@@ -128,18 +181,50 @@ const CreateProject = () => {
   );
 
   const handleSubmit = async () => {
+    const result = ProjectValidationSchema.safeParse({
+      name: form.name,
+      category: form.category,
+      description: form.description,
+      domainId: form.domainId,
+      startDate: form.startDate,
+      endDate: form.endDate,
+    });
+
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        const key = err.path[0] as string;
+        if (!fieldErrors[key]) fieldErrors[key] = err.message;
+      });
+      setErrors(fieldErrors);
+      const firstError = result.error.errors[0]?.message;
+      showSnackbar({ message: firstError || "Validation failed", severity: "error" });
+      return;
+    }
+
+    setErrors({});
     try {
-      await addProject({
+      const res = await addProject({
         name: form.name,
         description: form.description,
         domain_id: form.domainId,
+        project_category: form.category,
         client_department: form.category,
         start_date: form.startDate,
         end_date: form.endDate,
+        status: "active",
       });
+
+      const projectId = res?.data?.id || res?.id;
+      if (projectId && form.teamMembers.length > 0) {
+        await assignProjectMembers(String(projectId), form.teamMembers);
+      }
+
+      showSnackbar({ message: "Project created successfully", severity: "success" });
       navigate(`/${currentRole}/domain-project`);
-    } catch (error) {
-      console.log(error);
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || "Failed to create project";
+      showSnackbar({ message: msg, severity: "error" });
     }
   };
 
@@ -151,6 +236,8 @@ const CreateProject = () => {
       .toUpperCase()
       .slice(0, 2);
 
+  const sx = (field: string) => (errors[field] ? errorSx : inputSx);
+
   return (
     <div className="container py-4" style={{ maxWidth: 900 }}>
       <button
@@ -158,7 +245,7 @@ const CreateProject = () => {
         className="btn btn-link p-0 text-decoration-none mb-2"
         style={{ color: "#7c3aed", fontSize: 14, fontWeight: 500 }}
       >
-        ← Back 
+        &larr; Back
       </button>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -171,19 +258,24 @@ const CreateProject = () => {
         </div>
       </div>
 
-    
-      <div className="bg-white rounded-3 border border-gray-200 p-4 mb-4">
+      {/* ─── Select Domain ──────────────────────────────────── */}
+      <div
+        className="bg-white rounded-3 border p-4 mb-4"
+        style={{ borderColor: errors.domainId ? "#ef4444" : "#e5e7eb" }}
+      >
         <div className="d-flex justify-content-between align-items-center mb-3">
           <div className="d-flex align-items-center gap-2">
             <span style={{ fontSize: 18, color: "#7c3aed" }}>🏷️</span>
-            <h5 className="fw-bold mb-0">Select Domain</h5>
+            <h5 className="fw-bold mb-0">Select Domain <span style={{ color: "#ef4444" }}>*</span></h5>
           </div>
           <span style={{ fontSize: 13, color: "#7c3aed", fontWeight: 500 }}>
             {domains.length} Domains
           </span>
         </div>
+        {errors.domainId && (
+          <p style={{ fontSize: 11, color: "#ef4444", fontWeight: 500, margin: "-4px 0 8px" }}>{errors.domainId}</p>
+        )}
 
-  
         {form.domainId && (() => {
           const selected = domains.find((d) => String(d.id) === form.domainId);
           return selected ? (
@@ -221,7 +313,7 @@ const CreateProject = () => {
                   className="btn btn-sm p-0"
                   style={{ color: "#9ca3af", fontSize: 16, lineHeight: 1 }}
                 >
-                  ×
+                  &times;
                 </button>
               </div>
             </div>
@@ -288,7 +380,7 @@ const CreateProject = () => {
                             fontSize: 14,
                           }}
                         >
-                          ✓
+                          &#10003;
                         </div>
                       ) : (
                         <span style={{ color: "#7c3aed", fontSize: 20, fontWeight: 300 }}>
@@ -324,6 +416,7 @@ const CreateProject = () => {
         )}
       </div>
 
+      {/* ─── Project Information ─────────────────────────────── */}
       <div className="bg-white rounded-3 border border-gray-200 p-4 mb-4">
         <div className="d-flex align-items-center gap-2 mb-4">
           <span style={{ fontSize: 18 }}>📋</span>
@@ -333,7 +426,7 @@ const CreateProject = () => {
         <div className="row mb-3">
           <div className="col-md-6">
             <label className="form-label fw-semibold" style={{ fontSize: 13 }}>
-              Project Name
+              Project Name <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <TextField
               fullWidth
@@ -341,44 +434,54 @@ const CreateProject = () => {
               placeholder="e.g. Q4 Growth Strategy"
               value={form.name}
               onChange={(e) => handleChange("name", e.target.value)}
-              sx={inputSx}
+              error={!!errors.name}
+              helperText={errors.name}
+              sx={sx("name")}
             />
           </div>
           <div className="col-md-6">
             <label className="form-label fw-semibold" style={{ fontSize: 13 }}>
-              Project Category
+              Project Category <span style={{ color: "#ef4444" }}>*</span>
             </label>
-            <FormControl fullWidth size="small" sx={inputSx}>
-              <InputLabel>Select a category</InputLabel>
+            <FormControl fullWidth size="small" error={!!errors.category} sx={sx("category")}>
               <Select
-                label="Select a category"
+                displayEmpty
                 value={form.category}
                 onChange={(e) => handleChange("category", e.target.value)}
+                renderValue={(val) => val || "Select a category"}
+                sx={{ color: form.category ? "#111827" : "#9ca3af" }}
                 MenuProps={menuProps}
               >
-                <MenuItem value="Development">Development</MenuItem>
+                <MenuItem value="Engineering">Engineering</MenuItem>
                 <MenuItem value="Design">Design</MenuItem>
                 <MenuItem value="Marketing">Marketing</MenuItem>
-                <MenuItem value="Research">Research</MenuItem>
-                <MenuItem value="Infrastructure">Infrastructure</MenuItem>
+                <MenuItem value="Finance">Finance</MenuItem>
+                <MenuItem value="HR">HR</MenuItem>
+                <MenuItem value="Operations">Operations</MenuItem>
+                <MenuItem value="Electronics">Electronics</MenuItem>
               </Select>
             </FormControl>
+            <ErrorText message={errors.category} />
           </div>
         </div>
 
         <div className="mb-3">
           <label className="form-label fw-semibold" style={{ fontSize: 13 }}>
-            Description
+            Description <span style={{ color: "#ef4444" }}>*</span>
           </label>
           <div
             className="border rounded-3"
-            style={{ borderColor: "#e5e7eb", overflow: "hidden" }}
+            style={{
+              borderColor: errors.description ? "#ef4444" : "#e5e7eb",
+              overflow: "hidden",
+              backgroundColor: errors.description ? "#fef2f2" : "#fff",
+            }}
           >
             <div
               className="d-flex align-items-center gap-1 px-3 py-2"
               style={{
-                borderBottom: "1px solid #e5e7eb",
-                backgroundColor: "#fafafa",
+                borderBottom: `1px solid ${errors.description ? "#ef4444" : "#e5e7eb"}`,
+                backgroundColor: errors.description ? "#fef2f2" : "#fafafa",
               }}
             >
               <button className="btn btn-sm p-1" style={{ color: "#6b7280" }}>
@@ -404,15 +507,17 @@ const CreateProject = () => {
                 resize: "none",
                 fontSize: 14,
                 boxShadow: "none",
+                backgroundColor: errors.description ? "#fef2f2" : "#fff",
               }}
             />
           </div>
+          <ErrorText message={errors.description} />
         </div>
 
         <div className="row">
           <div className="col-md-6">
             <label className="form-label fw-semibold" style={{ fontSize: 13 }}>
-              Start Date
+              Start Date <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <TextField
               fullWidth
@@ -420,12 +525,14 @@ const CreateProject = () => {
               type="date"
               value={form.startDate}
               onChange={(e) => handleChange("startDate", e.target.value)}
-              sx={inputSx}
+              error={!!errors.startDate}
+              helperText={errors.startDate}
+              sx={sx("startDate")}
             />
           </div>
           <div className="col-md-6">
             <label className="form-label fw-semibold" style={{ fontSize: 13 }}>
-              End Date
+              End Date <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <TextField
               fullWidth
@@ -433,23 +540,27 @@ const CreateProject = () => {
               type="date"
               value={form.endDate}
               onChange={(e) => handleChange("endDate", e.target.value)}
-              sx={inputSx}
+              error={!!errors.endDate}
+              helperText={errors.endDate}
+              sx={sx("endDate")}
             />
           </div>
         </div>
       </div>
 
-      {members.length > 0 && (
+      {/* ─── Assign Team Members ────────────────────────────── */}
       <div className="bg-white rounded-3 border border-gray-200 p-4 mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <div className="d-flex align-items-center gap-2">
             <span style={{ fontSize: 18, color: "#7c3aed" }}>👥</span>
-            <h5 className="fw-bold mb-0">Assign Team Members</h5>
+            <h5 className="fw-bold mb-0">
+              {role?.toUpperCase() === "SP" ? "Assign Managers (AM)" : "Assign Team Members"}
+            </h5>
           </div>
           <span
             style={{ fontSize: 13, color: "#7c3aed", fontWeight: 500 }}
           >
-            {members.length} Available Members
+            {categoryMembers.length} Available Members
           </span>
         </div>
 
@@ -472,6 +583,26 @@ const CreateProject = () => {
         />
 
         {/* Members Grid */}
+        {!form.category && (
+          <div
+            className="d-flex align-items-center justify-content-center p-4 rounded-3 mb-2"
+            style={{ backgroundColor: "#f9fafb", border: "1px dashed #e5e7eb" }}
+          >
+            <p className="mb-0" style={{ fontSize: 13, color: "#9ca3af" }}>
+              Select a project category above to see available team members.
+            </p>
+          </div>
+        )}
+        {form.category && categoryMembers.length === 0 && (
+          <div
+            className="d-flex align-items-center justify-content-center p-4 rounded-3 mb-2"
+            style={{ backgroundColor: "#fef2f2", border: "1px dashed #fecaca" }}
+          >
+            <p className="mb-0" style={{ fontSize: 13, color: "#dc2626" }}>
+              No team members found in the "{form.category}" department.
+            </p>
+          </div>
+        )}
         <div className="row g-2">
           {filteredMembers.map((member) => {
             const isSelected = form.teamMembers.includes(member.id);
@@ -535,6 +666,7 @@ const CreateProject = () => {
                         />
                         <span style={{ fontSize: 11, color: "#6b7280" }}>
                           {member.role}
+                          {member.department && ` · ${member.department}`}
                           {member.isOnLeave && " (On Leave)"}
                         </span>
                       </div>
@@ -555,10 +687,10 @@ const CreateProject = () => {
                           fontSize: 14,
                         }}
                       >
-                        ✓
+                        &#10003;
                       </div>
                     ) : member.isOnLeave ? (
-                      <span style={{ color: "#9ca3af", fontSize: 18 }}>⊘</span>
+                      <span style={{ color: "#9ca3af", fontSize: 18 }}>&#8856;</span>
                     ) : (
                       <span
                         style={{
@@ -613,7 +745,7 @@ const CreateProject = () => {
                       lineHeight: 1,
                     }}
                   >
-                    ×
+                    &times;
                   </button>
                 </span>
               ))}
@@ -621,12 +753,11 @@ const CreateProject = () => {
           </div>
         )}
       </div>
-      )}
 
       {/* Footer */}
       <div className="d-flex justify-content-between align-items-center">
         <span style={{ fontSize: 13, color: "#6b7280" }}>
-          ℹ You can add more team members later.
+          &#8505; You can add more team members later.
         </span>
         <div className="d-flex gap-3">
           <button
@@ -647,7 +778,7 @@ const CreateProject = () => {
               padding: "6px 16px",
             }}
           >
-            Save and Continue →
+            Save and Continue &rarr;
           </button>
         </div>
       </div>

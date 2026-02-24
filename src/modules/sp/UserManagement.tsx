@@ -4,23 +4,23 @@ import TableList from "../../shared/Table/Table";
 import {
   fetchUsers,
   fetchAllExistProjects,
+  Deletetuser,
 } from "../../core/actions/spAction";
+import Dialoge from "../../presentation/Dialog/Dialog";
+import { useSnackbar } from "../../contexts/SnackbarContext";
 import type { formUserData } from "../../shared/User/types";
 import type { project } from "../../shared/Project/types";
 import { getUserColumns } from "./tableColoumn";
-import prLogo from "../../assets/img/prLogo.png";
 import SearchIcon from "@mui/icons-material/Search";
 import {
   FormControl,
-  InputLabel,
   MenuItem,
   Select,
   TextField,
   InputAdornment,
 } from "@mui/material";
-
+import "../../styles/user-management.scss";
 const ITEMS_PER_PAGE = 10;
-
 const selectSx = {
   "& .MuiOutlinedInput-root": {
     borderRadius: "8px",
@@ -39,6 +39,7 @@ const selectSx = {
 
 const UserManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { showSnackbar } = useSnackbar();
 
   const [users, setUsers] = useState<formUserData[]>([]);
   const [projects, setProjects] = useState<project[]>([]);
@@ -48,6 +49,7 @@ const UserManagement: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 400);
@@ -90,36 +92,40 @@ const UserManagement: React.FC = () => {
 
   const roles = useMemo(() => ["AM", "USER", "DEVLOPER"], []);
 
-  const onViewTasks = (id: string) => navigate(`/taskList/${id}`);
-  const onEditUser = (id: string) => console.log("Edit user", id);
-  const onDeleteUser = (id: string) => console.log("Delete user", id);
+  const onViewTasks = (id: string) => navigate(`/sp/dashboard?viewUser=${id}`);
+  const onDeleteUser = (id: string) => setDeleteUserId(id);
 
-  const columns = getUserColumns({
-    onViewTasks,
-    onEditUser,
-    onDeleteUser,
-    avatarSrc: prLogo,
-  });
+  const handleConfirmDelete = async () => {
+    if (!deleteUserId) return;
+    try {
+      await Deletetuser(deleteUserId);
+      setDeleteUserId(null);
+      showSnackbar({ message: "User deleted successfully", severity: "success" });
+      loadUsers();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to delete user";
+      showSnackbar({ message: msg, severity: "error" });
+    }
+  };
+
+  const columns = getUserColumns({ onViewTasks, onDeleteUser });
 
   return (
-    <div className="container py-4">
-      <div className="d-flex justify-content-between align-items-start mb-4">
-        <div>
-          <h2 className="fw-bold mb-1" style={{ fontSize: "1.35rem" }}>
-            User Management
-          </h2>
-          <p className="text-muted mt-2 mb-0" style={{ fontSize: "0.90rem" }}>
-            Manage all users and managers within system
-          </p>
+    <div className="um-page">
+      <div className="um-header">
+        <div className="um-title">
+          <h2>User Management</h2>
+          <p>Manage all users and managers within system</p>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="um-filters">
           <TextField
             size="small"
             placeholder="Search users..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            sx={{ width: 200, ...selectSx }}
+            className="um-search"
+            sx={selectSx}
             slotProps={{
               input: {
                 startAdornment: (
@@ -131,12 +137,16 @@ const UserManagement: React.FC = () => {
             }}
           />
 
-          <FormControl size="small" sx={{ minWidth: 150, ...selectSx }}>
-            <InputLabel>Project</InputLabel>
+          <FormControl size="small" className="um-filter-select" sx={selectSx}>
             <Select
+              displayEmpty
               value={projectFilter}
-              label="Project"
               onChange={(e) => setProjectFilter(e.target.value)}
+              renderValue={(val) => {
+                if (!val) return "Project: All";
+                const found = projects.find((p) => String(p.id) === val);
+                return `Project: ${found?.name || val}`;
+              }}
             >
               <MenuItem value="">All Projects</MenuItem>
               {projects.map((p) => (
@@ -147,12 +157,12 @@ const UserManagement: React.FC = () => {
             </Select>
           </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: 140, ...selectSx }}>
-            <InputLabel>Role</InputLabel>
+          <FormControl size="small" className="um-filter-select" sx={selectSx}>
             <Select
+              displayEmpty
               value={roleFilter}
-              label="Role"
               onChange={(e) => setRoleFilter(e.target.value)}
+              renderValue={(val) => (val ? `Role: ${val}` : "Role: All")}
             >
               <MenuItem value="">All Roles</MenuItem>
               {roles.map((r) => (
@@ -164,15 +174,7 @@ const UserManagement: React.FC = () => {
           </FormControl>
 
           <button
-            className="btn text-white"
-            style={{
-              background: "linear-gradient(135deg, #7c3aed, #a855f7)",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              padding: "6px 16px",
-              whiteSpace: "nowrap",
-            }}
+            className="um-add-btn"
             onClick={() => navigate("/sp/create-user")}
           >
             + Add User
@@ -188,6 +190,13 @@ const UserManagement: React.FC = () => {
           totalPages,
           onPageChange: setPage,
         }}
+      />
+
+      <Dialoge
+        open={!!deleteUserId}
+        data="delete"
+        onClose={() => setDeleteUserId(null)}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

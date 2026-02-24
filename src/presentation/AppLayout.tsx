@@ -160,7 +160,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
       <main
         className={`pt-[60px] min-h-screen bg-gray-50 transition-all duration-300 ${
-          sidebarCollapsed ? "md:ml-[72px]" : "md:ml-[280px]"
+          sidebarCollapsed ? "md:ml-[72px]" : "md:ml-[220px] lg:ml-[250px] xl:ml-[280px]"
         }`}
       >
         {children}

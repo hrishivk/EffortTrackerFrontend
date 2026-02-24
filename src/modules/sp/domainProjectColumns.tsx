@@ -1,15 +1,20 @@
-import { Pencil } from "lucide-react";
 import type { Column } from "../../shared/Table/types";
 import type { ProjectRow } from "./types";
 
-const statusStyles: Record<string, { bg: string; text: string }> = {
-  ACTIVE: { bg: "#ecfdf5", text: "#059669" },
-  "ON HOLD": { bg: "#fff7ed", text: "#ea580c" },
-  COMPLETED: { bg: "#f0fdf4", text: "#16a34a" },
+const statusStyles: Record<string, { bg: string; text: string; label: string }> = {
+  ACTIVE: { bg: "#ecfdf5", text: "#059669", label: "Active" },
+  "ON HOLD": { bg: "#fff7ed", text: "#ea580c", label: "On Hold" },
+  ON_HOLD: { bg: "#fff7ed", text: "#ea580c", label: "On Hold" },
+  PAUSED: { bg: "#fef3c7", text: "#d97706", label: "Paused" },
+  COMPLETED: { bg: "#f0fdf4", text: "#16a34a", label: "Completed" },
 };
+
+const normalizeStatus = (s: string) =>
+  s.toLowerCase().replace(/\s+/g, "_");
 
 export const getProjectColumns = (
   onManageMembers?: (rowId: number) => void,
+  onStatusChange?: (rowId: number, currentStatus: string) => void,
 ): Column<ProjectRow>[] => [
   {
     key: "name",
@@ -22,18 +27,18 @@ export const getProjectColumns = (
             height: 10,
             borderRadius: "50%",
             backgroundColor:
-              row.status === "ACTIVE"
+              normalizeStatus(row.status) === "active"
                 ? "#7c3aed"
-                : row.status === "ON HOLD"
-                  ? "#ea580c"
-                  : "#16a34a",
+                : normalizeStatus(row.status) === "completed"
+                  ? "#16a34a"
+                  : "#ea580c",
             flexShrink: 0,
           }}
         />
         <div>
           <div style={{ fontWeight: 600, fontSize: 14 }}>{row.name}</div>
           <div style={{ fontSize: 11, color: "#9ca3af" }}>
-            {row.status === "COMPLETED" ? "Completed" : "Due"}: {row.dueDate}
+            {normalizeStatus(row.status) === "completed" ? "Completed" : "Due"}: {row.dueDate}
           </div>
         </div>
       </div>
@@ -52,21 +57,27 @@ export const getProjectColumns = (
     key: "status",
     header: "Status",
     render: (row) => {
-      const style = statusStyles[row.status] || statusStyles.ACTIVE;
+      const style = statusStyles[row.status] || statusStyles[row.status.replace(" ", "_")] || statusStyles.ACTIVE;
       return (
         <span
+          onClick={(e) => {
+            e.stopPropagation();
+            onStatusChange?.(row.id, row.status);
+          }}
           style={{
             backgroundColor: style.bg,
             color: style.text,
             fontWeight: 600,
             fontSize: 11,
-            padding: "3px 10px",
+            padding: "4px 12px",
             borderRadius: 6,
             textTransform: "uppercase",
             letterSpacing: "0.03em",
+            cursor: "pointer",
+            border: `1px solid ${style.text}20`,
           }}
         >
-          {row.status}
+          {style.label}
         </span>
       );
     },
@@ -116,9 +127,7 @@ export const getProjectColumns = (
               width: 30,
               height: 30,
               borderRadius: "50%",
-              backgroundColor: ["#7c3aed", "#ec4899", "#f59e0b", "#06b6d4"][
-                i % 4
-              ],
+              backgroundColor: "#7c3aed",
               color: "#fff",
               fontSize: 11,
               fontWeight: 700,
@@ -156,27 +165,22 @@ export const getProjectColumns = (
     key: "actions",
     header: "Actions",
     render: (row) => (
-      <div className="d-flex align-items-center gap-2">
-        <button
-          className="btn btn-sm text-white"
-          style={{
-            backgroundColor: "#7c3aed",
-            borderRadius: 6,
-            fontSize: 12,
-            fontWeight: 500,
-            padding: "4px 12px",
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onManageMembers?.(row.id);
-          }}
-        >
-          Manage Members
-        </button>
-        <button className="btn btn-link p-0" style={{ color: "#6b7280" }}>
-          <Pencil size={14} />
-        </button>
-      </div>
+      <button
+        className="btn btn-sm text-white"
+        style={{
+          backgroundColor: "#7c3aed",
+          borderRadius: 6,
+          fontSize: 12,
+          fontWeight: 500,
+          padding: "4px 12px",
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onManageMembers?.(row.id);
+        }}
+      >
+        Manage Members
+      </button>
     ),
   },
 ];

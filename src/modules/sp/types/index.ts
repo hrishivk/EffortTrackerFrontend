@@ -1,8 +1,6 @@
 export type ColumnHandlers = {
   onViewTasks: (id: string) => void;
-  onEditUser: (id: string) => void;
   onDeleteUser: (id: string) => void;
-  avatarSrc: string;
 };
 
 // ─── Domain & Project Types ─────────────────────────────────────
@@ -71,6 +69,7 @@ export interface AvailableMember {
   id: string;
   fullName: string;
   role: string;
+  department?: string;
   isOnLeave?: boolean;
 }
 

@@ -36,6 +36,28 @@ const inputSx = {
   "& .MuiSelect-select": { padding: "10px 14px" },
 };
 
+const errorSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "8px",
+    backgroundColor: "#fef2f2",
+    fontSize: 13,
+    fontWeight: 600,
+    "& fieldset": { borderColor: "#ef4444" },
+    "&:hover fieldset": { borderColor: "#dc2626" },
+    "&.Mui-focused fieldset": {
+      borderColor: "#dc2626",
+      boxShadow: "0 0 0 2px rgba(239,68,68,0.12)",
+    },
+  },
+  "& .MuiInputBase-input": { padding: "10px 14px", fontSize: 13, fontWeight: 600 },
+  "& .MuiSelect-select": { padding: "10px 14px" },
+};
+
+const ErrorText = ({ message }: { message?: string }) =>
+  message ? (
+    <p style={{ fontSize: 11, color: "#ef4444", fontWeight: 500, margin: "4px 0 0" }}>{message}</p>
+  ) : null;
+
 const CreateUser = () => {
   const navigate = useNavigate();
   const { role: urlRole } = useParams();
@@ -61,18 +83,21 @@ const CreateUser = () => {
     department: "",
     workSchedule: "",
     joiningDate: "",
+    manager_id: "",
     projects: [] as string[],
     sendWelcomeEmail: true,
     requirePasswordChange: true,
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [projectList, setProjectList] = useState<project[]>([]);
 
   const fetchProjects = useCallback(async () => {
     try {
       const response = await fetchAllExistProjects();
-      setProjectList(response.data);
+      const all = response.data || [];
+      setProjectList(all.filter((p: any) => (p.status || "").toLowerCase().replace(/\s+/g, "_") === "active"));
     } catch (error) {
       console.log(error);
     }
@@ -84,6 +109,11 @@ const CreateUser = () => {
 
   const handleChange = (field: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const toggleProject = (id: string) => {
@@ -116,24 +146,31 @@ const CreateUser = () => {
       dateOfBirth: form.dateOfBirth,
       bloodGroup: form.bloodGroup,
       department: form.department,
+      projectCategory: form.department,
       workSchedule: form.workSchedule,
       joiningDate: form.joiningDate,
+      manager_id: form.manager_id,
       sendWelcomeEmail: form.sendWelcomeEmail,
       requirePasswordChange: form.requirePasswordChange,
     };
 
-    // Only include projects if user selected any
-    if (form.projects.length > 0) {
-      payload.projects = form.projects;
-    }
+    // Send projects as comma-separated string or empty string
+    payload.projects = form.projects.length > 0 ? form.projects.join(",") : "";
 
     const result = uservalidationSchema.safeParse(payload);
     if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        const key = err.path[0] as string;
+        if (!fieldErrors[key]) fieldErrors[key] = err.message;
+      });
+      setErrors(fieldErrors);
       const firstError = result.error.errors[0]?.message;
       showSnackbar({ message: firstError || "Validation failed", severity: "error" });
       return;
     }
 
+    setErrors({});
     try {
       const response = await adduser(payload);
       if (response.success) {
@@ -145,6 +182,8 @@ const CreateUser = () => {
       showSnackbar({ message: msg, severity: "error" });
     }
   };
+
+  const sx = (field: string) => (errors[field] ? errorSx : inputSx);
 
   return (
     <div className="container py-4" style={{ maxWidth: 900 }}>
@@ -211,7 +250,7 @@ const CreateUser = () => {
         {/* Full Name */}
         <div className="mb-3">
           <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-            Full Name
+            Full Name <span style={{ color: "#ef4444" }}>*</span>
           </label>
           <TextField
             fullWidth
@@ -219,7 +258,9 @@ const CreateUser = () => {
             placeholder="e.g. John Doe"
             value={form.fullName}
             onChange={(e) => handleChange("fullName", e.target.value)}
-            sx={inputSx}
+            error={!!errors.fullName}
+            helperText={errors.fullName}
+            sx={sx("fullName")}
           />
         </div>
 
@@ -227,7 +268,7 @@ const CreateUser = () => {
         <div className="row mb-3">
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Professional Email
+              Professional Email <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <TextField
               fullWidth
@@ -235,12 +276,14 @@ const CreateUser = () => {
               placeholder="john.doe@company.com"
               value={form.email}
               onChange={(e) => handleChange("email", e.target.value)}
-              sx={inputSx}
+              error={!!errors.email}
+              helperText={errors.email}
+              sx={sx("email")}
             />
           </div>
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Job Title
+              Job Title <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <TextField
               fullWidth
@@ -248,7 +291,9 @@ const CreateUser = () => {
               placeholder="e.g. Senior Product Designer"
               value={form.jobTitle}
               onChange={(e) => handleChange("jobTitle", e.target.value)}
-              sx={inputSx}
+              error={!!errors.jobTitle}
+              helperText={errors.jobTitle}
+              sx={sx("jobTitle")}
             />
           </div>
         </div>
@@ -257,7 +302,7 @@ const CreateUser = () => {
         <div className="row mb-3">
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Employee ID
+              Employee ID <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <TextField
               fullWidth
@@ -265,12 +310,14 @@ const CreateUser = () => {
               placeholder="e.g. RRX-001"
               value={form.employeeId}
               onChange={(e) => handleChange("employeeId", e.target.value)}
-              sx={inputSx}
+              error={!!errors.employeeId}
+              helperText={errors.employeeId}
+              sx={sx("employeeId")}
             />
           </div>
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Contact Number
+              Contact Number <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <TextField
               fullWidth
@@ -278,7 +325,9 @@ const CreateUser = () => {
               placeholder="+1 (555) 000-0000"
               value={form.contactNumber}
               onChange={(e) => handleChange("contactNumber", e.target.value)}
-              sx={inputSx}
+              error={!!errors.contactNumber}
+              helperText={errors.contactNumber}
+              sx={sx("contactNumber")}
             />
           </div>
         </div>
@@ -287,7 +336,7 @@ const CreateUser = () => {
         <div className="row mb-3">
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Date of Birth
+              Date of Birth <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <TextField
               fullWidth
@@ -295,14 +344,16 @@ const CreateUser = () => {
               type="date"
               value={form.dateOfBirth}
               onChange={(e) => handleChange("dateOfBirth", e.target.value)}
-              sx={inputSx}
+              error={!!errors.dateOfBirth}
+              helperText={errors.dateOfBirth}
+              sx={sx("dateOfBirth")}
             />
           </div>
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Blood Group
+              Blood Group <span style={{ color: "#ef4444" }}>*</span>
             </label>
-            <FormControl fullWidth size="small" sx={inputSx}>
+            <FormControl fullWidth size="small" error={!!errors.bloodGroup} sx={sx("bloodGroup")}>
               <Select
                 displayEmpty
                 value={form.bloodGroup}
@@ -315,6 +366,7 @@ const CreateUser = () => {
                 ))}
               </Select>
             </FormControl>
+            <ErrorText message={errors.bloodGroup} />
           </div>
         </div>
 
@@ -328,9 +380,9 @@ const CreateUser = () => {
         <div className="row mb-3">
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Role Assignment
+              Role Assignment <span style={{ color: "#ef4444" }}>*</span>
             </label>
-            <FormControl fullWidth size="small" sx={inputSx}>
+            <FormControl fullWidth size="small" error={!!errors.role} sx={sx("role")}>
               <Select
                 displayEmpty
                 value={form.role}
@@ -343,12 +395,13 @@ const CreateUser = () => {
                 ))}
               </Select>
             </FormControl>
+            <ErrorText message={errors.role} />
           </div>
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Department
+              Department <span style={{ color: "#ef4444" }}>*</span>
             </label>
-            <FormControl fullWidth size="small" sx={inputSx}>
+            <FormControl fullWidth size="small" error={!!errors.department} sx={sx("department")}>
               <Select
                 displayEmpty
                 value={form.department}
@@ -356,11 +409,12 @@ const CreateUser = () => {
                 renderValue={(val) => val || "Select Department"}
                 sx={{ color: form.department ? "#111827" : "#9ca3af" }}
               >
-                {["Engineering", "Design", "Marketing", "Finance", "HR", "Operations"].map((d) => (
+                {["Engineering", "Design", "Marketing", "Finance", "HR", "Operations", "Electronics"].map((d) => (
                   <MenuItem key={d} value={d}>{d}</MenuItem>
                 ))}
               </Select>
             </FormControl>
+            <ErrorText message={errors.department} />
           </div>
         </div>
 
@@ -368,9 +422,9 @@ const CreateUser = () => {
         <div className="row mb-3">
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Work Schedule
+              Work Schedule <span style={{ color: "#ef4444" }}>*</span>
             </label>
-            <FormControl fullWidth size="small" sx={inputSx}>
+            <FormControl fullWidth size="small" error={!!errors.workSchedule} sx={sx("workSchedule")}>
               <Select
                 displayEmpty
                 value={form.workSchedule}
@@ -383,10 +437,11 @@ const CreateUser = () => {
                 ))}
               </Select>
             </FormControl>
+            <ErrorText message={errors.workSchedule} />
           </div>
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Joining Date
+              Joining Date <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <TextField
               fullWidth
@@ -394,7 +449,9 @@ const CreateUser = () => {
               type="date"
               value={form.joiningDate}
               onChange={(e) => handleChange("joiningDate", e.target.value)}
-              sx={inputSx}
+              error={!!errors.joiningDate}
+              helperText={errors.joiningDate}
+              sx={sx("joiningDate")}
             />
           </div>
         </div>
@@ -403,7 +460,7 @@ const CreateUser = () => {
         <div className="row mb-3">
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              Password
+              Password <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <div style={{ position: "relative" }}>
               <TextField
@@ -413,7 +470,9 @@ const CreateUser = () => {
                 placeholder="Enter password"
                 value={form.password}
                 onChange={(e) => handleChange("password", e.target.value)}
-                sx={inputSx}
+                error={!!errors.password}
+                helperText={errors.password}
+                sx={sx("password")}
               />
               <button
                 type="button"
@@ -422,7 +481,7 @@ const CreateUser = () => {
                 style={{
                   position: "absolute",
                   right: 10,
-                  top: "50%",
+                  top: errors.password ? "30%" : "50%",
                   transform: "translateY(-50%)",
                   background: "none",
                   border: "none",

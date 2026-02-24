@@ -34,6 +34,31 @@ const inputSx = {
   },
 };
 
+const errorSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "8px",
+    backgroundColor: "#fef2f2",
+    fontSize: 13,
+    fontWeight: 600,
+    "& fieldset": { borderColor: "#ef4444" },
+    "&:hover fieldset": { borderColor: "#dc2626" },
+    "&.Mui-focused fieldset": {
+      borderColor: "#dc2626",
+      boxShadow: "0 0 0 2px rgba(239,68,68,0.12)",
+    },
+  },
+  "& .MuiInputBase-input": {
+    padding: "6px 12px",
+    fontSize: 13,
+    fontWeight: 600,
+  },
+};
+
+const ErrorText = ({ message }: { message?: string }) =>
+  message ? (
+    <p style={{ fontSize: 11, color: "#ef4444", fontWeight: 500, margin: "4px 0 0" }}>{message}</p>
+  ) : null;
+
 const CreateDomain = () => {
   const navigate = useNavigate();
   const { role: urlRole } = useParams();
@@ -44,6 +69,7 @@ const CreateDomain = () => {
   const { showSnackbar } = useSnackbar();
 
   const [formData, setFormData] = useState({ name: "", description: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [domains, setDomains] = useState<Domain[]>([]);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
@@ -63,7 +89,13 @@ const CreateDomain = () => {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
   };
 
   const confirmDelete = async () => {
@@ -83,11 +115,18 @@ const CreateDomain = () => {
   const handleSubmit = async () => {
     const result = DomainValidationSchema.safeParse(formData);
     if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        const key = err.path[0] as string;
+        if (!fieldErrors[key]) fieldErrors[key] = err.message;
+      });
+      setErrors(fieldErrors);
       const firstError = result.error.errors[0]?.message;
       showSnackbar({ message: firstError, severity: "error" });
       return;
     }
 
+    setErrors({});
     try {
       await addDomain(formData);
       showSnackbar({
@@ -100,6 +139,8 @@ const CreateDomain = () => {
       showSnackbar({ message: msg, severity: "error" });
     }
   };
+
+  const sx = (field: string) => (errors[field] ? errorSx : inputSx);
 
   return (
     <div className="container py-4" style={{ maxWidth: 900 }}>
@@ -131,7 +172,7 @@ const CreateDomain = () => {
 
         <div className="mb-3">
           <label className="form-label fw-semibold" style={{ fontSize: 13 }}>
-            Domain Name
+            Domain Name <span style={{ color: "#ef4444" }}>*</span>
           </label>
           <TextField
             fullWidth
@@ -140,23 +181,29 @@ const CreateDomain = () => {
             placeholder="e.g. Finance, Engineering, Marketing"
             value={formData.name}
             onChange={handleChange}
-            sx={inputSx}
+            error={!!errors.name}
+            helperText={errors.name}
+            sx={sx("name")}
           />
         </div>
 
         <div className="mb-3">
           <label className="form-label fw-semibold" style={{ fontSize: 13 }}>
-            Description
+            Description <span style={{ color: "#ef4444" }}>*</span>
           </label>
           <div
             className="border rounded-3"
-            style={{ borderColor: "#e5e7eb", overflow: "hidden" }}
+            style={{
+              borderColor: errors.description ? "#ef4444" : "#e5e7eb",
+              overflow: "hidden",
+              backgroundColor: errors.description ? "#fef2f2" : "#fff",
+            }}
           >
             <div
               className="d-flex align-items-center gap-1 px-3 py-2"
               style={{
-                borderBottom: "1px solid #e5e7eb",
-                backgroundColor: "#fafafa",
+                borderBottom: `1px solid ${errors.description ? "#ef4444" : "#e5e7eb"}`,
+                backgroundColor: errors.description ? "#fef2f2" : "#fafafa",
               }}
             >
               <button className="btn btn-sm p-1" style={{ color: "#6b7280" }}>
@@ -183,9 +230,11 @@ const CreateDomain = () => {
                 resize: "none",
                 fontSize: 14,
                 boxShadow: "none",
+                backgroundColor: errors.description ? "#fef2f2" : "#fff",
               }}
             />
           </div>
+          <ErrorText message={errors.description} />
         </div>
       </div>
 
@@ -264,7 +313,7 @@ const CreateDomain = () => {
       {/* Footer */}
       <div className="d-flex justify-content-between align-items-center">
         <span style={{ fontSize: 13, color: "#6b7280" }}>
-          ℹ Domains help organize projects into logical categories.
+          &#8505; Domains help organize projects into logical categories.
         </span>
         <div className="d-flex gap-3">
           <button
@@ -292,7 +341,7 @@ const CreateDomain = () => {
               padding: "6px 16px",
             }}
           >
-            Create Domain →
+            Create Domain &rarr;
           </button>
         </div>
       </div>
