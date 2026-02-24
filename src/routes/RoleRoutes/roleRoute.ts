@@ -7,7 +7,6 @@ const DomainProject=React.lazy(()=>import('../../modules/sp/DomainProject'))
 const CreateProject=React.lazy(()=>import('../../modules/sp/CreateProject'))
 const CreateUser=React.lazy(()=>import('../../modules/sp/CreateUser'))
 const CreateDomain=React.lazy(()=>import('../../modules/sp/CreateDomain'))
-const TaskList=React.lazy(()=>import('../../modules/user/TaskList'))
 
 const routes = [
   {
@@ -36,12 +35,6 @@ const routes = [
     role: 'am',
   },
   {
-    path: '/am/TaskList',
-    name: 'Admin_Manager',
-    element: TaskList,
-    role: 'am',
-  },
-  {
     path: '/:role/domain-project',
     name: 'Domain & Projects',
     element: DomainProject,
@@ -66,16 +59,10 @@ const routes = [
     roles: ['sp', 'am'],
   },
  {
-  path: '/*/dashboard',
+  path: '/user/dashboard',
   name: 'User Dashboard',
   element: Dashboard,
   roles: ['USER', 'DEVLOPER'],
 },
- {
-  path: '/taskList/:id?',
-  name: 'User Dashboard',
-  element: TaskList,
-  roles: ['USER', 'DEVLOPER','am'],
-}
 ]
 export default routes

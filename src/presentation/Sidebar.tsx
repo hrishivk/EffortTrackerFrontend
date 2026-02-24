@@ -2,7 +2,6 @@ import { Link, useLocation } from "react-router-dom";
 import {
   FiGrid,
   FiUsers,
-  FiCheckSquare,
   FiX,
   FiLayers,
   FiChevronsLeft,
@@ -39,11 +38,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       return [
         { to: "/am/Dashboard", label: "Dashboard", icon: <FiGrid size={20} /> },
         {
-          to: "/taskList",
-          label: "Task List",
-          icon: <FiCheckSquare size={20} />,
-        },
-        {
           to: "/am/TeamManagement",
           label: "Team Management",
           icon: <FiUsers size={20} />,
@@ -72,12 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
     if (role === "USER" || role === "DEVLOPER") {
       return [
-        { to: "/*/dashboard", label: "Dashboard", icon: <FiGrid size={20} /> },
-        {
-          to: "/taskList",
-          label: "Task List",
-          icon: <FiCheckSquare size={20} />,
-        },
+        { to: "/user/dashboard", label: "Dashboard", icon: <FiGrid size={20} /> },
       ];
     }
     return [];
@@ -113,10 +102,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                 to={item.to}
                 onClick={onClose}
                 title={collapsed ? item.label : undefined}
-                className={`relative flex items-center gap-3 rounded-xl text-[15px] font-medium transition-colors duration-150 ${
+                className={`relative flex items-center gap-3 rounded-xl text-[13px] lg:text-[14px] xl:text-[15px] font-medium transition-colors duration-150 ${
                   collapsed
                     ? "justify-center px-0 py-3"
-                    : "px-3 py-3"
+                    : "px-3 py-2.5 lg:py-3"
                 }`}
               >
                 {isActive && (
@@ -182,7 +171,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Desktop sidebar */}
       <aside
         className={`hidden md:block fixed left-0 top-[60px] h-[calc(100vh-60px)] bg-white border-r border-gray-200 transition-all duration-300 ${
-          collapsed ? "w-[72px]" : "w-[280px]"
+          collapsed ? "w-[72px]" : "w-[220px] lg:w-[250px] xl:w-[280px]"
         }`}
       >
         {sidebarInner}

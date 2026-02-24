@@ -1,0 +1,284 @@
+@use "variables" as *;
+
+// ══════════════════════════════════════════════
+//  USER MANAGEMENT PAGE — responsive layout
+// ══════════════════════════════════════════════
+
+.um-page {
+  padding: 24px 16px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  @include respond-below($bp-sm) {
+    padding: 16px 12px;
+  }
+}
+
+// ─── Page header (title + filters) ───
+.um-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+
+  // On Mac / medium screens: stack title above, filters below in one row
+  @include respond-below($bp-xl) {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+// ─── Title block ───
+.um-title {
+  flex-shrink: 0;
+
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: $text-dark;
+
+    @include respond-below($bp-lg) {
+      font-size: 1.15rem;
+    }
+
+    @include respond-below($bp-sm) {
+      font-size: 1.05rem;
+    }
+  }
+
+  p {
+    font-size: 0.9rem;
+    color: $text-secondary;
+    margin: 0;
+
+    @include respond-below($bp-lg) {
+      font-size: 0.8rem;
+    }
+
+    @include respond-below($bp-sm) {
+      font-size: 0.75rem;
+    }
+  }
+}
+
+// ─── Filters row ───
+// Always one row on tablet+ (Mac included), grid on mobile
+.um-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+
+  // Full width when stacked below title
+  @include respond-below($bp-xl) {
+    width: 100%;
+  }
+
+  // On mobile: filters go full width, 2 per row
+  @include respond-below($bp-sm) {
+    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+}
+
+// ─── Search input ───
+.um-search {
+  width: 200px;
+  flex-shrink: 1;
+
+  @include respond-below($bp-sm) {
+    width: 100%;
+    grid-column: 1 / -1;
+  }
+}
+
+// ─── Filter dropdowns ───
+.um-filter-select {
+  min-width: 140px;
+  flex-shrink: 1;
+
+  @include respond-below($bp-sm) {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+// ─── Add user button ───
+.um-add-btn {
+  background: $purple-gradient;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 16px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  @include respond-below($bp-sm) {
+    grid-column: 1 / -1;
+    padding: 10px 16px;
+    text-align: center;
+  }
+}
+
+// ─── User name cell ───
+.um-user-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.um-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: $purple-primary;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  @include respond-below($bp-md) {
+    width: 30px;
+    height: 30px;
+    font-size: 11px;
+  }
+}
+
+.um-name-text {
+  font-weight: 600;
+  font-size: 13px;
+  color: $text-dark;
+
+  @include respond-below($bp-md) {
+    font-size: 12px;
+  }
+}
+
+.um-email-text {
+  font-size: 11px;
+  color: $text-muted;
+
+  @include respond-below($bp-md) {
+    font-size: 10px;
+  }
+}
+
+// ─── Project badges ───
+.um-project-badge {
+  background-color: $purple-light;
+  color: $purple-primary;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+
+  @include respond-below($bp-md) {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}
+
+.um-project-more {
+  font-size: 11px;
+  font-weight: 600;
+  color: $purple-primary;
+}
+
+// ─── Role badge ───
+.um-role-badge {
+  font-weight: 600;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+
+  @include respond-below($bp-md) {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+}
+
+// ─── Last active text ───
+.um-last-active {
+  font-size: 12px;
+  color: $text-secondary;
+  white-space: nowrap;
+
+  @include respond-below($bp-md) {
+    font-size: 11px;
+  }
+}
+
+.um-no-activity {
+  font-size: 12px;
+  color: $text-muted;
+}
+
+// ─── View tasks button ───
+.um-view-tasks-btn {
+  background-color: $purple-light;
+  color: $purple-primary;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border: 1px solid #ede9fe;
+  transition: all 0.2s;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $purple-primary;
+    color: #fff;
+  }
+
+  @include respond-below($bp-md) {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+}
+
+// ─── Delete button ───
+.um-delete-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #fee2e2;
+  background-color: $bg-white;
+  color: #d1d5db;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #fef2f2;
+    color: #ef4444;
+    border-color: #fca5a5;
+  }
+
+  @include respond-below($bp-md) {
+    width: 28px;
+    height: 28px;
+  }
+}

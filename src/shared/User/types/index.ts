@@ -4,6 +4,7 @@ export interface formUserData {
   email: string;
   password: string;
   role: string;
+  department?: string;
   projects: { id: string; name: string }[];
   profile: File | null;
   image?: string;

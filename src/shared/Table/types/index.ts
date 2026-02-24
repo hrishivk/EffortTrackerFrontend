@@ -4,6 +4,7 @@ export type Column<T> = {
   key: string;
   header: string;
   render: (row: T) => React.ReactNode;
+  width?: string | number;
 };
 
 export interface TableListProps<T> {
@@ -11,7 +12,7 @@ export interface TableListProps<T> {
     key: string;
     header: string;
     render: (row: T) => React.ReactNode;
-     
+    width?: string | number;
   }[];
 
   data: T[];
@@ -19,6 +20,7 @@ export interface TableListProps<T> {
   emptyMessage?: string;
   title?: string;
   headerAction?: React.ReactNode;
+  onRowClick?: (row: T) => void;
 
   pagination?: {
     currentPage: number;

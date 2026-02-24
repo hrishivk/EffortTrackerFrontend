@@ -1,0 +1,29 @@
+// ─── Breakpoints ───
+$bp-sm: 576px;   // Small phones
+$bp-md: 768px;   // Tablets
+$bp-lg: 992px;   // Small laptops
+$bp-xl: 1200px;  // Desktops
+
+// ─── Colors ───
+$purple-primary: #7c3aed;
+$purple-light: #f5f3ff;
+$purple-gradient: linear-gradient(135deg, #7c3aed, #a855f7);
+$text-dark: #111827;
+$text-secondary: #6b7280;
+$text-muted: #9ca3af;
+$border-light: #e5e7eb;
+$bg-light: #f9fafb;
+$bg-white: #ffffff;
+
+// ─── Mixins ───
+@mixin respond-below($bp) {
+  @media (max-width: ($bp - 1px)) {
+    @content;
+  }
+}
+
+@mixin respond-above($bp) {
+  @media (min-width: $bp) {
+    @content;
+  }
+}

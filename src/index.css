@@ -13,6 +13,27 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Styled gantt scrollbar */
+.gantt-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.gantt-scroll::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 10px;
+}
+.gantt-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #c084fc, #a855f7);
+  border-radius: 10px;
+}
+.gantt-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+}
+.gantt-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #a855f7 #f3f4f6;
+}
 .card {
   border: none !important;
 }
@@ -75,7 +96,7 @@ a {
 }
 /* table-css */
 .advanced-table-wrapper {
-  margin-top: 32px;
+  margin-top: 0;
 }
 
 /* ================= CARD ================= */

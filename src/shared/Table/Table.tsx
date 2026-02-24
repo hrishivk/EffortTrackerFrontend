@@ -15,6 +15,7 @@ import {
 import { FiChevronDown } from "react-icons/fi";
 import type { TableListProps } from "./types";
 import { usePagination } from "./hooks/usePagination";
+import "../../styles/table.scss";
 
 function TableList<T>({
   columns,
@@ -23,6 +24,7 @@ function TableList<T>({
   emptyMessage = "No records found",
   title,
   headerAction,
+  onRowClick,
   pagination,
   expandable,
 }: TableListProps<T>) {
@@ -108,7 +110,7 @@ function TableList<T>({
                   {expandable && <CTableHeaderCell style={{ width: 60 }} />}
 
                   {columns.map((col) => (
-                    <CTableHeaderCell key={col.key}>
+                    <CTableHeaderCell key={col.key} style={col.width ? { width: col.width } : undefined}>
                       <div className="th-content">
                         {col.header}
                         <span className="sort-icon">↓</span>
@@ -132,6 +134,8 @@ function TableList<T>({
                           className={`table-row ${
                             isSelected ? "row-selected" : ""
                           }`}
+                          onClick={() => onRowClick?.(row)}
+                          style={onRowClick ? { cursor: "pointer" } : undefined}
                         >
                           {/* Checkbox */}
                           <CTableDataCell>

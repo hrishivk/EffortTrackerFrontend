@@ -57,9 +57,6 @@ const Navbar: React.FC = () => {
             <Link to="/Am/Dashboard" className={getLinkClass("/Am/Dashboard")}>
               Dashboard
             </Link>
-            <Link to="/taskList" className={getLinkClass("/taskList")}>
-              Task List
-            </Link>
             <Link
               to="/Am/TeamManagement"
               className={getLinkClass("/Am/TeamManagement")}
@@ -83,11 +80,8 @@ const Navbar: React.FC = () => {
         )}
         {(role === "USER" || role === "DEVLOPER") && (
           <>
-            <Link to="/*/dashboard" className={getLinkClass("/*/dashboard")}>
+            <Link to="/user/dashboard" className={getLinkClass("/user/dashboard")}>
               Dashboard
-            </Link>
-            <Link to="/taskList" className={getLinkClass("/taskList")}>
-              Task List
             </Link>
           </>
         )}
