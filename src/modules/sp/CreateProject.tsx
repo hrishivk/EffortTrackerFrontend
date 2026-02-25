@@ -97,7 +97,7 @@ const CreateProject = () => {
         ? await fetchUsers({ role: "AM" })
         : await fetchAllUsers();
 
-      const allUsers: formUserData[] = isSP ? response?.users : response?.data;
+      const allUsers: formUserData[] = isSP ? (response as any)?.users : (response as any)?.data;
       if (allUsers?.length) {
         const filtered = isSP
           ? allUsers

@@ -167,6 +167,7 @@ interface TaskGanttChartProps {
   getUserName: (id: string | number | null | undefined) => string;
   loading?: boolean;
   onTaskClick?: (task: taskList) => void;
+  hideLeftPanel?: boolean;
 }
 
 const BASE_COL_WIDTH = 50;
@@ -181,6 +182,7 @@ export default function TaskGanttChart({
   getUserName,
   loading,
   onTaskClick,
+  hideLeftPanel,
 }: TaskGanttChartProps) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
@@ -192,7 +194,7 @@ export default function TaskGanttChart({
   const colWidth = BASE_COL_WIDTH * zoomLevel;
 
   // ─── Compute date range from tasks ─────────────────────────────
-  const { rangeStart, rangeEnd, rangeDays, rangeLabel } = useMemo(() => {
+  const { rangeStart, rangeDays, rangeLabel } = useMemo(() => {
     let earliest: Date | null = null;
     let latest: Date | null = null;
 
@@ -255,7 +257,11 @@ export default function TaskGanttChart({
     for (const task of tasks) {
       const projName = typeof task.project === "object" && task.project !== null
         ? (task.project as any).name : (task.project || "");
-      const key = `${task.description}|||${projName}`;
+      const projId = task.project_id || (typeof task.project === "object" && task.project !== null
+        ? (task.project as any).id : "");
+      const desc = (task.description || "").trim();
+      const proj = projId ? String(projId) : String(projName).trim();
+      const key = `${desc}|||${proj}`;
       if (!groupMap.has(key)) groupMap.set(key, []);
       groupMap.get(key)!.push(task);
     }
@@ -440,7 +446,7 @@ export default function TaskGanttChart({
       {/* Main Gantt Area */}
       <div style={{ display: "flex", maxHeight: 500, overflow: "hidden" }}>
         {/* Fixed Left Panel */}
-        <div
+        {!hideLeftPanel && <div
           ref={leftPanelRef}
           onScroll={handleLeftScroll}
           style={{
@@ -632,7 +638,7 @@ export default function TaskGanttChart({
               No tasks found for this period
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Scrollable Right Panel (Timeline) */}
         <div
@@ -926,16 +932,6 @@ export default function TaskGanttChart({
             </div>
             <div style={{ color: "#6b7280", marginBottom: 4 }}>
               {formatShortDate(row.earliestStart)} &rarr; {formatShortDate(row.latestEnd)}
-            </div>
-            <div className="d-flex align-items-center gap-2" style={{ color: "#6b7280" }}>
-              <span>Progress:</span>
-              <div style={{ flex: 1, height: 6, backgroundColor: "#e5e7eb", borderRadius: 3, overflow: "hidden" }}>
-                <div style={{
-                  width: `${row.progress}%`, height: "100%",
-                  backgroundColor: "#7c3aed", borderRadius: 3, transition: "width 0.3s",
-                }} />
-              </div>
-              <span style={{ fontWeight: 600, color: "#374151" }}>{row.progress}%</span>
             </div>
           </div>
         );

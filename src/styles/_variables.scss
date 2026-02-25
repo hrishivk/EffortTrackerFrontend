@@ -1,4 +1,4 @@
-// ─── Breakpoints ───
+
 $bp-sm: 576px;   // Small phones
 $bp-md: 768px;   // Tablets
 $bp-lg: 992px;   // Small laptops
@@ -15,7 +15,7 @@ $border-light: #e5e7eb;
 $bg-light: #f9fafb;
 $bg-white: #ffffff;
 
-// ─── Mixins ───
+
 @mixin respond-below($bp) {
   @media (max-width: ($bp - 1px)) {
     @content;

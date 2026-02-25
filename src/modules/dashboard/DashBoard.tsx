@@ -14,34 +14,12 @@ import { useSearchParams } from "react-router-dom";
 import { useAppSelector } from "../../store/configureStore";
 import type { RoleTitles } from "./types";
 import {
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-} from "@mui/material";
-import {
   fetchAllExistProjects,
   fetchAllUsers,
   fetfchTaskCount,
 } from "../../core/actions/spAction";
 import type { project } from "../../shared/Project/types";
 import type { formUserData } from "../../shared/User/types";
-import {
-  RecentActivityFeed,
-  StatCard,
-  UpcomingDeadlines,
-} from "./widgets/CommonWidgets";
-import { WeeklyProgressChart, MyActiveTasks } from "./widgets/UserWidgets";
-import {
-  SpTeamPerformance,
-  TaskCompletionTrend,
-  TaskStatusDistribution,
-} from "./widgets/SpWidgets";
-import {
-  TeamCapacityByDepartment,
-  UpcomingTeamEvents,
-  AmTeamPerformance,
-} from "./widgets/AmWidgets";
 import MyTasksView from "./widgets/MyTasksView";
 
 ChartJS.register(
@@ -53,29 +31,9 @@ ChartJS.register(
   BarElement,
 );
 
-const commonFormControlSx = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "12px",
-    backgroundColor: "#F9FAFB",
-    "& fieldset": {
-      borderColor: "#E5E7EB",
-    },
-  },
-};
-
-const commonMenuProps = {
-  PaperProps: {
-    sx: {
-      borderRadius: 3,
-      boxShadow: "0px 8px 30px rgba(0,0,0,0.08)",
-    },
-  },
-};
-
 const UserDashboard = () => {
-  const [page, setPage] = useState(1);
-  const [project, setProject] = useState<project[]>([]);
-  const [users, setUsers] = useState<formUserData[]>([]);
+  const [, setProject] = useState<project[]>([]);
+  const [, setUsers] = useState<formUserData[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const viewUserId = searchParams.get("viewUser") || "";
   const viewProject = searchParams.get("viewProject") || "";
@@ -93,9 +51,7 @@ const UserDashboard = () => {
   const [dataCount, setCount] = useState<{ status: string; count: string }[]>(
     [],
   );
-  const [dateData, setDateData] = useState<string>("All Dates");
-  const [projectFilter, setProjectFilter] = useState<string>("");
-  const [userFilter, setUserFilter] = useState<string>("");
+  const [dateData] = useState<string>("All Dates");
   const tabs = [
     { key: "overview" as const, label: "Overview" },
     { key: "myTasks" as const, label: "My Tasks" },
@@ -140,8 +96,6 @@ const UserDashboard = () => {
   const completed = Number(dataCount[1]?.count || 0);
   const inProgress = Number(dataCount[2]?.count || 0);
   const totalTasks = yetToStart + completed + inProgress;
-  const totalHours = totalTasks * 2;
-
   const roleTitles: RoleTitles = {
     USER: "User Dashboard",
     DEVLOPER: "User Dashboard",

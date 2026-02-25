@@ -523,7 +523,7 @@ const TaskList: React.FC = () => {
                           labelId="project-select-label"
                           name="project"
                           value={taskData.project || ""}
-                          onChange={handleChange}
+                          onChange={(e) => handleChange(e)}
                           input={
                             <OutlinedInput
                               sx={{

@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   TextField,
-  InputAdornment,
   FormControl,
   Select,
   MenuItem,
   IconButton,
   CircularProgress,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 import GridViewIcon from "@mui/icons-material/GridView";
 import CloseIcon from "@mui/icons-material/Close";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -137,7 +135,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<formUserData[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, _setSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState(viewProject || "");
   // Default: AM sees their own tasks, SP sees all
   const [assigneeFilter, setAssigneeFilter] = useState(
@@ -310,7 +308,11 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
     for (const t of filtered) {
       const projName = typeof t.project === "object" && t.project !== null
         ? (t.project as any).name : (t.project || "");
-      const groupKey = `${t.description}|||${projName}`;
+      const projId = t.project_id || (typeof t.project === "object" && t.project !== null
+        ? (t.project as any).id : "");
+      const desc = (t.description || "").trim();
+      const proj = projId ? String(projId) : String(projName).trim();
+      const groupKey = `${desc}|||${proj}`;
       if (!map.has(groupKey)) map.set(groupKey, []);
       map.get(groupKey)!.push(t);
     }
