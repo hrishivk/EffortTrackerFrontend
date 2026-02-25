@@ -16,7 +16,6 @@ import type { RoleTitles } from "./types";
 import {
   fetchAllExistProjects,
   fetchAllUsers,
-  fetfchTaskCount,
 } from "../../core/actions/spAction";
 import type { project } from "../../shared/Project/types";
 import type { formUserData } from "../../shared/User/types";
@@ -48,10 +47,6 @@ const UserDashboard = () => {
       setActiveTab("myTasks");
     }
   }, [viewUserId, viewProject, viewTab]);
-  const [dataCount, setCount] = useState<{ status: string; count: string }[]>(
-    [],
-  );
-  const [dateData] = useState<string>("All Dates");
   const tabs = [
     { key: "overview" as const, label: "Overview" },
     { key: "myTasks" as const, label: "My Tasks" },
@@ -74,23 +69,9 @@ const UserDashboard = () => {
     }
   }, [role, id]);
 
-  const listCount = useCallback(async () => {
-    try {
-      const taskCount = await fetfchTaskCount(
-        dateData,
-        role,
-        id ? Number(id) : 0,
-      );
-      setCount(taskCount.data);
-    } catch (error) {
-      console.error(error);
-    }
-  }, [dateData, role, id]);
-
   useEffect(() => {
     listData();
-    listCount();
-  }, [dateData, listData, listCount]);
+  }, [listData]);
 
   const roleTitles: RoleTitles = {
     USER: "User Dashboard",
