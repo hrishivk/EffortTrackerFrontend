@@ -2,7 +2,6 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { apiserviceMethood } from "../service/apiService";
 import { spserviceMethood } from "../service/spService";
 import { userServiceMethood } from "../service/userService";
-import type { UserData } from "../types";
 import type { taskList } from "../../modules/user/types";
 
 export const login = createAsyncThunk(

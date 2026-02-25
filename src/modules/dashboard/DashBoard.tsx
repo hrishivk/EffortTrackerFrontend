@@ -92,10 +92,6 @@ const UserDashboard = () => {
     listCount();
   }, [dateData, listData, listCount]);
 
-  const yetToStart = Number(dataCount[0]?.count || 0);
-  const completed = Number(dataCount[1]?.count || 0);
-  const inProgress = Number(dataCount[2]?.count || 0);
-  const totalTasks = yetToStart + completed + inProgress;
   const roleTitles: RoleTitles = {
     USER: "User Dashboard",
     DEVLOPER: "User Dashboard",
