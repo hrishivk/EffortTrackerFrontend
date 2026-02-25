@@ -64,8 +64,8 @@ const UserLogin: React.FC = () => {
   };
   const redirectRolePage = useCallback(() => {
     const roleGroups: { [path: string]: string[] } = {
-      "/Sp/dashboard": ["SP"],
-      "/Am/dashboard": ["AM"],
+      "/sp/dashboard": ["SP"],
+      "/am/dashboard": ["AM"],
       "/user/dashboard": ["USER", "DEVLOPER"],
     };
     const roleRedirects: Record<string, string> = Object.fromEntries(
