@@ -1,19 +1,7 @@
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-export const getToken = (): string => {
-  try {
-    const persisted = localStorage.getItem("persist:root");
-    if (persisted) {
-      const parsed = JSON.parse(persisted);
-      const userState = JSON.parse(parsed.user || "{}");
-      return userState.token || "";
-    }
-  } catch {}
-  return "";
-};
-
 export const attachToken = (config: InternalAxiosRequestConfig) => {
-  const token = getToken();
+  const token = localStorage.getItem("accessToken");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -24,7 +12,10 @@ export const handleAuthError = (error: AxiosError) => {
   const status = error.response?.status;
 
   if (status === 401) {
-    window.location.href = "/";
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    window.location.hash = "#/";
+    window.location.reload();
   }
 
   return Promise.reject(error);

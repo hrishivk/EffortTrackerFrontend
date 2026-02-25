@@ -26,6 +26,8 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     reset: (state) => {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
       state.isError = false;
       state.isLoading = false;
       state.isSuccess = false;
@@ -58,14 +60,20 @@ const authSlice = createSlice({
           localStorage.removeItem("lockedUserId");
           localStorage.removeItem("lockedDate");
         }
+        const tokenData = action.payload.data.data.token;
+        localStorage.setItem("accessToken", tokenData?.accessToken || "");
+        localStorage.setItem("refreshToken", tokenData?.refreshToken || "");
+
         state.isSuccess = true;
         state.isLoading = false;
         state.user = loggedInUser;
-        state.token = action.payload.data.data.token?.accessToken || "";
+        state.token = tokenData?.accessToken || "";
         state.isError = false;
         state.message = "";
       })
       .addCase(login.rejected, (state, action) => {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
         state.isSuccess = false;
         state.isLoading = false;
         state.isError = true;
