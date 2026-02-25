@@ -8,6 +8,7 @@ export interface UserInfo {
 }
 export interface AuthState {
   user: UserInfo;
+  token: string;
   isError: boolean;
   isLocked: boolean;
   isLoading: boolean;

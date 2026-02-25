@@ -1,13 +1,14 @@
 import axios from "axios";
 import type { taskList } from "../../modules/user/types";
 import { API_URL } from "../../config/apiEndpoints";
-import { handleAuthError } from "./interceptors";
+import { attachToken, handleAuthError } from "./interceptors";
 
 const apiservice = axios.create({
   baseURL: API_URL.userService,
   withCredentials: true,
 });
 
+apiservice.interceptors.request.use(attachToken);
 apiservice.interceptors.response.use((res) => res, handleAuthError);
 export const userServiceMethood = {
 

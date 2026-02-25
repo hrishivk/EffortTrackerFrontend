@@ -3,11 +3,14 @@ export type LoginResponse = {
   data: {
     success: boolean;
     message: string;
-    data: LoginData;  
+    data: LoginData;
   };
 };
 export type LoginData = {
-  token: string;
+  token: {
+    accessToken: string;
+    refreshToken: string;
+  };
   user: User;
 };
 

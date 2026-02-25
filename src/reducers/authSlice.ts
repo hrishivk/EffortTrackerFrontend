@@ -13,6 +13,7 @@ const emptyUser: UserInfo = {
 
 const initialState: AuthState = {
   user: emptyUser,
+  token: "",
   isError: false,
   isLocked: false,
   isLoading: false,
@@ -30,6 +31,7 @@ const authSlice = createSlice({
       state.isSuccess = false;
       state.message = "";
       state.user = emptyUser;
+      state.token = "";
       state.isLocked = false;
     },
     setLocked: (state, action: { payload: boolean }) => {
@@ -59,6 +61,7 @@ const authSlice = createSlice({
         state.isSuccess = true;
         state.isLoading = false;
         state.user = loggedInUser;
+        state.token = action.payload.data.data.token?.accessToken || "";
         state.isError = false;
         state.message = "";
       })
@@ -67,6 +70,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.isError = true;
         state.user = emptyUser;
+        state.token = "";
         state.message = action.error?.message || "Login failed";
         state.isLocked = false;
       })
