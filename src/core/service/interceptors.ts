@@ -11,7 +11,8 @@ export const attachToken = (config: InternalAxiosRequestConfig) => {
 export const handleAuthError = (error: AxiosError) => {
   const status = error.response?.status;
 
-  if (status === 401) {
+  const isLoginRequest = error.config?.url?.includes("/login");
+  if (status === 401 && !isLoginRequest) {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     window.location.hash = "#/";
