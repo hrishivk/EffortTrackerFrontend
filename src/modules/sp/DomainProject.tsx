@@ -1094,7 +1094,7 @@ const DomainProject = () => {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [rawProjects, setRawProjects] = useState<any[]>([]);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, _setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; projectId: number | null; projectName: string; current: string }>({
     open: false, projectId: null, projectName: "", current: "",
