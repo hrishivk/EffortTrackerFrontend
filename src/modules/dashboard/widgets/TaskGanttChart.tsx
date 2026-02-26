@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect, useLayoutEffect } from "react";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -191,6 +191,12 @@ export default function TaskGanttChart({
   const timelineRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
 
+  // Infinite scroll: extra months before/after the computed range
+  const [extraBefore, setExtraBefore] = useState(1);
+  const [extraAfter, setExtraAfter] = useState(1);
+  const isExtendingRef = useRef(false);
+  const scrollAdjustRef = useRef(0);
+
   const colWidth = BASE_COL_WIDTH * zoomLevel;
 
   // ─── Compute date range from tasks ─────────────────────────────
@@ -238,6 +244,11 @@ export default function TaskGanttChart({
       rEnd.setMonth(rEnd.getMonth() + rangeOffset);
     }
 
+    // Apply extra months for infinite scroll
+    rStart.setMonth(rStart.getMonth() - extraBefore);
+    const targetEndMonth = rEnd.getMonth() + extraAfter;
+    rEnd.setTime(new Date(rEnd.getFullYear(), targetEndMonth + 1, 0).getTime());
+
     const days = generateDayRange(rStart, rEnd);
 
     // Build label: "February 2026" or "February – March 2026"
@@ -246,7 +257,7 @@ export default function TaskGanttChart({
     const label = startMonth === endMonth ? startMonth : `${monthNames[rStart.getMonth()]} – ${endMonth}`;
 
     return { rangeStart: rStart, rangeEnd: rEnd, rangeDays: days, rangeLabel: label };
-  }, [tasks, rangeOffset]);
+  }, [tasks, rangeOffset, extraBefore, extraAfter]);
 
   const totalDays = rangeDays.length;
 
@@ -346,6 +357,13 @@ export default function TaskGanttChart({
       });
     }
 
+    // Sort rows by earliest start date (first starting task appears first)
+    rows.sort((a, b) => {
+      const aDate = a.earliestStart ? new Date(a.earliestStart).getTime() : Infinity;
+      const bDate = b.earliestStart ? new Date(b.earliestStart).getTime() : Infinity;
+      return aDate - bDate;
+    });
+
     return rows;
   }, [tasks, rangeStart, totalDays, projectColorMap, getUserName, users]);
 
@@ -371,6 +389,58 @@ export default function TaskGanttChart({
     if (curLabel) headers.push({ label: curLabel, startIdx: curStart, span: curSpan });
     return headers;
   }, [rangeDays]);
+
+  // Auto-scroll to 1 day before the earliest task start date
+  const hasInitialScrolled = useRef(false);
+  useEffect(() => {
+    if (!timelineRef.current || groupedRows.length === 0 || hasInitialScrolled.current) return;
+    hasInitialScrolled.current = true;
+    const firstStartIdx = Math.min(...groupedRows.map((r) => r.startIdx));
+    // Scroll 1 column before the first task so it's clearly visible
+    const scrollTo = Math.max(0, firstStartIdx - 1) * colWidth;
+    timelineRef.current.scrollLeft = scrollTo;
+  }, [groupedRows, colWidth]);
+
+  /* Infinite scroll — extend range when reaching edges */
+  useEffect(() => {
+    const el = timelineRef.current;
+    if (!el) return;
+
+    const handleEdgeScroll = () => {
+      if (isExtendingRef.current) return;
+      const threshold = 200;
+
+      // Near right edge → append next month
+      if (el.scrollLeft + el.clientWidth >= el.scrollWidth - threshold) {
+        isExtendingRef.current = true;
+        setExtraAfter((prev) => prev + 1);
+        setTimeout(() => { isExtendingRef.current = false; }, 200);
+      }
+
+      // Near left edge → prepend previous month
+      if (el.scrollLeft <= threshold && el.scrollLeft > 0) {
+        isExtendingRef.current = true;
+        if (rangeDays.length > 0) {
+          const firstDay = rangeDays[0].date;
+          const prevMonthEnd = new Date(firstDay.getFullYear(), firstDay.getMonth(), 0);
+          scrollAdjustRef.current = prevMonthEnd.getDate() * colWidth;
+        }
+        setExtraBefore((prev) => prev + 1);
+      }
+    };
+
+    el.addEventListener("scroll", handleEdgeScroll);
+    return () => el.removeEventListener("scroll", handleEdgeScroll);
+  }, [rangeDays, colWidth]);
+
+  /* Preserve scroll position when months are prepended */
+  useLayoutEffect(() => {
+    if (scrollAdjustRef.current > 0 && timelineRef.current) {
+      timelineRef.current.scrollLeft += scrollAdjustRef.current;
+      scrollAdjustRef.current = 0;
+      setTimeout(() => { isExtendingRef.current = false; }, 200);
+    }
+  }, [extraBefore]);
 
   // Sync vertical scroll
   const handleTimelineScroll = () => {
@@ -401,7 +471,7 @@ export default function TaskGanttChart({
       >
         <div className="d-flex align-items-center gap-2">
           <button
-            onClick={() => setRangeOffset(o => o - 1)}
+            onClick={() => { setRangeOffset(o => o - 1); setExtraBefore(1); setExtraAfter(1); }}
             className="btn btn-sm p-1"
             style={{ border: "1px solid #e5e7eb", borderRadius: 10, lineHeight: 1 }}
           >
@@ -416,13 +486,13 @@ export default function TaskGanttChart({
               fontSize: 13,
               fontWeight: 600,
             }}
-            onClick={() => setRangeOffset(0)}
+            onClick={() => { setRangeOffset(0); setExtraBefore(1); setExtraAfter(1); }}
           >
             <CalendarMonthIcon sx={{ fontSize: 16 }} />
             {rangeLabel}
           </button>
           <button
-            onClick={() => setRangeOffset(o => o + 1)}
+            onClick={() => { setRangeOffset(o => o + 1); setExtraBefore(1); setExtraAfter(1); }}
             className="btn btn-sm p-1"
             style={{ border: "1px solid #e5e7eb", borderRadius: 10, lineHeight: 1 }}
           >
@@ -452,10 +522,13 @@ export default function TaskGanttChart({
           style={{
             width: LEFT_PANEL_WIDTH,
             minWidth: LEFT_PANEL_WIDTH,
-            borderRight: "1px solid #e5e7eb",
+            borderRight: "2px solid #e0d4f5",
+            boxShadow: "4px 0 8px rgba(124,58,237,0.06)",
             overflowY: "auto",
             overflowX: "hidden",
             scrollbarWidth: "none",
+            backgroundColor: "#fff",
+            zIndex: 3,
           }}
         >
           {/* Left Header — needs extra height for month header row */}

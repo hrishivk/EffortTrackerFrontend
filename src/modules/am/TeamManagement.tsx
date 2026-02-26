@@ -92,10 +92,9 @@ const TeamManagement: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F6F7FB] px-3 py-4 sm:px-6 md:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header: title left, search + create right */}
         <div className="d-flex justify-content-between align-items-start mb-4">
           <div>
-            <h2 className="fw-bold mb-1" style={{ fontSize: "1.65rem" }}>
+            <h2 className="fw-bold mb-1" style={{ fontSize: "1.35rem" }}>
               Team Management
             </h2>
             <p className="text-muted mt-1 mb-0" style={{ fontSize: "0.95rem" }}>

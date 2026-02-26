@@ -1242,36 +1242,6 @@ const DomainProject = () => {
         <div className="d-flex align-items-center gap-2">
           {activeTab === "overview" ? (
             <>
-              <TextField
-                size="small"
-                placeholder="Search projects..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                sx={{
-                  width: 200,
-                  ...selectSx,
-                }}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon sx={{ color: "#9ca3af", fontSize: 18 }} />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
-              <button
-                className="btn"
-                style={{
-                  borderRadius: 8,
-                  padding: "6px 10px",
-                  border: "1px solid #e5e7eb",
-                }}
-                title="Filter"
-              >
-                <span style={{ fontSize: 16 }}>⫧</span>
-              </button>
               {isAM && (
                 <>
                   <button
