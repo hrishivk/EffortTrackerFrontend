@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import { CCardBody, CCard } from "@coreui/react";
+import { CCardBody, CCard, CPagination, CPaginationItem } from "@coreui/react";
 import { useAppSelector, type AppDispatch } from "../../store/configureStore";
 import { useParams } from "react-router-dom";
 import {
@@ -47,6 +47,9 @@ const TaskList: React.FC = () => {
 
   const [data, setData] = useState<taskList[]>([]);
   const [project, setProject] = useState<project[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const [openDialog, setOpenDialog] = useState(false);
   const [taskData, setTaskData] = useState<taskList>({
     created_by: user?.id,
@@ -69,8 +72,9 @@ const TaskList: React.FC = () => {
       if (id) {
         const projectResponse = await fetchExistProjects();
         setProject(projectResponse.data);
-        const response = await fetchTask(selectedDate, id,user?.role);
-        setData(response.data);
+        const response = await fetchTask(selectedDate, id, user?.role, undefined, { page, limit: ITEMS_PER_PAGE });
+        setData(response.data || []);
+        setTotalPages(response.totalPages || 1);
       } else {
         console.warn("Missing user ID");
       }
@@ -84,7 +88,7 @@ const TaskList: React.FC = () => {
         });
       }
     }
-  }, [selectedDate, id, showSnackbar]);
+  }, [selectedDate, id, showSnackbar, page]);
 
   const handleChange = (
     e:
@@ -144,6 +148,7 @@ const TaskList: React.FC = () => {
       showSnackbar({ message: firstErrorMessage, severity: "error" });
     } else {
       setSelectedDate(date);
+      setPage(1);
     }
   };
 
@@ -306,12 +311,12 @@ const TaskList: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       await listAllData();
+      setLoading(false);
     };
-    setLoading(true);
     fetchData();
-    setLoading(false);
-  }, [selectedDate]);
+  }, [selectedDate, page]);
 
   if (loading) {
     return <SpinLoader isLoading={loading} />;
@@ -615,6 +620,26 @@ const TaskList: React.FC = () => {
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="d-flex align-items-center justify-content-between mt-3 px-2">
+              <span style={{ fontSize: 13, color: "#6b7280" }}>
+                Page {page} of {totalPages}
+              </span>
+              <CPagination size="sm" className="mb-0">
+                <CPaginationItem disabled={page === 1} onClick={() => setPage(page - 1)}>
+                  Prev
+                </CPaginationItem>
+                {[...Array(totalPages)].map((_, i) => (
+                  <CPaginationItem key={i} active={i + 1 === page} onClick={() => setPage(i + 1)}>
+                    {i + 1}
+                  </CPaginationItem>
+                ))}
+                <CPaginationItem disabled={page === totalPages} onClick={() => setPage(page + 1)}>
+                  Next
+                </CPaginationItem>
+              </CPagination>
+            </div>
+          )}
           {isToday(selectedDate) && (
             <div className="flex flex-row space-x-4  sm:!flex-row  justify-end items-center space-y-2 sm:space-y-0 sm:!space-x-4 mt-4">
               <button

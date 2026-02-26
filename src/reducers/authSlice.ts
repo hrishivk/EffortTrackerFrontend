@@ -26,8 +26,6 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     reset: (state) => {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
       state.isError = false;
       state.isLoading = false;
       state.isSuccess = false;
@@ -61,8 +59,6 @@ const authSlice = createSlice({
           localStorage.removeItem("lockedDate");
         }
         const tokenData = action.payload.data.data.token;
-        localStorage.setItem("accessToken", tokenData?.accessToken || "");
-        localStorage.setItem("refreshToken", tokenData?.refreshToken || "");
 
         state.isSuccess = true;
         state.isLoading = false;
@@ -72,8 +68,6 @@ const authSlice = createSlice({
         state.message = "";
       })
       .addCase(login.rejected, (state, action) => {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
         state.isSuccess = false;
         state.isLoading = false;
         state.isError = true;

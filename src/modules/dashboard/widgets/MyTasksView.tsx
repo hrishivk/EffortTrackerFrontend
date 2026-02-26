@@ -149,6 +149,8 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTask, setSelectedTask] = useState<taskList | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [form, setForm] = useState({
     taskName: "",
@@ -234,14 +236,15 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       if (assigneeFilter) filters.assigned_to = assigneeFilter;
       if (projectFilter) filters.project = projectFilter;
 
-      const taskRes = await fetchTask(selectedDate, String(userId), role, filters);
+      const taskRes = await fetchTask(selectedDate, String(userId), role, filters, { page, limit: ITEMS_PER_PAGE });
       setTasks(taskRes?.data || []);
+      setTotalPages(taskRes?.totalPages || 1);
     } catch {
       setTasks([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, userId, role, assigneeFilter, projectFilter]);
+  }, [selectedDate, userId, role, assigneeFilter, projectFilter, page]);
 
   useEffect(() => {
     loadInitialData();
@@ -673,6 +676,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       prev.setDate(prev.getDate() - 1);
       return prev;
     });
+    setPage(1);
   };
   const goToNextDay = () => {
     setSelectedDate((d) => {
@@ -680,9 +684,11 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       next.setDate(next.getDate() + 1);
       return next;
     });
+    setPage(1);
   };
   const goToToday = () => {
     setSelectedDate(new Date());
+    setPage(1);
   };
 
   return (
@@ -719,7 +725,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
           }}>
             <Select
               value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
+              onChange={(e) => { setProjectFilter(e.target.value); setPage(1); }}
               displayEmpty
               renderValue={(val) => val || "All Projects"}
               MenuProps={menuProps}
@@ -750,7 +756,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
             }}>
               <Select
                 value={assigneeFilter}
-                onChange={(e) => setAssigneeFilter(e.target.value)}
+                onChange={(e) => { setAssigneeFilter(e.target.value); setPage(1); }}
                 displayEmpty
                 renderValue={(val) => {
                   if (!val) return role === "SP" ? "All AMs" : "All Members";
@@ -875,6 +881,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                   onChange={(e) => {
                     if (e.target.value) {
                       setSelectedDate(new Date(e.target.value + "T00:00:00"));
+                      setPage(1);
                     }
                   }}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -1265,7 +1272,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
             <TableList<GroupedTask>
               columns={taskColumns}
               data={groupedFiltered}
-              itemsPerPage={ITEMS_PER_PAGE}
+              pagination={{ currentPage: page, totalPages, onPageChange: (p) => setPage(p) }}
               emptyMessage={`No tasks found for ${formatDateLabel(selectedDate)}`}
               onRowClick={(row) => setSelectedTask(row.tasks[0])}
             />
