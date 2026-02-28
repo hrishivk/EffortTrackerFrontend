@@ -1,68 +1,67 @@
 
 import React from 'react'
-const Dashboard=React.lazy(()=>import('../../modules/dashboard/DashBoard'))
-const TeamManagement=React.lazy(()=>import('../../modules/am/TeamManagement'))
-const userMangement=React.lazy(()=>import('../../modules/sp/UserManagement'))
-const DomainProject=React.lazy(()=>import('../../modules/sp/DomainProject'))
-const CreateProject=React.lazy(()=>import('../../modules/sp/CreateProject'))
-const CreateUser=React.lazy(()=>import('../../modules/sp/CreateUser'))
-const CreateDomain=React.lazy(()=>import('../../modules/sp/CreateDomain'))
+const Dashboard=React.lazy(()=>import('../../modules/dashboard/components/DashBoard'))
+const TeamManagement=React.lazy(()=>import('../../modules/am/components/TeamManagement'))
+const userMangement=React.lazy(()=>import('../../modules/sp/components/UserManagement'))
+const DomainProject=React.lazy(()=>import('../../modules/sp/components/DomainProject'))
+const CreateProject=React.lazy(()=>import('../../modules/sp/components/CreateProject'))
+const CreateUser=React.lazy(()=>import('../../modules/sp/components/CreateUser'))
+const CreateDomain=React.lazy(()=>import('../../modules/sp/components/CreateDomain'))
 
 const routes = [
   {
     path: '/sp/dashboard',
     name: 'Super Admin Dashboard',
     element: Dashboard,
-    role: 'sp',
+    roles: ['SP'],
   },
-
   {
     path: '/sp/userMangement',
-    name: 'Super Admin Dashboard',
+    name: 'User Management',
     element: userMangement,
-    role: 'sp',
+    roles: ['SP'],
   },
   {
     path: '/am/dashboard',
-    name: 'Admin_Manager',
+    name: 'Admin Manager Dashboard',
     element: Dashboard,
-    role: 'am',
+    roles: ['AM'],
   },
   {
     path: '/am/TeamManagement',
-    name: 'Admin_Manager',
+    name: 'Team Management',
     element: TeamManagement,
-    role: 'am',
+    roles: ['AM'],
   },
   {
     path: '/:role/domain-project',
     name: 'Domain & Projects',
     element: DomainProject,
-    roles: ['sp', 'am'],
+    roles: ['SP', 'AM'],
   },
   {
     path: '/:role/create-project',
     name: 'Create Project',
     element: CreateProject,
-    roles: ['sp', 'am'],
+    roles: ['SP', 'AM'],
   },
   {
     path: '/:role/create-user',
     name: 'Create User',
     element: CreateUser,
-    roles: ['sp', 'am'],
+    roles: ['SP', 'AM'],
   },
   {
     path: '/:role/create-domain',
     name: 'Create Domain',
     element: CreateDomain,
-    roles: ['sp', 'am'],
+    roles: ['SP', 'AM'],
   },
- {
-  path: '/user/dashboard',
-  name: 'User Dashboard',
-  element: Dashboard,
-  roles: ['USER', 'DEVLOPER'],
-},
+  {
+    path: '/user/dashboard',
+    name: 'User Dashboard',
+    element: Dashboard,
+    roles: ['USER', 'DEVLOPER'],
+  },
 ]
 export default routes

@@ -1,8 +1,6 @@
 @use "variables" as *;
 
-// ══════════════════════════════════════════════
-//  USER MANAGEMENT PAGE — responsive layout
-// ══════════════════════════════════════════════
+
 
 .um-page {
   padding: 24px 16px;
@@ -15,7 +13,7 @@
   }
 }
 
-// ─── Page header (title + filters) ───
+
 .um-header {
   display: flex;
   justify-content: space-between;
@@ -23,14 +21,13 @@
   gap: 16px;
   margin-bottom: 24px;
 
-  // On Mac / medium screens: stack title above, filters below in one row
   @include respond-below($bp-xl) {
     flex-direction: column;
     gap: 12px;
   }
 }
 
-// ─── Title block ───
+
 .um-title {
   flex-shrink: 0;
 
@@ -64,20 +61,19 @@
   }
 }
 
-// ─── Filters row ───
-// Always one row on tablet+ (Mac included), grid on mobile
+
 .um-filters {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: nowrap;
 
-  // Full width when stacked below title
+
   @include respond-below($bp-xl) {
     width: 100%;
   }
 
-  // On mobile: filters go full width, 2 per row
+
   @include respond-below($bp-sm) {
     flex-wrap: wrap;
     display: grid;
@@ -86,7 +82,7 @@
   }
 }
 
-// ─── Search input ───
+
 .um-search {
   width: 200px;
   flex-shrink: 1;
@@ -97,7 +93,7 @@
   }
 }
 
-// ─── Filter dropdowns ───
+
 .um-filter-select {
   min-width: 140px;
   flex-shrink: 1;
@@ -108,7 +104,7 @@
   }
 }
 
-// ─── Add user button ───
+
 .um-add-btn {
   background: $purple-gradient;
   color: #fff;
@@ -132,7 +128,7 @@
   }
 }
 
-// ─── User name cell ───
+
 .um-user-name {
   display: flex;
   align-items: center;
@@ -178,7 +174,7 @@
   }
 }
 
-// ─── Project badges ───
+
 .um-project-badge {
   background-color: $purple-light;
   color: $purple-primary;
@@ -200,7 +196,7 @@
   color: $purple-primary;
 }
 
-// ─── Role badge ───
+
 .um-role-badge {
   font-weight: 600;
   font-size: 11px;
@@ -216,7 +212,7 @@
   }
 }
 
-// ─── Last active text ───
+
 .um-last-active {
   font-size: 12px;
   color: $text-secondary;
@@ -232,7 +228,7 @@
   color: $text-muted;
 }
 
-// ─── View tasks button ───
+
 .um-view-tasks-btn {
   background-color: $purple-light;
   color: $purple-primary;
@@ -256,7 +252,7 @@
   }
 }
 
-// ─── Delete button ───
+
 .um-delete-btn {
   width: 32px;
   height: 32px;

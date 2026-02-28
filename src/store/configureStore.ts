@@ -1,5 +1,5 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import useReducer from "../reducers/authSlice";
+import useReducer from "./authSlice";
 import type { TypedUseSelectorHook } from "react-redux";
 import { useDispatch, useSelector } from "react-redux";
 import { persistStore, persistReducer } from "redux-persist";

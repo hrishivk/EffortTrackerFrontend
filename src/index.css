@@ -1,11 +1,67 @@
 @import "tailwindcss";
 @import "@coreui/coreui/dist/css/coreui.min.css";
 
-body {
-  font-family: "Poppins", sans-serif;
+:root {
+  --bg-page: #f6f7fb;
+  --bg-card: #ffffff;
+  --bg-surface: #f9fafb;
+  --bg-hover: #f3f4f6;
+  --bg-input: #ffffff;
+  --bg-table-header: #f3f4f6;
+  --bg-table-row: #ffffff;
+  --bg-table-row-alt: #fafafa;
+  --bg-expanded: #f8fafc;
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
+  --text-faint: #9ca3af;
+  --border-light: #e5e7eb;
+  --border-card: #e6eaf0;
+  --border-table: #f1f5f9;
+  --shadow-card: 0 2px 8px rgba(16, 24, 40, 0.04);
+  --input-border: #d6b4e8;
+  --input-bg: rgba(255, 255, 255, 0.6);
+  --input-bg-focus: rgba(255, 255, 255, 0.85);
+  --scrollbar-track: #f3f4f6;
+  --pagination-active-bg: #111827;
+  --pagination-active-border: #111827;
+  --pagination-active-text: #ffffff;
 }
 
-/* Hide scrollbar but keep scroll functionality */
+.dark {
+  --bg-page: #0f0f11;
+  --bg-card: #1a1a2e;
+  --bg-surface: #1e1e30;
+  --bg-hover: #2a2a3d;
+  --bg-input: #1e1e30;
+  --bg-table-header: #1e1e30;
+  --bg-table-row: #1a1a2e;
+  --bg-table-row-alt: #1e1e30;
+  --bg-expanded: #222238;
+  --text-primary: #e5e7eb;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --text-faint: #6b7280;
+  --border-light: #2e2e42;
+  --border-card: #2e2e42;
+  --border-table: #2e2e42;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --input-border: #4a3a5e;
+  --input-bg: rgba(30, 30, 48, 0.8);
+  --input-bg-focus: rgba(30, 30, 48, 0.95);
+  --scrollbar-track: #1a1a2e;
+  --pagination-active-bg: #a855f7;
+  --pagination-active-border: #a855f7;
+  --pagination-active-text: #ffffff;
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
+
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -14,13 +70,12 @@ body {
   display: none;
 }
 
-/* Styled gantt scrollbar */
 .gantt-scroll::-webkit-scrollbar {
   height: 6px;
   width: 6px;
 }
 .gantt-scroll::-webkit-scrollbar-track {
-  background: #f3f4f6;
+  background: var(--scrollbar-track);
   border-radius: 10px;
 }
 .gantt-scroll::-webkit-scrollbar-thumb {
@@ -32,10 +87,11 @@ body {
 }
 .gantt-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #a855f7 #f3f4f6;
+  scrollbar-color: #a855f7 var(--scrollbar-track);
 }
 .card {
   border: none !important;
+  background: var(--bg-card) !important;
 }
 a {
   text-decoration: none !important;
@@ -44,6 +100,8 @@ a {
 .react-calendar {
   border: none !important;
   box-shadow: none !important;
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
 }
 .react-calendar__tile--now {
   background: #413c3c94 !important;
@@ -78,8 +136,9 @@ a {
   padding: 0.6rem 1rem;
   font-size: 0.875rem;
   border-radius: 12px;
-  border: 1px solid #d6b4e8;
-  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(4px);
   transition: all 0.3s ease;
@@ -89,42 +148,42 @@ a {
   outline: none;
   border-color: #a855f7;
   box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.3);
-  background-color: rgba(255, 255, 255, 0.85);
+  background-color: var(--input-bg-focus);
 }
 .css-1pk1fka {
   height: 0.8em !important;
 }
-/* table-css */
+
 .advanced-table-wrapper {
   margin-top: 0;
 }
 
-/* ================= CARD ================= */
+
 
 .advanced-card {
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 14px;
-  border: 1px solid #e6eaf0;
-  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
-/* ================= HEADER ================= */
+
 
 .advanced-header {
   padding: 18px 24px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .advanced-header h5 {
   font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0;
 }
 
-/* ================= TABLE ================= */
+
 
 .table-scroll {
   overflow-x: auto;
@@ -135,35 +194,39 @@ a {
   border-collapse: collapse;
 }
 
-/* Header */
+
 .advanced-table thead th {
-  background: #f3f4f6;
+  background: var(--bg-table-header);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #6b7280;
+  color: var(--text-muted);
   padding: 14px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-light);
   text-align: left;
 }
 
 .advanced-table tbody td {
   padding: 18px 20px;
   font-size: 14px;
-  color: #1f2937;
-  border-bottom: 1px solid #f1f5f9;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-table);
   vertical-align: middle;
 }
 
 
 .table-row {
-  background: #ffffff;
+  background: var(--bg-table-row);
+}
+
+.table-row:hover {
+  background: var(--bg-hover);
 }
 
 
 .advanced-table tbody tr:nth-child(even) {
-  background: #fafafa;
+  background: var(--bg-table-row-alt);
 }
 
 
@@ -174,20 +237,20 @@ a {
 
 
 .expanded-row {
-  background: #f8fafc;
+  background: var(--bg-expanded);
 }
 
 .expanded-content {
   padding: 20px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
 }
 
 
 .chevron {
   font-size: 16px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .chevron.rotate {
@@ -200,7 +263,7 @@ a {
   padding: 60px 20px;
   text-align: center;
   font-size: 14px;
-  color: #9ca3af;
+  color: var(--text-faint);
 }
 
 
@@ -215,32 +278,31 @@ a {
 
 .pagination-left {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 
 .pagination .page-link {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   margin: 0 3px;
   padding: 6px 12px;
   font-size: 13px;
-  color: #374151;
-  background: #ffffff;
+  color: var(--text-secondary);
+  background: var(--bg-card);
 }
 
 .pagination .page-item.active .page-link {
-  background-color: #111827;
-  border-color: #111827;
-  color: #ffffff;
+  background-color: var(--pagination-active-bg);
+  border-color: var(--pagination-active-border);
+  color: var(--pagination-active-text);
 }
 
 .pagination .page-link:focus {
   box-shadow: none;
 }
 
-
-        /* end-table */
+ 
 
 
 .status-badge {
@@ -286,11 +348,11 @@ a {
   @media only screen and (-webkit-min-device-pixel-ratio: 2) and (min-resolution: 192dpi) {
     .mac-fix {
       @apply max-w-lg px-8 py-2 rounded-3xl;
-      height: 400px; 
-      min-height: 470px; 
+      height: 400px;
+      min-height: 470px;
     }
     .mac-form-fix {
-      @apply space-y-4; 
+      @apply space-y-4;
     }
     .mac-logo-fix {
       @apply w-14 h-14 -mt-4  mx-auto flex items-center justify-center;
@@ -307,24 +369,35 @@ a {
 
 
 
-
 .task-card {
-  @apply flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-gray-50 transition-all duration-300;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  transition: all 0.3s;
 }
 
 .task-card:hover {
-  @apply bg-white shadow-sm border-gray-300;
+  background: var(--bg-card);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  border-color: var(--border-card);
 }
 
 .task-title {
-  @apply text-sm font-semibold text-gray-800;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .task-subtitle {
-  @apply text-xs text-gray-500;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
-/* Priority Badges */
+
 .badge-high {
   @apply text-xs font-semibold px-3 py-1 rounded-full bg-red-100 text-red-500;
 }
@@ -337,7 +410,158 @@ a {
   @apply text-xs font-semibold px-3 py-1 rounded-full bg-gray-200 text-gray-500;
 }
 
-/* Custom Checkbox */
+
 .custom-checkbox {
   @apply w-5 h-5 rounded-full border-2 border-gray-300 text-emerald-500 focus:ring-emerald-400;
+}
+
+
+
+
+.dark .sidebar,
+.dark .header {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-light) !important;
+}
+
+.dark .card,
+.dark .card-body {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-light) !important;
+}
+.dark .table-responsive {
+  background-color: var(--bg-card) !important;
+}
+
+.dark .form-control,
+.dark .form-select {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-light) !important;
+}
+
+.dark .modal-content {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-light) !important;
+}
+
+.dark .dropdown-menu {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-light) !important;
+}
+
+.dark .dropdown-item {
+  color: var(--text-primary) !important;
+}
+
+.dark .dropdown-item:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+.dark .table,
+.dark .advanced-table {
+  color: var(--text-primary) !important;
+  background-color: var(--bg-card) !important;
+}
+.dark .table thead th,
+.dark .advanced-table thead th {
+  background-color: var(--bg-table-header) !important;
+  color: var(--text-muted) !important;
+  border-color: var(--border-light) !important;
+}
+.dark .table tbody,
+.dark .advanced-table tbody {
+  background-color: var(--bg-card) !important;
+}
+.dark .table tbody tr,
+.dark .advanced-table tbody tr,
+.dark .table-row {
+  background-color: var(--bg-table-row) !important;
+}
+.dark .table tbody tr:nth-child(even),
+.dark .advanced-table tbody tr:nth-child(even) {
+  background-color: var(--bg-table-row-alt) !important;
+}
+.dark .table tbody td,
+.dark .advanced-table tbody td {
+  color: var(--text-secondary) !important;
+  border-color: var(--border-table) !important;
+  background-color: transparent !important;
+}
+.dark .table tbody tr:hover,
+.dark .advanced-table tbody tr:hover,
+.dark .table-row:hover {
+  background-color: var(--bg-hover) !important;
+}
+.dark .expanded-row {
+  background-color: var(--bg-expanded) !important;
+}
+.dark .expanded-content {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-light) !important;
+}
+.dark .empty-state {
+  color: var(--text-faint) !important;
+}
+.dark .pagination .page-link {
+  background-color: var(--bg-card) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-light) !important;
+}
+.dark .pagination .page-item.active .page-link {
+  background-color: var(--pagination-active-bg) !important;
+  border-color: var(--pagination-active-border) !important;
+  color: var(--pagination-active-text) !important;
+}
+.dark .advanced-header {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-light) !important;
+}
+.dark .chevron {
+  color: var(--text-muted) !important;
+}
+
+
+.dark .MuiPaper-root {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+.dark .MuiDialog-paper {
+  background-color: var(--bg-card) !important;
+}
+.dark .MuiMenu-paper {
+  background-color: var(--bg-card) !important;
+}
+.dark .MuiMenuItem-root:hover {
+  background-color: var(--bg-hover) !important;
+}
+.dark .MuiSelect-icon {
+  color: var(--text-muted) !important;
+}
+.dark .MuiInputBase-input {
+  color: var(--text-primary) !important;
+}
+.dark .MuiInputLabel-root {
+  color: var(--text-muted) !important;
+}
+.dark .MuiDialogTitle-root {
+  color: var(--text-primary) !important;
+}
+.dark .MuiDialogContentText-root {
+  color: var(--text-secondary) !important;
+}
+
+
+.dark .react-calendar__tile {
+  color: var(--text-primary) !important;
+}
+.dark .react-calendar__tile:hover {
+  background: var(--bg-hover) !important;
+}
+.dark .react-calendar__navigation button {
+  color: var(--text-primary) !important;
+}
+.dark .react-calendar__month-view__weekdays {
+  color: var(--text-muted) !important;
 }

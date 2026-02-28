@@ -1,4 +1,4 @@
-import { amServiceMethood } from "../service/amService"
+import { amServiceMethood } from "../services/amService"
 
 export const fetchAmUsers=async()=>{
   try {

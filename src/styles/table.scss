@@ -1,19 +1,18 @@
 @use "variables" as *;
 
-// ══════════════════════════════════════════
-//  RESPONSIVE TABLE — works on all devices
-// ══════════════════════════════════════════
 
-// ─── Table wrapper ───
+
+
 .advanced-table-wrapper {
   width: 100%;
   overflow: hidden;
 }
 
-// ─── Card container ───
+
 .advanced-card {
   border-radius: 14px;
-  border: 1px solid $border-light;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
   overflow: hidden;
 
   @include respond-below($bp-sm) {
@@ -21,7 +20,7 @@
   }
 }
 
-// ─── Scrollable area ───
+
 .table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -35,19 +34,19 @@
   }
 }
 
-// ─── Table base ───
+
 .advanced-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 700px; // ensures horizontal scroll on small screens
+  min-width: 700px; 
 
   @include respond-below($bp-md) {
     min-width: 600px;
   }
 
-  // ── Header ──
+
   thead th {
-    background: #f3f4f6;
+    background: var(--bg-table-header);
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
@@ -68,12 +67,12 @@
     }
   }
 
-  // ── Body cells ──
+
   tbody td {
     padding: 16px 16px;
     font-size: 13px;
     color: $text-dark;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--border-table);
     vertical-align: middle;
 
     @include respond-below($bp-lg) {
@@ -86,16 +85,16 @@
     }
   }
 
-  // ── Row styles ──
+ 
   tbody tr:nth-child(even) {
-    background: #fafafa;
+    background: var(--bg-table-row-alt);
   }
   tbody tr:last-child td {
     border-bottom: none;
   }
 }
 
-// ─── Checkbox column — hide on small screens ───
+
 .table-checkbox-col {
   width: 44px;
 
@@ -104,8 +103,7 @@
   }
 }
 
-// ─── Responsive column visibility ───
-// Hide less important columns on smaller screens
+
 .col-hide-tablet {
   @include respond-below($bp-md) {
     display: none;
@@ -118,7 +116,7 @@
   }
 }
 
-// ─── Empty state ───
+
 .empty-state {
   padding: 48px 20px;
   text-align: center;
@@ -131,9 +129,9 @@
   }
 }
 
-// ─── Expanded row ───
+
 .expanded-row {
-  background: #f8fafc;
+  background: var(--bg-expanded);
 }
 .expanded-content {
   padding: 16px;
@@ -146,7 +144,7 @@
   }
 }
 
-// ─── Pagination ───
+
 .advanced-pagination {
   margin-top: 16px;
   padding: 10px 0;

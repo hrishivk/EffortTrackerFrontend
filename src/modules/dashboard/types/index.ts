@@ -22,7 +22,7 @@ export interface TaskStatusDistributionProps {
   yetToStart: number;
   totalTasks: number;
 }
-// ─── StatCard (KPI) ─────────────────────────────────────────────
+
 export interface StatCardProps {
   title: string;
   value: string | number;

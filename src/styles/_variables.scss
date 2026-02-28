@@ -1,19 +1,19 @@
 
-$bp-sm: 576px;   // Small phones
-$bp-md: 768px;   // Tablets
-$bp-lg: 992px;   // Small laptops
-$bp-xl: 1200px;  // Desktops
+$bp-sm: 576px;   
+$bp-md: 768px;   
+$bp-lg: 992px;   
+$bp-xl: 1200px;  
 
-// ─── Colors ───
+
 $purple-primary: #7c3aed;
 $purple-light: #f5f3ff;
 $purple-gradient: linear-gradient(135deg, #7c3aed, #a855f7);
-$text-dark: #111827;
-$text-secondary: #6b7280;
-$text-muted: #9ca3af;
-$border-light: #e5e7eb;
-$bg-light: #f9fafb;
-$bg-white: #ffffff;
+$text-dark: var(--text-primary);
+$text-secondary: var(--text-muted);
+$text-muted: var(--text-faint);
+$border-light: var(--border-light);
+$bg-light: var(--bg-surface);
+$bg-white: var(--bg-card);
 
 
 @mixin respond-below($bp) {
@@ -27,3 +27,4 @@ $bg-white: #ffffff;
     @content;
   }
 }
+

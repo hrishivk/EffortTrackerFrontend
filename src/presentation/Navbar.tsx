@@ -5,7 +5,7 @@ import logo from "../assets/img/logo2.png.png";
 import prLogo from "../assets/img/prLogo.png";
 import { useAppSelector, type AppDispatch } from "../store/configureStore";
 import { useDispatch } from "react-redux";
-import { reset } from "../reducers/authSlice";
+import { reset } from "../store/authSlice";
 import { authLogout } from "../core/actions/action";
 const Navbar: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();

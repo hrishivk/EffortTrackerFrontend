@@ -1,0 +1,132 @@
+
+
+.error-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #1a0533 0%, #2d1052 30%, #1e0a3c 60%, #120828 100%);
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  padding: 24px;
+
+
+  &__orb {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+
+    &--top-right {
+      top: 8%;
+      right: 15%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(173, 33, 219, 0.15) 0%, transparent 70%);
+      filter: blur(40px);
+    }
+
+    &--bottom-left {
+      bottom: 10%;
+      left: 10%;
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, rgba(79, 70, 229, 0.12) 0%, transparent 70%);
+      filter: blur(50px);
+    }
+
+    &--center {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.06) 0%, transparent 70%);
+    }
+  }
+
+  // Dot grid overlay
+  &__grid {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(168, 85, 247, 0.07) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+  }
+
+  // Content wrapper
+  &__content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  // Large error code (404, 403)
+  &__code {
+    font-size: clamp(6rem, 14vw, 10rem);
+    font-weight: 900;
+    margin: 0;
+    line-height: 0.9;
+    letter-spacing: -6px;
+    background: linear-gradient(180deg, #e2d1f9 0%, rgba(168, 85, 247, 0.25) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  // Gradient divider line
+  &__divider {
+    width: 60px;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #AD21DB, #7C3AED, #4F46E5);
+    margin: 24px 0;
+    box-shadow: 0 0 16px rgba(124, 58, 237, 0.4);
+  }
+
+  // Heading
+  &__heading {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ede9fe;
+    margin: 0;
+    letter-spacing: -0.3px;
+  }
+
+  // Subtext
+  &__subtext {
+    font-size: 0.95rem;
+    color: #8b7fad;
+    line-height: 1.7;
+    margin: 12px 0 0;
+    max-width: 400px;
+  }
+
+  // Button container
+  &__actions {
+    display: flex;
+    gap: 14px;
+    margin-top: 36px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  // Primary CTA button
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 14px 32px;
+    border-radius: 14px;
+    border: none;
+    background: linear-gradient(135deg, #AD21DB 0%, #7C3AED 50%, #4F46E5 90%);
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 24px rgba(124, 58, 237, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  }
+}

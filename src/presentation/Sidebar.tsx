@@ -75,18 +75,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   const links = getLinks();
 
   const sidebarInner = (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--bg-card)" }}>
       <div className="flex justify-end p-3 md:hidden">
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          className="p-1.5 rounded-lg transition-colors"
+          style={{ color: "var(--text-faint)" }}
         >
           <FiX size={20} />
         </button>
       </div>
       <nav className="flex-1 px-3 pt-4 md:pt-5 pb-4 overflow-y-auto">
         {!collapsed && (
-          <p className="px-3 mb-2 text-xs font-semibold tracking-[0.15em] uppercase text-gray-400 select-none">
+          <p className="px-3 mb-2 text-xs font-semibold tracking-[0.15em] uppercase select-none" style={{ color: "var(--text-faint)" }}>
             Menu
           </p>
         )}
@@ -121,9 +122,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 )}
 
                 <span
-                  className={`relative z-10 transition-colors duration-150 ${
-                    isActive ? "text-white" : "text-gray-400"
-                  }`}
+                  className={`relative z-10 transition-colors duration-150`}
+                  style={{ color: isActive ? "#ffffff" : "var(--text-faint)" }}
                 >
                   {item.icon}
                 </span>
@@ -131,10 +131,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {!collapsed && (
                   <span
                     className={`relative z-10 transition-colors duration-150 ${
-                      isActive
-                        ? "text-white font-semibold"
-                        : "text-gray-600 hover:text-gray-900"
+                      isActive ? "font-semibold" : ""
                     }`}
+                    style={{ color: isActive ? "#ffffff" : "var(--text-muted)" }}
                   >
                     {item.label}
                   </span>
@@ -146,12 +145,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* Collapse toggle button — desktop only */}
-      <div className="hidden md:flex border-t border-gray-200 p-3">
+      <div className="hidden md:flex p-3" style={{ borderTop: "1px solid var(--border-light)" }}>
         <button
           onClick={onToggleCollapse}
-          className={`flex items-center gap-2 w-full rounded-xl py-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors ${
+          className={`flex items-center gap-2 w-full rounded-xl py-2.5 transition-colors ${
             collapsed ? "justify-center px-0" : "px-3"
           }`}
+          style={{ color: "var(--text-faint)" }}
         >
           {collapsed ? (
             <FiChevronsRight size={20} />
@@ -170,9 +170,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:block fixed left-0 top-[60px] h-[calc(100vh-60px)] bg-white border-r border-gray-200 transition-all duration-300 ${
+        className={`hidden md:block fixed left-0 top-[60px] h-[calc(100vh-60px)] transition-all duration-300 ${
           collapsed ? "w-[72px]" : "w-[220px] lg:w-[250px] xl:w-[280px]"
         }`}
+        style={{ backgroundColor: "var(--bg-card)", borderRight: "1px solid var(--border-light)" }}
       >
         {sidebarInner}
       </aside>

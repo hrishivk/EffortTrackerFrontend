@@ -1,5 +1,5 @@
-import { spserviceMethood } from "../service/spService";
-import { userServiceMethood } from "../service/userService";
+import { spserviceMethood } from "../services/spService";
+import { userServiceMethood } from "../services/userService";
 import type { UserData } from "../types";
 
 export const addDomain = async (data: { [key: string]: string | number }) => {
@@ -35,10 +35,10 @@ export const fetchExistProjects=async()=>{
      throw error
   }
 }
-export const fetchAllExistProjects=async(search?:string)=>{
+export const fetchAllExistProjects=async(search?:string, pagination?: { page?: number; limit?: number })=>{
   try {
     const query = search ? `?search=${encodeURIComponent(search)}` : "";
-    const repsonse=await userServiceMethood.listProjects(`/list-projects${query}`)
+    const repsonse=await userServiceMethood.listProjects(`/list-projects${query}`, pagination)
     return repsonse.data;
   } catch (error) {
      throw error
@@ -84,7 +84,7 @@ export const fetchUsers = async (params: FetchUsersParams = {}) => {
     const url = `/list-users${qs ? `?${qs}` : ""}`;
     const response = await spserviceMethood.listUser(url);
     return response.data.data as {
-      users: import("../../shared/User/types").formUserData[];
+      users: import("../../shared/types/User").formUserData[];
       totalRecords: number;
       totalPages: number;
       currentPage: number;
