@@ -236,7 +236,7 @@ function NotiCard({
 export default function NotificationPanel() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>(DUMMY_NOTIFICATIONS);
-  const [filter, setFilter] = useState<FilterTab>("all");
+  const [filter, _setFilter] = useState<FilterTab>("all");
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const pendingCount = notifications.filter((n) => n.status === "pending").length;

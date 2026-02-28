@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { FiMenu, FiLogOut, FiUser, FiChevronDown, FiSun, FiMoon } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";
 import Sidebar from "./Sidebar";
-import NotificationPanel from "./NotificationPanel";
+// import NotificationPanel from "./NotificationPanel";
 import logo from "../assets/img/logo2.png.png";
 import prLogo from "../assets/img/prLogo.png";
 import { useAppSelector, type AppDispatch } from "../store/configureStore";

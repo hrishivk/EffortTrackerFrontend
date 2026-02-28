@@ -18,7 +18,7 @@ import { edituser, fetchExistProjects } from "../../../core/actions/spAction";
 import { useAppSelector } from "../../../store/configureStore";
 import type { UserModalProps } from "../../types/User";
 import type { project } from "../../types/Project";
-import type { UserData } from "../../core/types";
+import type { UserData } from "../../../core/types";
 import { Eye, EyeOff } from "lucide-react";
 const UserModal: React.FC<UserModalProps> = ({
   visible,
@@ -68,7 +68,7 @@ const handleChange = (
     };
     const transformer = transformMap[name];
     const transformedValue = transformer ? transformer(value) : value;
-    setFormData((prev) => ({
+    setFormData((prev: Record<string, string>) => ({
       ...prev,
       [name]: transformedValue,
     }));

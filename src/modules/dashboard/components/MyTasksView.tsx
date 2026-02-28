@@ -1150,8 +1150,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                                 }))
                               }
                               className="ml-0.5"
-                              style={{ color: "var(--text-faint)" }}
-                              style={{ fontSize: 13, lineHeight: 1, fontWeight: 700 }}
+                              style={{ color: "var(--text-faint)", fontSize: 13, lineHeight: 1, fontWeight: 700 }}
                             >
                               &times;
                             </button>
