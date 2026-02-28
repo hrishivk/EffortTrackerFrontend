@@ -21,10 +21,6 @@ const BAR_COLOR = "FF7C3AED";
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-function _daysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
 interface DayCol {
   date: Date;
   day: number;

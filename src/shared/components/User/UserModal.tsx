@@ -68,7 +68,7 @@ const handleChange = (
     };
     const transformer = transformMap[name];
     const transformedValue = transformer ? transformer(value) : value;
-    setFormData((prev: Record<string, string>) => ({
+    setFormData((prev: UserData) => ({
       ...prev,
       [name]: transformedValue,
     }));
