@@ -46,7 +46,7 @@
     }
   }
 
-  // Dot grid overlay
+
   &__grid {
     position: absolute;
     inset: 0;
@@ -55,7 +55,7 @@
     pointer-events: none;
   }
 
-  // Content wrapper
+
   &__content {
     position: relative;
     z-index: 1;
@@ -65,7 +65,6 @@
     text-align: center;
   }
 
-  // Large error code (404, 403)
   &__code {
     font-size: clamp(6rem, 14vw, 10rem);
     font-weight: 900;
@@ -77,7 +76,7 @@
     -webkit-text-fill-color: transparent;
   }
 
-  // Gradient divider line
+
   &__divider {
     width: 60px;
     height: 3px;
@@ -87,7 +86,7 @@
     box-shadow: 0 0 16px rgba(124, 58, 237, 0.4);
   }
 
-  // Heading
+
   &__heading {
     font-size: 1.5rem;
     font-weight: 700;
@@ -96,7 +95,7 @@
     letter-spacing: -0.3px;
   }
 
-  // Subtext
+
   &__subtext {
     font-size: 0.95rem;
     color: #8b7fad;
@@ -105,7 +104,7 @@
     max-width: 400px;
   }
 
-  // Button container
+
   &__actions {
     display: flex;
     gap: 14px;
@@ -114,7 +113,6 @@
     justify-content: center;
   }
 
-  // Primary CTA button
   &__btn {
     display: inline-flex;
     align-items: center;

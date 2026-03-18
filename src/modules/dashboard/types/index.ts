@@ -1,3 +1,7 @@
+import type { taskList } from "../../user/types";
+import type { formUserData } from "../../../shared/types/User";
+import type { PROJECT_COLORS } from "../components/ganttConstants";
+
 export  interface RoleTitles {
   [key: string]: string;
 }
@@ -48,4 +52,46 @@ export interface TeamPerformanceRow {
   totalHours: number
   efficiency: number
   status: "Active" | "Inactive"
+}
+
+export type TaskBarStatus = "completed" | "in_progress" | "overdue" | "pending";
+
+export interface DayInfo {
+  date: Date;
+  day: number;
+  month: number;
+  year: number;
+  dow: number;
+  isWeekend: boolean;
+  isToday: boolean;
+  isFirstOfMonth: boolean;
+  label: string;
+  dowLabel: string;
+  monthYear: string;
+}
+
+export interface GroupedTaskRow {
+  description: string;
+  projectName: string;
+  projectColor: (typeof PROJECT_COLORS)[0];
+  tasks: taskList[];
+  assignees: { name: string; status: TaskBarStatus; userId: string | number | null | undefined }[];
+  startIdx: number;
+  endIdx: number;
+  statusCounts: Record<TaskBarStatus, number>;
+  overallStatus: TaskBarStatus;
+  progress: number;
+  earliestStart: string | null;
+  latestEnd: string | null;
+}
+
+export interface TaskGanttChartProps {
+  tasks: taskList[];
+  users: formUserData[];
+  projects: any[];
+  projectColorMap: Record<string, (typeof PROJECT_COLORS)[0]>;
+  getUserName: (id: string | number | null | undefined) => string;
+  loading?: boolean;
+  onTaskClick?: (task: taskList) => void;
+  hideLeftPanel?: boolean;
 }

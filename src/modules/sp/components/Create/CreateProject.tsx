@@ -14,12 +14,12 @@ import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import LinkIcon from "@mui/icons-material/Link";
 
-import { addProject, assignProjectMembers, fetchUsers, fetchAllUsers, fetchExistDomains } from "../../../core/actions/spAction";
-import { ProjectValidationSchema } from "../../../utils/validation/Validation";
-import { useSnackbar } from "../../../contexts/SnackbarContext";
-import type { AvailableMember, ProjectFormData } from "../types";
-import type { formUserData } from "../../../shared/types/User";
-import type { Domain } from "../../../shared/types/Domain";
+import { addProject, assignProjectMembers, fetchUsers, fetchAllUsers, fetchExistDomains } from "../../../../core/actions/spAction";
+import { ProjectValidationSchema } from "../../../../utils/validation/Validation";
+import { useSnackbar } from "../../../../contexts/SnackbarContext";
+import type { AvailableMember, ProjectFormData } from "../../types";
+import type { formUserData } from "../../../../shared/types/User";
+import type { Domain } from "../../../../shared/types/Domain";
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {

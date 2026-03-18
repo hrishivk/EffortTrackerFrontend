@@ -226,6 +226,6 @@ export async function exportProjectReport({ rawProjects }: ExportData) {
     );
   } catch (err) {
     console.error("Export failed:", err);
-    alert("Export failed. Check console for details.");
+ 
   }
 }

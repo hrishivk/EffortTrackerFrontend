@@ -26,12 +26,14 @@ import {
 } from "../../../core/actions/action";
 
 import { useDispatch } from "react-redux";
+import { motion } from "framer-motion";
 import SpinLoader from "../../../presentation/SpinLoader";
-import Dialoge from "../../../presentation/Dialog/Dialog";
+
 import type { taskList } from "../types";
 import { TextField } from "@mui/material";
 import { fetchExistProjects } from "../../../core/actions/spAction";
 import type { project } from "../../../shared/types/Project";
+import Dialoge from "../../../presentation/Dialog";
 
 const TaskList: React.FC = () => {
   const { showSnackbar } = useSnackbar();
@@ -322,7 +324,13 @@ const TaskList: React.FC = () => {
     return <SpinLoader isLoading={loading} />;
   }
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row max-w-screen-2xl mx-auto" style={{ backgroundColor: "var(--bg-card)" }}>
+    <motion.div
+      className="min-h-screen flex flex-col lg:flex-row max-w-screen-2xl mx-auto"
+      style={{ backgroundColor: "var(--bg-card)" }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+    >
       <div className="w-full lg:w-1/4 py-6 lg:py-12">
         <div className="w-full mx-auto max-w-sm">
           <CCard className="w-full h-full">
@@ -675,7 +683,7 @@ const TaskList: React.FC = () => {
           </p>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

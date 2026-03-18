@@ -3,7 +3,7 @@ export type ColumnHandlers = {
   onDeleteUser: (id: string) => void;
 };
 
-// ─── Domain & Project Types ─────────────────────────────────────
+
 export interface Project {
   id: number;
   name: string;
@@ -25,7 +25,7 @@ export interface TabItem {
   label: string;
 }
 
-// ─── Executive Project Table ────────────────────────────────────
+
 export interface TeamMember {
   name: string;
   avatar: string;
@@ -54,7 +54,6 @@ export interface CriticalUpdate {
   type: "warning" | "success";
 }
 
-// ─── Create Project ─────────────────────────────────────────────
 export interface ProjectFormData {
   name: string;
   category: string;
@@ -73,10 +72,34 @@ export interface AvailableMember {
   isOnLeave?: boolean;
 }
 
-// ─── Project Members ───────────────────────────────────────────
+
 export interface ProjectMember {
   id: string;
   fullName: string;
   email: string;
   role: string;
+}
+
+
+export interface ProjectDetailsViewProps {
+  project: any;
+  allProjects: any[];
+  onBack: () => void;
+}
+
+export interface GroupedPdTask {
+  key: string;
+  description: string;
+  project: string | { id: string; name: string };
+  priority: string;
+  status: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  tasks: import("../../user/types").taskList[];
+  assignees: { name: string; status: string; userId: string | number | null | undefined }[];
+}
+
+export interface ProjectExpandedRowProps {
+  row: ProjectRow;
+  onRefresh?: () => void;
 }

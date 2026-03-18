@@ -45,9 +45,9 @@ export const fetchAllExistProjects=async(search?:string, pagination?: { page?: n
   }
 }
 
-export const fetchUser=async(id:string)=>{
+export const fetchUser=async()=>{
   try {
-    const response= await spserviceMethood.getOneuser(`/user?id=${id}`)
+    const response= await spserviceMethood.getOneuser(`/user`)
     return response.data
   } catch (error) {
    throw error

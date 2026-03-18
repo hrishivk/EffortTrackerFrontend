@@ -4,10 +4,9 @@ const Dashboard=React.lazy(()=>import('../../modules/dashboard/components/DashBo
 const TeamManagement=React.lazy(()=>import('../../modules/am/components/TeamManagement'))
 const userMangement=React.lazy(()=>import('../../modules/sp/components/UserManagement'))
 const DomainProject=React.lazy(()=>import('../../modules/sp/components/DomainProject'))
-const CreateProject=React.lazy(()=>import('../../modules/sp/components/CreateProject'))
-const CreateUser=React.lazy(()=>import('../../modules/sp/components/CreateUser'))
-const CreateDomain=React.lazy(()=>import('../../modules/sp/components/CreateDomain'))
-
+const CreateProject=React.lazy(()=>import('../../modules/sp/components/Create/CreateProject'))
+const CreateUser=React.lazy(()=>import('../../modules/sp/components/Create/CreateUser'))
+const CreateDomain=React.lazy(()=>import('../../modules/sp/components/Create/CreateDomain'))
 const routes = [
   {
     path: '/sp/dashboard',

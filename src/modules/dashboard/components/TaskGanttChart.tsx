@@ -2,177 +2,16 @@ import { useState, useRef, useMemo, useEffect, useLayoutEffect } from "react";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import { CircularProgress } from "@mui/material";
-import type { taskList } from "../../user/types";
-import type { formUserData } from "../../../shared/types/User";
-
-const monthNames = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
-];
-const monthAbbr = [
-  "JAN","FEB","MAR","APR","MAY","JUN",
-  "JUL","AUG","SEP","OCT","NOV","DEC",
-];
-const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-
-const PROJECT_COLORS = [
-  { bg: "#dbeafe", text: "#2563eb", dot: "#2563eb" },
-  { bg: "#dcfce7", text: "#16a34a", dot: "#16a34a" },
-  { bg: "#fae8ff", text: "#a855f7", dot: "#a855f7" },
-  { bg: "#fee2e2", text: "#dc2626", dot: "#dc2626" },
-  { bg: "#fef3c7", text: "#d97706", dot: "#d97706" },
-  { bg: "#e0e7ff", text: "#4f46e5", dot: "#4f46e5" },
-  { bg: "#ccfbf1", text: "#0d9488", dot: "#0d9488" },
-  { bg: "#fce7f3", text: "#db2777", dot: "#db2777" },
-];
-
-const avatarColors = [
-  "#7c3aed","#2563eb","#16a34a","#dc2626",
-  "#d97706","#db2777","#0d9488","#4f46e5",
-];
-
-type TaskBarStatus = "completed" | "in_progress" | "overdue" | "pending";
-
-const taskBarColors: Record<TaskBarStatus, { bg: string; text: string }> = {
-  completed:   { bg: "linear-gradient(90deg, #9333ea, #a855f7)", text: "#fff" },
-  in_progress: { bg: "linear-gradient(90deg, #7c3aed, #9333ea)", text: "#fff" },
-  overdue:     { bg: "linear-gradient(90deg, #ea580c, #ef4444)", text: "#fff" },
-  pending:     { bg: "linear-gradient(90deg, #c084fc, #d8b4fe)", text: "#fff" },
-};
-
-const statusDisplay: Record<TaskBarStatus, { label: string; color: string; bg: string }> = {
-  completed:   { label: "Done",       color: "#7c3aed", bg: "#f3e8ff" },
-  in_progress: { label: "InProgress", color: "#9333ea", bg: "#f5f3ff" },
-  overdue:     { label: "Overdue",    color: "#dc2626", bg: "#fee2e2" },
-  pending:     { label: "Not Yet",    color: "#6b7280", bg: "#f3f4f6" },
-};
-
-function getTaskBarStatus(task: taskList): TaskBarStatus {
-  const s = (task.status || "").toLowerCase().replace(/[\s_]+/g, "_");
-  if (s === "completed" || s === "done") return "completed";
-  if (task.end_time) {
-    const end = new Date(task.end_time);
-    end.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (end < today && s !== "completed" && s !== "done") return "overdue";
-  }
-  if (s === "in_progress") return "in_progress";
-  return "pending";
-}
-
-function getTaskProgress(task: taskList): number {
-  if (task.progress !== undefined) return task.progress;
-  const s = (task.status || "").toLowerCase().replace(/[\s_]+/g, "_");
-  if (s === "completed" || s === "done") return 100;
-  if (s === "review") return 90;
-  if (s === "in_progress") return 50;
-  return 0;
-}
-
-function getInitials(name: string) {
-  return name.split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2);
-}
-
-function formatShortDate(d?: string | null) {
-  if (!d) return "";
-  const date = new Date(d);
-  return date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
-}
-
-function getAssigneeName(task: taskList, getUserName: (id: any) => string): string {
-  if (task.dailyLog?.assignedUser?.fullName) return task.dailyLog.assignedUser.fullName;
-  if (task.assigned_to) return getUserName(task.assigned_to);
-  return "Unassigned";
-}
-
-// Generate all days between two dates (inclusive)
-interface DayInfo {
-  date: Date;
-  day: number;
-  month: number;
-  year: number;
-  dow: number;
-  isWeekend: boolean;
-  isToday: boolean;
-  isFirstOfMonth: boolean;
-  label: string; // "FEB 01"
-  dowLabel: string; // "Mon"
-  monthYear: string; // "February 2026"
-}
-
-function generateDayRange(start: Date, end: Date): DayInfo[] {
-  const days: DayInfo[] = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const cur = new Date(start);
-  cur.setHours(0, 0, 0, 0);
-  const endD = new Date(end);
-  endD.setHours(0, 0, 0, 0);
-
-  while (cur <= endD) {
-    const dow = cur.getDay();
-    const d = cur.getDate();
-    const m = cur.getMonth();
-    const y = cur.getFullYear();
-    days.push({
-      date: new Date(cur),
-      day: d,
-      month: m,
-      year: y,
-      dow,
-      isWeekend: dow === 0 || dow === 6,
-      isToday: cur.getTime() === today.getTime(),
-      isFirstOfMonth: d === 1,
-      label: `${monthAbbr[m]} ${String(d).padStart(2, "0")}`,
-      dowLabel: dayNames[dow],
-      monthYear: `${monthNames[m]} ${y}`,
-    });
-    cur.setDate(cur.getDate() + 1);
-  }
-  return days;
-}
-
-// Compute day index (0-based) of a date within the range
-function dayIndex(date: Date, rangeStart: Date): number {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  const s = new Date(rangeStart);
-  s.setHours(0, 0, 0, 0);
-  return Math.round((d.getTime() - s.getTime()) / 86400000);
-}
-
-// ─── Grouped task row ────────────────────────────────────────────
-interface GroupedTaskRow {
-  description: string;
-  projectName: string;
-  projectColor: (typeof PROJECT_COLORS)[0];
-  tasks: taskList[];
-  assignees: { name: string; status: TaskBarStatus; userId: string | number | null | undefined }[];
-  startIdx: number;
-  endIdx: number;
-  statusCounts: Record<TaskBarStatus, number>;
-  overallStatus: TaskBarStatus;
-  progress: number;
-  earliestStart: string | null;
-  latestEnd: string | null;
-}
-
-interface TaskGanttChartProps {
-  tasks: taskList[];
-  users: formUserData[];
-  projects: any[];
-  projectColorMap: Record<string, (typeof PROJECT_COLORS)[0]>;
-  getUserName: (id: string | number | null | undefined) => string;
-  loading?: boolean;
-  onTaskClick?: (task: taskList) => void;
-  hideLeftPanel?: boolean;
-}
-
-const BASE_COL_WIDTH = 50;
-const LEFT_PANEL_WIDTH = 380;
-const ROW_HEIGHT = 72;
+import SpinLoader from "../../../presentation/SpinLoader";
+import type { TaskGanttChartProps, GroupedTaskRow, TaskBarStatus } from "../types";
+import {
+  monthNames, PROJECT_COLORS, avatarColors, taskBarColors,
+  statusDisplay, BASE_COL_WIDTH, LEFT_PANEL_WIDTH, ROW_HEIGHT,
+} from "./ganttConstants";
+import {
+  getTaskBarStatus, getTaskProgress, getInitials,
+  formatShortDate, getAssigneeName, generateDayRange, dayIndex,
+} from "./ganttUtils";
 
 export default function TaskGanttChart({
   tasks,
@@ -187,11 +26,10 @@ export default function TaskGanttChart({
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [rangeOffset, setRangeOffset] = useState(0); // shift range by months
+  const [rangeOffset, setRangeOffset] = useState(0);
   const timelineRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
 
-  // Infinite scroll: extra months before/after the computed range
   const [extraBefore, setExtraBefore] = useState(1);
   const [extraAfter, setExtraAfter] = useState(1);
   const isExtendingRef = useRef(false);
@@ -223,7 +61,6 @@ export default function TaskGanttChart({
     now.setHours(0, 0, 0, 0);
 
     if (!earliest && !latest) {
-      // No tasks with dates — show current month
       earliest = new Date(now.getFullYear(), now.getMonth(), 1);
       latest = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     } else if (!earliest) {
@@ -234,24 +71,20 @@ export default function TaskGanttChart({
       latest.setDate(latest.getDate() + 14);
     }
 
-    // Expand to start of earliest month and end of latest month
     const rStart = new Date(earliest!.getFullYear(), earliest!.getMonth(), 1);
     const rEnd = new Date(latest!.getFullYear(), latest!.getMonth() + 1, 0);
 
-    // Apply range offset (month shift)
     if (rangeOffset !== 0) {
       rStart.setMonth(rStart.getMonth() + rangeOffset);
       rEnd.setMonth(rEnd.getMonth() + rangeOffset);
     }
 
-    // Apply extra months for infinite scroll
     rStart.setMonth(rStart.getMonth() - extraBefore);
     const targetEndMonth = rEnd.getMonth() + extraAfter;
     rEnd.setTime(new Date(rEnd.getFullYear(), targetEndMonth + 1, 0).getTime());
 
     const days = generateDayRange(rStart, rEnd);
 
-    // Build label: "February 2026" or "February – March 2026"
     const startMonth = `${monthNames[rStart.getMonth()]} ${rStart.getFullYear()}`;
     const endMonth = `${monthNames[rEnd.getMonth()]} ${rEnd.getFullYear()}`;
     const label = startMonth === endMonth ? startMonth : `${monthNames[rStart.getMonth()]} – ${endMonth}`;
@@ -261,9 +94,9 @@ export default function TaskGanttChart({
 
   const totalDays = rangeDays.length;
 
-  // ─── Group tasks by description + project ──────────────────────
+
   const groupedRows: GroupedTaskRow[] = useMemo(() => {
-    const groupMap = new Map<string, taskList[]>();
+    const groupMap = new Map<string, import("../../user/types").taskList[]>();
 
     for (const task of tasks) {
       const projName = typeof task.project === "object" && task.project !== null
@@ -316,7 +149,6 @@ export default function TaskGanttChart({
       if (earliestStart && !latestEnd) endIdx = Math.min(startIdx + 2, totalDays - 1);
       if (endIdx - startIdx < 2) endIdx = Math.min(startIdx + 2, totalDays - 1);
 
-      // Clamp to visible range
       if (startIdx > totalDays - 1 || endIdx < 0) continue;
       startIdx = Math.max(0, startIdx);
       endIdx = Math.min(totalDays - 1, endIdx);
@@ -357,7 +189,6 @@ export default function TaskGanttChart({
       });
     }
 
-    // Sort rows by earliest start date (first starting task appears first)
     rows.sort((a, b) => {
       const aDate = a.earliestStart ? new Date(a.earliestStart).getTime() : Infinity;
       const bDate = b.earliestStart ? new Date(b.earliestStart).getTime() : Infinity;
@@ -390,18 +221,15 @@ export default function TaskGanttChart({
     return headers;
   }, [rangeDays]);
 
-  // Auto-scroll to 1 day before the earliest task start date
   const hasInitialScrolled = useRef(false);
   useEffect(() => {
     if (!timelineRef.current || groupedRows.length === 0 || hasInitialScrolled.current) return;
     hasInitialScrolled.current = true;
     const firstStartIdx = Math.min(...groupedRows.map((r) => r.startIdx));
-    // Scroll 1 column before the first task so it's clearly visible
     const scrollTo = Math.max(0, firstStartIdx - 1) * colWidth;
     timelineRef.current.scrollLeft = scrollTo;
   }, [groupedRows, colWidth]);
 
-  /* Infinite scroll — extend range when reaching edges */
   useEffect(() => {
     const el = timelineRef.current;
     if (!el) return;
@@ -410,14 +238,12 @@ export default function TaskGanttChart({
       if (isExtendingRef.current) return;
       const threshold = 200;
 
-      // Near right edge → append next month
       if (el.scrollLeft + el.clientWidth >= el.scrollWidth - threshold) {
         isExtendingRef.current = true;
         setExtraAfter((prev) => prev + 1);
         setTimeout(() => { isExtendingRef.current = false; }, 200);
       }
 
-      // Near left edge → prepend previous month
       if (el.scrollLeft <= threshold && el.scrollLeft > 0) {
         isExtendingRef.current = true;
         if (rangeDays.length > 0) {
@@ -433,7 +259,6 @@ export default function TaskGanttChart({
     return () => el.removeEventListener("scroll", handleEdgeScroll);
   }, [rangeDays, colWidth]);
 
-  /* Preserve scroll position when months are prepended */
   useLayoutEffect(() => {
     if (scrollAdjustRef.current > 0 && timelineRef.current) {
       timelineRef.current.scrollLeft += scrollAdjustRef.current;
@@ -442,7 +267,6 @@ export default function TaskGanttChart({
     }
   }, [extraBefore]);
 
-  // Sync vertical scroll
   const handleTimelineScroll = () => {
     if (timelineRef.current && leftPanelRef.current) {
       leftPanelRef.current.scrollTop = timelineRef.current.scrollTop;
@@ -455,11 +279,7 @@ export default function TaskGanttChart({
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <CircularProgress size={28} sx={{ color: "#7c3aed" }} />
-      </div>
-    );
+    return <SpinLoader isLoading />;
   }
 
   return (
@@ -531,7 +351,7 @@ export default function TaskGanttChart({
             zIndex: 3,
           }}
         >
-          {/* Left Header — needs extra height for month header row */}
+          {/* Left Header */}
           <div
             style={{
               display: "flex",
@@ -613,7 +433,6 @@ export default function TaskGanttChart({
                       {row.projectName}
                     </span>
 
-                    {/* Assignee avatars */}
                     <div style={{ display: "flex", marginLeft: 2 }}>
                       {row.assignees.slice(0, 4).map((a, i) => {
                         const aIdx = users.findIndex(u => String(u.id) === String(a.userId));
@@ -797,8 +616,45 @@ export default function TaskGanttChart({
               ))}
             </div>
 
-            {/* Timeline Bar Rows */}
-            {groupedRows.map((row, idx) => {
+            {/* Timeline Bar Rows — shared grid overlay + per-row bars */}
+            <div style={{ position: "relative" }}>
+              {/* Shared grid lines (rendered once, not per row) */}
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none", zIndex: 0 }}>
+                {rangeDays.map((d, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      left: i * colWidth,
+                      top: 0,
+                      bottom: 0,
+                      width: colWidth,
+                      borderLeft: d.isFirstOfMonth ? "2px solid #ede9fe" : "1px solid #f5f5f5",
+                      backgroundColor: d.isWeekend ? "rgba(249,250,251,0.5)" : undefined,
+                    }}
+                  />
+                ))}
+                {/* Today marker (single element) */}
+                {(() => {
+                  const todayIdx = rangeDays.findIndex(d => d.isToday);
+                  return todayIdx >= 0 ? (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: todayIdx * colWidth + colWidth / 2,
+                        top: 0,
+                        bottom: 0,
+                        width: 2,
+                        backgroundColor: "#7c3aed",
+                        opacity: 0.3,
+                        zIndex: 2,
+                      }}
+                    />
+                  ) : null;
+                })()}
+              </div>
+
+              {groupedRows.map((row, idx) => {
               const barColor = taskBarColors[row.overallStatus];
               const barWidthPx = Math.max((row.endIdx - row.startIdx + 1) * colWidth - 4, 20);
               const isMulti = row.assignees.length > 1;
@@ -824,46 +680,12 @@ export default function TaskGanttChart({
                     position: "relative",
                     height: ROW_HEIGHT,
                     borderBottom: "1px solid var(--border-table)",
-                    background: hoveredIdx === idx ? "var(--bg-hover)" : "var(--bg-card)",
+                    background: hoveredIdx === idx ? "var(--bg-hover)" : undefined,
                     transition: "background 0.15s",
                     overflow: "hidden",
+                    zIndex: 1,
                   }}
                 >
-                  {/* Grid lines */}
-                  {rangeDays.map((d, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        position: "absolute",
-                        left: i * colWidth,
-                        top: 0,
-                        bottom: 0,
-                        width: colWidth,
-                        borderLeft: d.isFirstOfMonth ? "2px solid #ede9fe" : "1px solid #f5f5f5",
-                        backgroundColor: d.isWeekend ? "rgba(249,250,251,0.5)" : undefined,
-                      }}
-                    />
-                  ))}
-
-                  {/* Today marker */}
-                  {rangeDays.map((d, i) =>
-                    d.isToday ? (
-                      <div
-                        key="today"
-                        style={{
-                          position: "absolute",
-                          left: i * colWidth + colWidth / 2,
-                          top: 0,
-                          bottom: 0,
-                          width: 2,
-                          backgroundColor: "#7c3aed",
-                          opacity: 0.3,
-                          zIndex: 2,
-                        }}
-                      />
-                    ) : null
-                  )}
-
                   {/* Task Bar */}
                   <div
                     style={{
@@ -941,6 +763,7 @@ export default function TaskGanttChart({
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       </div>

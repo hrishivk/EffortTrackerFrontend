@@ -89,6 +89,12 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #a855f7 var(--scrollbar-track);
 }
+.gantt-row-hover:hover {
+  background: var(--bg-hover);
+}
+.gantt-row-hover:hover .gantt-bar {
+  box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+}
 .card {
   border: none !important;
   background: var(--bg-card) !important;

@@ -80,7 +80,10 @@ const Navbar: React.FC = () => {
         )}
         {(role === "USER" || role === "DEVLOPER") && (
           <>
-            <Link to="/user/dashboard" className={getLinkClass("/user/dashboard")}>
+            <Link
+              to="/user/dashboard"
+              className={getLinkClass("/user/dashboard")}
+            >
               Dashboard
             </Link>
           </>
@@ -145,7 +148,9 @@ const Navbar: React.FC = () => {
               onClick={onClick}
               className="flex items-center gap-3 px-6 py-4 text-gray-700 font-medium group transition-transform duration-150   hover:bg-gray-50 rounded"
             >
-              <span className="group-hover:scale-110 transition-transform">{icon}</span>
+              <span className="group-hover:scale-110 transition-transform">
+                {icon}
+              </span>
               <span>{label}</span>
             </button>
           ))}
@@ -172,7 +177,6 @@ const Navbar: React.FC = () => {
         </div>
       </div>
     </>
-  
   );
 
   return (
@@ -199,24 +203,18 @@ const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
-
       {menuOpen && (
         <div>
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 ease-in-out"
             onClick={() => setMenuOpen(false)}
           ></div>
-
           <div className="md:hidden fixed top-16 left-4 right-4 z-50 rounded-xl shadow-xl bg-white p-6 space-y-6 transform animate-slideDown">
-            {/* {renderLinks(true)} */}
-
             <hr className="border-gray-200" />
-
             <div className="flex items-center justify-between">
               <button className="rounded-full bg-gray-100 p-3 hover:bg-gray-200 transition duration-200">
                 <FiBell size={20} />
               </button>
-
               <div className="relative" ref={profileRef}>
                 {prLogo}
                 {profileMenuOpen && ProfileDropdown}

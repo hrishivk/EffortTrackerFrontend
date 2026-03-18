@@ -12,12 +12,12 @@ import BadgeIcon from "@mui/icons-material/Badge";
 import BusinessIcon from "@mui/icons-material/Business";
 import { Eye, EyeOff } from "lucide-react";
 
-import { adduser } from "../../../core/actions/action";
-import { fetchAllExistProjects } from "../../../core/actions/spAction";
-import { useSnackbar } from "../../../contexts/SnackbarContext";
-import { uservalidationSchema } from "../../../utils/validation/Validation";
-import type { project } from "../../../shared/types/Project";
-import { useAppSelector } from "../../../store/configureStore";
+import { adduser } from "../../../../core/actions/action";
+import { fetchAllExistProjects } from "../../../../core/actions/spAction";
+import { useSnackbar } from "../../../../contexts/SnackbarContext";
+import { uservalidationSchema } from "../../../../utils/validation/Validation";
+import type { project } from "../../../../shared/types/Project";
+import { useAppSelector } from "../../../../store/configureStore";
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
@@ -97,11 +97,22 @@ const CreateUser = () => {
     try {
       const response = await fetchAllExistProjects();
       const all = response.data || [];
-      setProjectList(all.filter((p: any) => (p.status || "").toLowerCase().replace(/\s+/g, "_") === "active"));
+      const activeProjects = all.filter((p: any) => (p.status || "").toLowerCase().replace(/\s+/g, "_") === "active");
+
+      if (isAM) {
+        // AM should only see projects they are assigned to
+        setProjectList(
+          activeProjects.filter((p: any) =>
+            (p.teamAssigned || []).some((member: any) => String(member.id) === String(user?.id))
+          )
+        );
+      } else {
+        setProjectList(activeProjects);
+      }
     } catch (error) {
       console.log(error);
     }
-  }, []);
+  }, [isAM, user?.id]);
 
   useEffect(() => {
     fetchProjects();

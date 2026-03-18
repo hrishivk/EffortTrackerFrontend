@@ -7,12 +7,13 @@ import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import LinkIcon from "@mui/icons-material/Link";
 
-import { addDomain, deleteDomain, fetchExistDomains } from "../../../core/actions/spAction";
+import { addDomain, deleteDomain, fetchExistDomains } from "../../../../core/actions/spAction";
 import { Trash2 } from "lucide-react";
-import { DomainValidationSchema } from "../../../utils/validation/Validation";
-import { useSnackbar } from "../../../contexts/SnackbarContext";
-import Dialoge from "../../../presentation/Dialog/Dialog";
-import type { Domain } from "../../../shared/types/Domain";
+import { DomainValidationSchema } from "../../../../utils/validation/Validation";
+import { useSnackbar } from "../../../../contexts/SnackbarContext";
+
+import type { Domain } from "../../../../shared/types/Domain";
+import Dialoge from "../../../../presentation/Dialog";
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {

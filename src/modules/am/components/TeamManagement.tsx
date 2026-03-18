@@ -5,10 +5,11 @@ import SearchIcon from "@mui/icons-material/Search";
 
 import TableList from "../../../shared/components/Table/Table";
 import { fetchUsers, Deletetuser } from "../../../core/actions/spAction";
-import { getUserColumns } from "../../sp/components/tableColoumn";
-import type { formUserData } from "../../../shared/types/User";
-import Dialoge from "../../../presentation/Dialog/Dialog";
+import { getUserColumns } from "../../sp/components/UserManagement/tableColoumn";
+import Dialoge from "../../../presentation/Dialog";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
+import type { formUserData } from "../../../shared/types/User";
+
 
 const ITEMS_PER_PAGE = 10;
 
@@ -138,8 +139,6 @@ const TeamManagement: React.FC = () => {
             </button>
           </div>
         </div>
-
-        {/* Table */}
         <TableList
           columns={columns}
           data={users}

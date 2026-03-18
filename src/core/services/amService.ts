@@ -1,6 +1,6 @@
 import axios from "axios";
 import { API_URL } from "../../config/apiEndpoints";
-import { handleAuthError } from "./interceptors";
+import { handleAuthError, handleResponse } from "./interceptors";
 
 const apiservice = axios.create({
   baseURL: API_URL.amService,
@@ -9,7 +9,7 @@ const apiservice = axios.create({
   }, withCredentials: true,
 });
 
-apiservice.interceptors.response.use((res) => res, handleAuthError);
+apiservice.interceptors.response.use(handleResponse, handleAuthError);
 
 export const amServiceMethood = {
     listAllUsers:(url:string)=>{return apiservice.get(url)}

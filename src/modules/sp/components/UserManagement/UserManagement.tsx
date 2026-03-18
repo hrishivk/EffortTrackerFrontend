@@ -1,15 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import TableList from "../../../shared/components/Table/Table";
+import TableList from "../../../../shared/components/Table/Table";
 import {
   fetchUsers,
   fetchAllExistProjects,
   Deletetuser,
-} from "../../../core/actions/spAction";
-import Dialoge from "../../../presentation/Dialog/Dialog";
-import { useSnackbar } from "../../../contexts/SnackbarContext";
-import type { formUserData } from "../../../shared/types/User";
-import type { project } from "../../../shared/types/Project";
+} from "../../../../core/actions/spAction";
+import { useSnackbar } from "../../../../contexts/SnackbarContext";
+import type { formUserData } from "../../../../shared/types/User";
+import type { project } from "../../../../shared/types/Project";
 import { getUserColumns } from "./tableColoumn";
 import SearchIcon from "@mui/icons-material/Search";
 import {
@@ -19,6 +18,8 @@ import {
   TextField,
   InputAdornment,
 } from "@mui/material";
+import { motion } from "framer-motion";
+import Dialoge from "../../../../presentation/Dialog";
 const ITEMS_PER_PAGE = 10;
 const selectSx = {
   "& .MuiOutlinedInput-root": {
@@ -113,7 +114,12 @@ const UserManagement: React.FC = () => {
   const columns = getUserColumns({ onViewTasks, onDeleteUser });
 
   return (
-    <div className="um-page">
+    <motion.div
+      className="um-page"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+    >
       <div className="um-header">
         <div className="um-title">
           <h2>User Management</h2>
@@ -200,7 +206,7 @@ const UserManagement: React.FC = () => {
         onClose={() => setDeleteUserId(null)}
         onConfirm={handleConfirmDelete}
       />
-    </div>
+    </motion.div>
   );
 };
 

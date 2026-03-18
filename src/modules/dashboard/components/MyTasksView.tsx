@@ -28,6 +28,7 @@ import type { formUserData } from "../../../shared/types/User";
 import type { taskList } from "../../user/types";
 import TaskGanttChart from "./TaskGanttChart";
 import TaskDetailModal from "./TaskDetailModal";
+import SpinLoader from "../../../presentation/SpinLoader";
 
 const PROJECT_COLORS = [
   { bg: "#dbeafe", text: "#2563eb", dot: "#2563eb" },
@@ -395,6 +396,8 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
               fontSize: 11,
               padding: "3px 10px",
               borderRadius: 8,
+              whiteSpace: "nowrap",
+              display: "inline-block",
             }}
           >
             {projName}
@@ -507,7 +510,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
         if (!row.start_time) return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>--</span>;
         const d = new Date(row.start_time);
         return (
-          <div>
+          <div style={{ whiteSpace: "nowrap" }}>
             <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>
               {d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}
             </span>
@@ -527,7 +530,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
         const s = (row.status || "").toLowerCase().replace(/[\s_]+/g, "_");
         const isCompleted = s === "completed" || s === "done";
         return (
-          <div>
+          <div style={{ whiteSpace: "nowrap" }}>
             <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>
               {d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}
             </span>
@@ -570,6 +573,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                       fontSize: 10,
                       padding: "2px 6px",
                       borderRadius: 6,
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {count} {label === "YET TO START" ? "TODO" : label === "IN PROGRESS" ? "ACTIVE" : label}
@@ -590,6 +594,8 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
               padding: "3px 10px",
               borderRadius: 8,
               textTransform: "uppercase",
+              whiteSpace: "nowrap",
+              display: "inline-block",
             }}
           >
             {status.label}
@@ -738,14 +744,14 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                 onChange={(e) => { setAssigneeFilter(e.target.value); setPage(1); }}
                 displayEmpty
                 renderValue={(val) => {
-                  if (!val) return role === "SP" ? "All AMs" : "All Members";
+                  if (!val) return role === "SP" ? "All " : "All Members";
                   if (val === String(userId)) return "My Tasks";
                   const u = users.find((u) => String(u.id) === val);
                   return u?.fullName || val;
                 }}
                 MenuProps={menuProps}
               >
-                <MenuItem value="">{role === "SP" ? "All AMs" : "All Members"}</MenuItem>
+                <MenuItem value="">{role === "SP" ? "All " : "All Members"}</MenuItem>
                 {role === "AM" && (
                   <MenuItem value={String(userId)}>My Tasks</MenuItem>
                 )}
@@ -1244,9 +1250,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
         {/* Task Table */}
         <div className="flex-1 min-w-0">
           {loading ? (
-            <div className="flex justify-center py-12">
-              <CircularProgress size={28} sx={{ color: "#7c3aed" }} />
-            </div>
+            <SpinLoader isLoading />
           ) : (
             <TableList<GroupedTask>
               columns={taskColumns}

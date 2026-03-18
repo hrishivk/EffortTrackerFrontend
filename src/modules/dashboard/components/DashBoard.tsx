@@ -17,9 +17,14 @@ import {
   fetchAllExistProjects,
   fetchAllUsers,
 } from "../../../core/actions/spAction";
+import { authLogout } from "../../../core/actions/action";
+import { useDispatch } from "react-redux";
+import { reset } from "../../../store/authSlice";
+import type { AppDispatch } from "../../../store/configureStore";
 import type { project } from "../../../shared/types/Project";
 import type { formUserData } from "../../../shared/types/User";
 import MyTasksView from "./MyTasksView";
+import ProfileView from "../../../presentation/ProfilePanel";
 
 ChartJS.register(
   ArcElement,
@@ -33,25 +38,33 @@ ChartJS.register(
 const UserDashboard = () => {
   const [, setProject] = useState<project[]>([]);
   const [, setUsers] = useState<formUserData[]>([]);
+  const dispatch = useDispatch<AppDispatch>();
+  const { user } = useAppSelector((state) => state.user);
+  const role = user.role;
+  const id = user?.id;
   const [searchParams, setSearchParams] = useSearchParams();
   const viewUserId = searchParams.get("viewUser") || "";
   const viewProject = searchParams.get("viewProject") || "";
   const viewTab = searchParams.get("tab") || "";
-  const [activeTab, setActiveTab] = useState<"overview" | "myTasks">(
-    viewUserId || viewProject || viewTab === "myTasks" ? "myTasks" : "overview"
+  const [activeTab, setActiveTab] = useState<"overview" | "myTasks" | "profile">(
+    viewUserId || viewProject || viewTab === "myTasks" ? "myTasks" : viewTab === "profile" ? "profile" : "overview"
   );
   useEffect(() => {
     if (viewUserId || viewProject || viewTab === "myTasks") {
       setActiveTab("myTasks");
+    } else if (viewTab === "profile") {
+      setActiveTab("profile");
     }
   }, [viewUserId, viewProject, viewTab]);
-  const tabs = [
+  const spHasViewParam = role === "SP" && (viewUserId || viewProject);
+  const allTabs = [
     { key: "overview" as const, label: "Overview" },
-    { key: "myTasks" as const, label: "My Tasks" },
+    { key: "myTasks" as const, label: role === "SP" ? "Tasks" : "My Tasks" },
+    { key: "profile" as const, label: "Profile" },
   ];
-  const { user } = useAppSelector((state) => state.user);
-  const role = user.role;
-  const id = user?.id;
+  const tabs = role === "SP" && !spHasViewParam
+    ? allTabs.filter((tab) => tab.key !== "myTasks")
+    : allTabs;
 
   const listData = useCallback(async () => {
     try {
@@ -81,7 +94,13 @@ const UserDashboard = () => {
   const dashboardTitle = roleTitles[user.role] || "Dashboard";
 
   return (
-    <div className="min-h-screen px-3 py-4 sm:px-4 sm:py-5 md:p-6" style={{ backgroundColor: "var(--bg-page)" }}>
+    <motion.div
+      className="min-h-screen px-3 py-4 sm:px-4 sm:py-5 md:p-6"
+      style={{ backgroundColor: "var(--bg-page)" }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+    >
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
 
         <div className="relative flex gap-6 mt-2 border-b" style={{ borderColor: "var(--border-light)" }}>
@@ -128,7 +147,17 @@ const UserDashboard = () => {
           })}
         </div>
 
-        {activeTab === "myTasks" ? (
+        {activeTab === "profile" ? (
+          <ProfileView
+            onLogout={async () => {
+              const response = await authLogout(id as string);
+              if (response.success) {
+                await dispatch(reset());
+                window.location.href = "/";
+              }
+            }}
+          />
+        ) : activeTab === "myTasks" ? (
           <MyTasksView viewUserId={viewUserId} viewProject={viewProject} viewTab={viewTab} />
         ) : (
           <>
@@ -296,7 +325,7 @@ const UserDashboard = () => {
           </>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

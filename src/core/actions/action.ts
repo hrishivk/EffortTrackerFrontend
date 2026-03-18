@@ -48,7 +48,7 @@ export const addTask=async(data:taskList)=>{
     throw error
   }
 }
-export const fetchTask = async (date: Date, id: string, role: string, filters?: { assigned_to?: string; project?: string }, pagination?: { page?: number; limit?: number }) => {
+export const fetchTask = async (date: Date | null, id: string, role: string, filters?: { assigned_to?: string; project?: string }, pagination?: { page?: number; limit?: number }) => {
   try {
     const response = await userServiceMethood.listTask('/task-list', date, id, role, filters, pagination);
     return response.data;
@@ -77,6 +77,15 @@ export const setTaskLock = createAsyncThunk(
   }
 );
 
+export const fetchTasksByProject = async (project: string, pagination?: { page?: number; limit?: number }) => {
+  try {
+    const response = await userServiceMethood.listTasksByProject('/task-list', project, pagination);
+    return response.data;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
 export const updateTaskStatus=async(taskId:string, newStatus:string)=>{
   try {
     const response= await userServiceMethood.editTask(`/updateTask?id=${taskId}`,newStatus,)

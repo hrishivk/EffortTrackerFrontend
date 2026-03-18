@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   FormControl,
   MenuItem,
@@ -207,9 +207,8 @@ const selectSx = {
 };
 
 /* ─── Component ─── */
-export default function GanttChart({ projects, onProjectClick }: GanttChartProps) {
-  const now = new Date();
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+function GanttChart({ projects, onProjectClick }: GanttChartProps) {
+  const now = useRef(new Date()).current;
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const [statusFilter, setStatusFilter] = useState("All");
   const [viewMode, setViewMode] = useState<ViewMode>("Week");
@@ -226,6 +225,11 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
   const hasInitialScrolled = useRef(false);
 
   // Compute base date range from project data (like TaskGanttChart)
+  // Cap visible range to MAX_VISIBLE_MONTHS from the earliest date to avoid
+  // rendering tens of thousands of columns when projects have far-future dates
+  // (e.g. year 2100). Users can still scroll/navigate to see beyond this range.
+  const MAX_VISIBLE_MONTHS = 12;
+
   const baseRange = useMemo(() => {
     let earliest: Date | null = null;
     let latest: Date | null = null;
@@ -249,6 +253,13 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
     } else if (!latest) {
       latest = new Date(earliest.getFullYear(), earliest.getMonth() + 2, 0);
     }
+
+    // Cap the end date so the initial render doesn't span decades
+    const maxEnd = new Date(earliest!.getFullYear(), earliest!.getMonth() + MAX_VISIBLE_MONTHS, 0);
+    if (latest! > maxEnd) {
+      latest = maxEnd;
+    }
+
     return {
       startYear: earliest!.getFullYear(),
       startMonth: earliest!.getMonth(),
@@ -272,12 +283,14 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
   }, [baseRange, extraBefore, extraAfter, viewMode]);
 
   /* columns + sizing based on view mode */
-  const columns =
+  const columns = useMemo(() =>
     viewMode === "Year"
       ? yearColumns(currentYear)
       : monthRange.flatMap(({ year, month }) =>
           viewMode === "Week" ? weekColumns(year, month) : monthWeekColumns(year, month),
-        );
+        ),
+    [viewMode, currentYear, monthRange],
+  );
 
   const totalCols = columns.length;
   const colWidth = viewMode === "Week" ? 50 : viewMode === "Month" ? 150 : 100;
@@ -378,55 +391,66 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
   }, []);
 
   /* Infinite scroll — extend range when reaching edges */
+  const monthRangeRef = useRef(monthRange);
+  monthRangeRef.current = monthRange;
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+  const colWidthRef = useRef(colWidth);
+  colWidthRef.current = colWidth;
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || isExtendingRef.current) return;
+    const threshold = 200;
+    const mr = monthRangeRef.current;
+    const vm = viewModeRef.current;
+    const cw = colWidthRef.current;
+
+    // Near right edge → append next month
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - threshold) {
+      isExtendingRef.current = true;
+      setExtraAfter((prev) => prev + 1);
+      setTimeout(() => { isExtendingRef.current = false; }, 200);
+    }
+
+    // Near left edge → prepend previous month
+    if (el.scrollLeft <= threshold && el.scrollLeft > 0) {
+      isExtendingRef.current = true;
+      const firstInRange = mr[0];
+      if (firstInRange) {
+        const prevDate = new Date(firstInRange.year, firstInRange.month - 1, 1);
+        const addedCols =
+          vm === "Week"
+            ? weekColumns(prevDate.getFullYear(), prevDate.getMonth()).length
+            : monthWeekColumns(prevDate.getFullYear(), prevDate.getMonth()).length;
+        scrollAdjustRef.current = addedCols * cw;
+      }
+      setExtraBefore((prev) => prev + 1);
+    }
+
+    // Update visible month from scroll position (only if changed)
+    const centerX = el.scrollLeft + el.clientWidth / 2;
+    let acc = 0;
+    for (const { year, month } of mr) {
+      const cols =
+        vm === "Week"
+          ? weekColumns(year, month).length
+          : monthWeekColumns(year, month).length;
+      acc += cols * cw;
+      if (centerX < acc) {
+        setVisibleMonth((prev) => prev === month ? prev : month);
+        setVisibleYear((prev) => prev === year ? prev : year);
+        break;
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || viewMode === "Year") return;
-    const handleScroll = () => {
-      if (isExtendingRef.current) return;
-      const threshold = 200;
-
-      // Near right edge → append next month
-      if (el.scrollLeft + el.clientWidth >= el.scrollWidth - threshold) {
-        isExtendingRef.current = true;
-        setExtraAfter((prev) => prev + 1);
-        setTimeout(() => { isExtendingRef.current = false; }, 200);
-      }
-
-      // Near left edge → prepend previous month
-      if (el.scrollLeft <= threshold && el.scrollLeft > 0) {
-        isExtendingRef.current = true;
-        const firstInRange = monthRange[0];
-        if (firstInRange) {
-          const prevDate = new Date(firstInRange.year, firstInRange.month - 1, 1);
-          const addedCols =
-            viewMode === "Week"
-              ? weekColumns(prevDate.getFullYear(), prevDate.getMonth()).length
-              : monthWeekColumns(prevDate.getFullYear(), prevDate.getMonth()).length;
-          scrollAdjustRef.current = addedCols * colWidth;
-        }
-        setExtraBefore((prev) => prev + 1);
-      }
-
-      // Update visible month from scroll position
-      const centerX = el.scrollLeft + el.clientWidth / 2;
-      let acc = 0;
-      for (const { year, month } of monthRange) {
-        const cols =
-          viewMode === "Week"
-            ? weekColumns(year, month).length
-            : monthWeekColumns(year, month).length;
-        acc += cols * colWidth;
-        if (centerX < acc) {
-          setVisibleMonth(month);
-          setVisibleYear(year);
-          break;
-        }
-      }
-    };
-
     el.addEventListener("scroll", handleScroll);
     return () => el.removeEventListener("scroll", handleScroll);
-  }, [monthRange, viewMode, colWidth]);
+  }, [viewMode, handleScroll]);
 
   /* Preserve scroll position when months are prepended */
   useLayoutEffect(() => {
@@ -438,19 +462,18 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
   }, [extraBefore]);
 
   /* data */
-  const ganttProjects = mapProjects(projects, columns);
+  const ganttProjects = useMemo(() => mapProjects(projects, columns), [projects, columns]);
 
-  const filteredProjects = (
-    statusFilter === "All"
+  const filteredProjects = useMemo(() => {
+    const list = statusFilter === "All"
       ? ganttProjects
-      : ganttProjects.filter((p) => p.status === statusFilter)
-  )
-    // Sort by actual start date (earliest project appears first)
-    .sort((a, b) => {
+      : ganttProjects.filter((p) => p.status === statusFilter);
+    return list.slice().sort((a, b) => {
       const aDate = a.rawStart?.getTime() ?? Infinity;
       const bDate = b.rawStart?.getTime() ?? Infinity;
       return aDate - bDate;
     });
+  }, [ganttProjects, statusFilter]);
 
   // Auto-scroll to the earliest project's start date (1 col before it)
   useEffect(() => {
@@ -488,7 +511,8 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
     scrollRef.current.scrollLeft = colsBefore * colWidth;
     setVisibleMonth(eMonth);
     setVisibleYear(eYear);
-  }, [filteredProjects, monthRange, viewMode, colWidth]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredProjects, monthRange, viewMode]);
 
   const avgProgress =
     filteredProjects.length > 0
@@ -635,13 +659,11 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
               return (
                 <div
                   key={idx}
-                  onMouseEnter={() => setHoveredIdx(idx)}
-                  onMouseLeave={() => setHoveredIdx(null)}
+                  className="gantt-row-hover"
                   style={{
                     padding: "10px 20px",
                     minHeight: 56,
                     borderBottom: "1px solid var(--border-table)",
-                    background: hoveredIdx === idx ? "var(--bg-hover)" : "var(--bg-card)",
                     transition: "background 0.15s",
                     display: "flex",
                     flexDirection: "column",
@@ -771,22 +793,11 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
               ))}
             </div>
 
-            {/* Timeline Rows */}
+            {/* Timeline Rows — shared grid overlay + per-row bars */}
             {filteredProjects.length > 0 ? (
-              filteredProjects.map((p, idx) => (
-                <div
-                  key={idx}
-                  onMouseEnter={() => setHoveredIdx(idx)}
-                  onMouseLeave={() => setHoveredIdx(null)}
-                  style={{
-                    position: "relative",
-                    height: 56,
-                    borderBottom: "1px solid var(--border-table)",
-                    background: hoveredIdx === idx ? "var(--bg-hover)" : "var(--bg-card)",
-                    transition: "background 0.15s",
-                  }}
-                >
-                  {/* grid lines */}
+              <div style={{ position: "relative" }}>
+                {/* Shared grid lines (rendered once, not per row) */}
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none", zIndex: 0 }}>
                   {Array.from({ length: totalCols }, (_, i) => (
                     <div
                       key={i}
@@ -800,7 +811,20 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
                       }}
                     />
                   ))}
+                </div>
 
+                {filteredProjects.map((p, idx) => (
+                <div
+                  key={idx}
+                  className="gantt-row-hover"
+                  style={{
+                    position: "relative",
+                    height: 56,
+                    borderBottom: "1px solid var(--border-table)",
+                    transition: "background 0.15s",
+                    zIndex: 1,
+                  }}
+                >
                   {/* bars */}
                   {p.bars.map((bar, bIdx) => {
                     const bs = barStyles[bar.type];
@@ -812,6 +836,7 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
                       <div key={bIdx}>
                         {/* main bar */}
                         <div
+                          className="gantt-bar"
                           style={{
                             position: "absolute",
                             left: leftPx,
@@ -826,10 +851,7 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
                             gap: 4,
                             paddingInline: 8,
                             zIndex: 2,
-                            boxShadow:
-                              hoveredIdx === idx
-                                ? "0 3px 12px rgba(0,0,0,0.15)"
-                                : "0 1px 4px rgba(0,0,0,0.08)",
+                            boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
                             transition: "box-shadow 0.2s",
                             overflow: "hidden",
                             whiteSpace: "nowrap",
@@ -880,7 +902,8 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
                     );
                   })}
                 </div>
-              ))
+              ))}
+              </div>
             ) : (
               <div
                 className="d-flex align-items-center justify-content-center"
@@ -955,3 +978,5 @@ export default function GanttChart({ projects, onProjectClick }: GanttChartProps
     </div>
   );
 }
+
+export default memo(GanttChart);

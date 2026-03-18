@@ -1,15 +1,15 @@
 export type taskList = {
-  id?: number | string | undefined;
-  created_by?: string | number | null | undefined;
-  assigned_to?: string | number | null | undefined;
+  id?: string;
+  created_by?: string  | number | null;
+  assigned_to?: string  | number | null ;
   project: string | { id: string; name: string };
   description: string;
   priority: string;
   status?: string;
-  start_time?: string | null;
-  end_time?: string | null;
+  start_time?: string;
+  end_time?: string;
   isLocked?: boolean;
-  totalTime?: string | null;
+  totalTime?: string ;
   created_at?: string;
   progress?: number;
   daily_log_id?: string;

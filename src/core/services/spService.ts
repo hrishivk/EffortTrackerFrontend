@@ -1,14 +1,14 @@
 import axios from "axios";
 import type { UserData } from "../types";
 import { API_URL } from "../../config/apiEndpoints";
-import { handleAuthError } from "./interceptors";
+import { handleAuthError, handleResponse } from "./interceptors";
 
 const apiservice = axios.create({
   baseURL: API_URL.spService,
   withCredentials: true,
 });
 
-apiservice.interceptors.response.use((res) => res, handleAuthError);
+apiservice.interceptors.response.use(handleResponse, handleAuthError);
 export const spserviceMethood = {
  addDomain: (url: string, data: { [key: string]: string | number }) => {
   return apiservice.post(url, data, {

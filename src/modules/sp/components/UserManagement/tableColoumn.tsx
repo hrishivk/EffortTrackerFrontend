@@ -1,8 +1,8 @@
 import dayjs from "dayjs";
 import { Trash2 } from "lucide-react";
-import type { Column } from "../../../shared/components/Table/types";
-import type { formUserData } from "../../../shared/types/User";
-import type { ColumnHandlers } from "../types";
+import type { Column } from "../../../../shared/components/Table/types";
+import type { formUserData } from "../../../../shared/types/User";
+import type { ColumnHandlers } from "../../types";
 
 const roleStyles: Record<string, { bg: string; text: string }> = {
   SP: { bg: "#f0fdf4", text: "#16a34a" },
@@ -82,15 +82,31 @@ export const getUserColumns = ({
     header: "Last Active",
     width: "20%",
     render: (u) => {
-      const parsed = u.lastSeenAt ? dayjs(u.lastSeenAt) : null;
-      if (parsed && parsed.isValid()) {
+      if (!u.lastSeenAt) {
+        return (
+          <span className="d-flex align-items-center gap-1">
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: "#22c55e",
+                display: "inline-block",
+              }}
+            />
+            <span style={{ fontSize: 13, fontWeight: 500, color: "#16a34a" }}>Active</span>
+          </span>
+        );
+      }
+      const parsed = dayjs(u.lastSeenAt);
+      if (parsed.isValid()) {
         return (
           <span className="um-last-active">
             {parsed.format("DD MMM YYYY, h:mm A")}
           </span>
         );
       }
-      return <span className="um-no-activity">No activity yet</span>;
+      return <span className="um-no-activity">{String(u.lastSeenAt)}</span>;
     },
   },
   {

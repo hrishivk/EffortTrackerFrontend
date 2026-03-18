@@ -19,11 +19,12 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import { motion } from "framer-motion";
 
-import { addTask, fetchTask } from "../../../core/actions/action";
-import { fetchAllUsers, fetchAllExistProjects } from "../../../core/actions/spAction";
-import { useSnackbar } from "../../../contexts/SnackbarContext";
-import type { formUserData } from "../../../shared/types/User";
-import type { taskList } from "../../user/types";
+import { addTask, fetchTask } from "../../../../core/actions/action";
+import { fetchAllUsers, fetchAllExistProjects } from "../../../../core/actions/spAction";
+import { useSnackbar } from "../../../../contexts/SnackbarContext";
+import SpinLoader from "../../../../presentation/SpinLoader";
+import type { formUserData } from "../../../../shared/types/User";
+import type { taskList } from "../../../user/types";
 
 const selectSx = {
   "& .MuiOutlinedInput-root": {
@@ -424,9 +425,7 @@ const CreateTask = () => {
         </div>
 
         {loadingTasks ? (
-          <div className="d-flex justify-content-center py-4">
-            <CircularProgress size={24} sx={{ color: "#7c3aed" }} />
-          </div>
+          <SpinLoader isLoading />
         ) : recentTasks.length === 0 ? (
           <div
             className="rounded-3 border p-4 text-center"

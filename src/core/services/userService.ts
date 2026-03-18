@@ -1,14 +1,14 @@
 import axios from "axios";
 import type { taskList } from "../../modules/user/types";
 import { API_URL } from "../../config/apiEndpoints";
-import { handleAuthError } from "./interceptors";
+import { handleAuthError, handleResponse } from "./interceptors";
 
 const apiservice = axios.create({
   baseURL: API_URL.userService,
   withCredentials: true,
 });
 
-apiservice.interceptors.response.use((res) => res, handleAuthError);
+apiservice.interceptors.response.use(handleResponse, handleAuthError);
 export const userServiceMethood = {
 
   createTask: (url: string, data:taskList) => {
@@ -16,12 +16,10 @@ export const userServiceMethood = {
       headers: { "Content-Type": "application/json" },
     });
   },
-listTask: (url: string, date: Date, id: string, role: string, filters?: { assigned_to?: string; project?: string }, pagination?: { page?: number; limit?: number }) => {
+listTask: (url: string, date: Date | null, id: string, role: string, filters?: { assigned_to?: string; project?: string }, pagination?: { page?: number; limit?: number }) => {
   return apiservice.get(url, {
     params: {
-      date: date.toISOString(),
-      id: id,
-      role: role,
+      ...(date ? { date: date.toISOString() } : {}),
       ...(filters?.assigned_to ? { assigned_to: filters.assigned_to } : {}),
       ...(filters?.project ? { project: filters.project } : {}),
       ...(pagination?.page ? { page: pagination.page } : {}),
@@ -47,6 +45,20 @@ listTask: (url: string, date: Date, id: string, role: string, filters?: { assign
  editTask: (url: string, newStatus: string) => {
     return apiservice.patch(url,{ status: newStatus },{
       headers: { "Content-Type": "application/json" },
+    });
+  },
+  listTasksByProject: (url: string, project: string, pagination?: { page?: number; limit?: number }) => {
+    return apiservice.get(url, {
+      params: {
+        project,
+        ...(pagination?.page ? { page: pagination.page } : {}),
+        ...(pagination?.limit ? { limit: pagination.limit } : {}),
+      },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+      },
     });
   },
   listProjects: (url: string, pagination?: { page?: number; limit?: number }) => {
