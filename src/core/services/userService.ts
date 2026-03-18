@@ -16,7 +16,7 @@ export const userServiceMethood = {
       headers: { "Content-Type": "application/json" },
     });
   },
-listTask: (url: string, date: Date | null, id: string, role: string, filters?: { assigned_to?: string; project?: string }, pagination?: { page?: number; limit?: number }) => {
+listTask: (url: string, date: Date | null, _id: string, _role: string, filters?: { assigned_to?: string; project?: string }, pagination?: { page?: number; limit?: number }) => {
   return apiservice.get(url, {
     params: {
       ...(date ? { date: date.toISOString() } : {}),
