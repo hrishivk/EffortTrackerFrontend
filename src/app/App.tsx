@@ -7,7 +7,6 @@ import { PersistGate } from "redux-persist/integration/react";
 import { Suspense } from "react";
 import { HashRouter } from "react-router-dom";
 import SpinLoader from "../presentation/Loader";
-import ServerDown from "../presentation/ServerDown";
 function App() {
   return (
     <>
@@ -17,9 +16,7 @@ function App() {
       <Provider store={store}>
         <PersistGate loading={null} persistor={persistor}>
           <SnackbarProvider>
-            <ServerDown>
-              <Routers />
-            </ServerDown>
+            <Routers />
           </SnackbarProvider>
         </PersistGate>
       </Provider>
