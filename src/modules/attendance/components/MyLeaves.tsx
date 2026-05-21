@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { FormControl, Select, MenuItem } from "@mui/material";
-import { fetchMyLeaves, cancelLeave } from "../../../core/actions/leaveAction";
-import { useSnackbar } from "../../../contexts/SnackbarContext";
+import { fetchMyLeaves } from "../../../core/actions/leaveAction";
 import SpinLoader from "../../../presentation/SpinLoader";
 import type { LeaveRequest } from "../types";
 
@@ -44,7 +43,6 @@ export default function MyLeaves() {
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(false);
-  const { showSnackbar } = useSnackbar();
 
   const loadLeaves = useCallback(async () => {
     setLoading(true);
@@ -61,16 +59,6 @@ export default function MyLeaves() {
   useEffect(() => {
     loadLeaves();
   }, [loadLeaves]);
-
-  const handleCancel = async (id: string) => {
-    try {
-      await cancelLeave(id);
-      showSnackbar({ message: "Leave cancelled successfully", severity: "success" });
-      loadLeaves();
-    } catch {
-      showSnackbar({ message: "Failed to cancel leave", severity: "error" });
-    }
-  };
 
   const formatDate = (d: string) => {
     if (!d) return "--";

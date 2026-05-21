@@ -1,9 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { TextField, FormControl, Select, MenuItem } from "@mui/material";
-import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
-import CloseIcon from "@mui/icons-material/Close";
-import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import { applyLeave, fetchLeaveBalance } from "../../../core/actions/leaveAction";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
 import type { LeaveBalance } from "../types";
@@ -56,9 +53,6 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
     contact: "",
     reason: "",
   });
-  const [files, setFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [balanceItems, setBalanceItems] = useState(defaultBalance);
   const { showSnackbar } = useSnackbar();
@@ -105,32 +99,12 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
       });
       showSnackbar({ message: "Leave request submitted successfully!", severity: "success" });
       setForm({ leaveType: "", session: "Full Day", fromDate: "", toDate: "", contact: "", reason: "" });
-      setFiles([]);
       onSuccess?.();
     } catch {
       showSnackbar({ message: "Failed to submit leave request", severity: "error" });
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleFiles = (newFiles: FileList | null) => {
-    if (!newFiles) return;
-    const allowed = ["application/pdf", "image/jpeg", "image/png"];
-    const valid = Array.from(newFiles).filter(
-      (f) => allowed.includes(f.type) && f.size <= 10 * 1024 * 1024
-    );
-    setFiles((prev) => [...prev, ...valid]);
-  };
-
-  const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -284,7 +258,6 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
             <button
               onClick={() => {
                 setForm({ leaveType: "", session: "Full Day", fromDate: "", toDate: "", contact: "", reason: "" });
-                setFiles([]);
               }}
               style={{
                 padding: "10px 24px",

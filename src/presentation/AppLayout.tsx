@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { FiMenu, FiSun, FiMoon } from "react-icons/fi";
 import Sidebar from "./Sidebar";
 import NotificationPanel from "./NotificationPanel";

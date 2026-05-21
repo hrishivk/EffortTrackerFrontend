@@ -107,7 +107,7 @@ const LeaveManagement = () => {
         ...(role === "AM" ? [{ key: "teamLeaves" as Tab, label: "Team Leaves" }] : []),
       ];
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") as Tab | null;
   const defaultTab = role === "SP" ? "teamLeaves" as Tab : "management";
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl || defaultTab);

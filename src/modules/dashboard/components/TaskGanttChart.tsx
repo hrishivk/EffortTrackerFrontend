@@ -44,8 +44,6 @@ export default function TaskGanttChart({
   }, []);
   const isMobile = screenWidth < 640;
   const isTablet = screenWidth >= 640 && screenWidth < 1024;
-  const isCompact = isMobile || isTablet;
-
   const responsiveColWidth = isMobile ? 32 : isTablet ? 40 : BASE_COL_WIDTH;
   const responsiveLeftPanel = isMobile ? 0 : isTablet ? 220 : LEFT_PANEL_WIDTH;
   const responsiveRowHeight = isMobile ? 52 : isTablet ? 60 : ROW_HEIGHT;
