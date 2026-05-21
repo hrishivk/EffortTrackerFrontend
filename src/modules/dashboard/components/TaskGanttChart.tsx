@@ -35,7 +35,22 @@ export default function TaskGanttChart({
   const isExtendingRef = useRef(false);
   const scrollAdjustRef = useRef(0);
 
-  const colWidth = BASE_COL_WIDTH * zoomLevel;
+  // Responsive breakpoints
+  const [screenWidth, setScreenWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const handler = () => setScreenWidth(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  const isMobile = screenWidth < 640;
+  const isTablet = screenWidth >= 640 && screenWidth < 1024;
+  const isCompact = isMobile || isTablet;
+
+  const responsiveColWidth = isMobile ? 32 : isTablet ? 40 : BASE_COL_WIDTH;
+  const responsiveLeftPanel = isMobile ? 0 : isTablet ? 220 : LEFT_PANEL_WIDTH;
+  const responsiveRowHeight = isMobile ? 52 : isTablet ? 60 : ROW_HEIGHT;
+
+  const colWidth = responsiveColWidth * zoomLevel;
 
   // ─── Compute date range from tasks ─────────────────────────────
   const { rangeStart, rangeDays, rangeLabel } = useMemo(() => {
@@ -283,65 +298,67 @@ export default function TaskGanttChart({
   }
 
   return (
-    <div style={{ background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border-light)", overflow: "hidden" }}>
+    <div style={{ background: "var(--bg-card)", borderRadius: isMobile ? 10 : 16, border: "1px solid var(--border-light)", overflow: "hidden" }}>
       {/* Navigation Header */}
       <div
         className="d-flex align-items-center justify-content-between"
-        style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-light)" }}
+        style={{ padding: isMobile ? "10px 12px" : isTablet ? "12px 16px" : "14px 20px", borderBottom: "1px solid var(--border-light)" }}
       >
         <div className="d-flex align-items-center gap-2">
           <button
             onClick={() => { setRangeOffset(o => o - 1); setExtraBefore(1); setExtraAfter(1); }}
             className="btn btn-sm p-1"
-            style={{ border: "1px solid var(--border-light)", borderRadius: 10, lineHeight: 1 }}
+            style={{ border: "1px solid var(--border-light)", borderRadius: 8, lineHeight: 1 }}
           >
-            <KeyboardArrowLeftIcon sx={{ fontSize: 18, color: "var(--text-muted)" }} />
+            <KeyboardArrowLeftIcon sx={{ fontSize: isMobile ? 16 : 18, color: "var(--text-muted)" }} />
           </button>
           <button
             className="btn btn-sm text-white d-flex align-items-center gap-1"
             style={{
               background: "linear-gradient(135deg, #7c3aed, #9333ea)",
-              borderRadius: 12,
-              padding: "6px 16px",
-              fontSize: 13,
+              borderRadius: isMobile ? 8 : 12,
+              padding: isMobile ? "5px 10px" : "6px 16px",
+              fontSize: isMobile ? 11 : 13,
               fontWeight: 600,
             }}
             onClick={() => { setRangeOffset(0); setExtraBefore(1); setExtraAfter(1); }}
           >
-            <CalendarMonthIcon sx={{ fontSize: 16 }} />
+            <CalendarMonthIcon sx={{ fontSize: isMobile ? 13 : 16 }} />
             {rangeLabel}
           </button>
           <button
             onClick={() => { setRangeOffset(o => o + 1); setExtraBefore(1); setExtraAfter(1); }}
             className="btn btn-sm p-1"
-            style={{ border: "1px solid var(--border-light)", borderRadius: 10, lineHeight: 1 }}
+            style={{ border: "1px solid var(--border-light)", borderRadius: 8, lineHeight: 1 }}
           >
-            <KeyboardArrowRightIcon sx={{ fontSize: 18, color: "var(--text-muted)" }} />
+            <KeyboardArrowRightIcon sx={{ fontSize: isMobile ? 16 : 18, color: "var(--text-muted)" }} />
           </button>
         </div>
 
-        <div className="d-flex align-items-center gap-3">
-          {projects.filter(p => (p.status || "").toLowerCase() === "active").slice(0, 4).map((p: any, i: number) => {
-            const color = (projectColorMap[p.name] || PROJECT_COLORS[i % PROJECT_COLORS.length]).dot;
-            return (
-              <div key={p.id} className="d-flex align-items-center gap-1">
-                <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: color, display: "inline-block" }} />
-                <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>{p.name}</span>
-              </div>
-            );
-          })}
-        </div>
+        {!isMobile && (
+          <div className="d-flex align-items-center gap-3">
+            {projects.filter(p => (p.status || "").toLowerCase() === "active").slice(0, isTablet ? 2 : 4).map((p: any, i: number) => {
+              const color = (projectColorMap[p.name] || PROJECT_COLORS[i % PROJECT_COLORS.length]).dot;
+              return (
+                <div key={p.id} className="d-flex align-items-center gap-1">
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: color, display: "inline-block" }} />
+                  <span style={{ fontSize: isTablet ? 10 : 11, color: "var(--text-muted)", fontWeight: 500 }}>{p.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Main Gantt Area */}
-      <div style={{ display: "flex", maxHeight: 500, overflow: "hidden" }}>
-        {/* Fixed Left Panel */}
-        {!hideLeftPanel && <div
+      <div style={{ display: "flex", maxHeight: isMobile ? 350 : isTablet ? 420 : 500, overflow: "hidden" }}>
+        {/* Fixed Left Panel — hidden on mobile */}
+        {!hideLeftPanel && !isMobile && <div
           ref={leftPanelRef}
           onScroll={handleLeftScroll}
           style={{
-            width: LEFT_PANEL_WIDTH,
-            minWidth: LEFT_PANEL_WIDTH,
+            width: responsiveLeftPanel,
+            minWidth: responsiveLeftPanel,
             borderRight: "2px solid #e0d4f5",
             boxShadow: "4px 0 8px rgba(124,58,237,0.06)",
             overflowY: "auto",
@@ -360,14 +377,14 @@ export default function TaskGanttChart({
               zIndex: 4,
               backgroundColor: "var(--bg-surface)",
               borderBottom: "1px solid var(--border-light)",
-              minHeight: 68,
+              minHeight: isTablet ? 58 : 68,
               alignItems: "flex-end",
             }}
           >
             <div style={{
               flex: 1,
-              padding: "10px 16px",
-              fontSize: 10,
+              padding: isTablet ? "8px 10px" : "10px 16px",
+              fontSize: isTablet ? 9 : 10,
               fontWeight: 700,
               color: "var(--text-muted)",
               letterSpacing: 1,
@@ -375,18 +392,20 @@ export default function TaskGanttChart({
             }}>
               Task Details
             </div>
-            <div style={{
-              width: 100,
-              padding: "10px 8px",
-              fontSize: 10,
-              fontWeight: 700,
-              color: "var(--text-muted)",
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              textAlign: "center",
-            }}>
-              Status
-            </div>
+            {!isTablet && (
+              <div style={{
+                width: 100,
+                padding: "10px 8px",
+                fontSize: 10,
+                fontWeight: 700,
+                color: "var(--text-muted)",
+                letterSpacing: 1,
+                textTransform: "uppercase",
+                textAlign: "center",
+              }}>
+                Status
+              </div>
+            )}
           </div>
 
           {/* Left Task Rows */}
@@ -401,22 +420,22 @@ export default function TaskGanttChart({
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  height: ROW_HEIGHT,
+                  height: responsiveRowHeight,
                   borderBottom: "1px solid var(--border-table)",
                   background: hoveredIdx === idx ? "var(--bg-hover)" : "var(--bg-card)",
                   transition: "background 0.15s",
                   cursor: onTaskClick ? "pointer" : undefined,
                 }}
               >
-                <div style={{ flex: 1, padding: "6px 16px", overflow: "hidden" }}>
+                <div style={{ flex: 1, padding: isTablet ? "4px 10px" : "6px 16px", overflow: "hidden" }}>
                   <div style={{
-                    fontSize: 13,
+                    fontSize: isTablet ? 11 : 13,
                     fontWeight: 600,
                     color: row.overallStatus === "in_progress" ? "#2563eb" : "var(--text-primary)",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
-                    marginBottom: 4,
+                    marginBottom: isTablet ? 2 : 4,
                   }}>
                     {row.description}
                   </div>
@@ -488,41 +507,43 @@ export default function TaskGanttChart({
                   </div>
                 </div>
 
-                <div style={{ width: 100, textAlign: "center", flexShrink: 0, padding: "0 4px" }}>
-                  {isMulti ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
-                      {row.statusCounts.completed > 0 && (
-                        <span style={{ fontSize: 9, fontWeight: 700, color: "#7c3aed", backgroundColor: "#f3e8ff", padding: "1px 6px", borderRadius: 4 }}>
-                          {row.statusCounts.completed} Done
-                        </span>
-                      )}
-                      {row.statusCounts.in_progress > 0 && (
-                        <span style={{ fontSize: 9, fontWeight: 700, color: "#9333ea", backgroundColor: "#f5f3ff", padding: "1px 6px", borderRadius: 4 }}>
-                          {row.statusCounts.in_progress} Active
-                        </span>
-                      )}
-                      {row.statusCounts.pending > 0 && (
-                        <span style={{ fontSize: 9, fontWeight: 700, color: "#6b7280", backgroundColor: "#f3f4f6", padding: "1px 6px", borderRadius: 4 }}>
-                          {row.statusCounts.pending} Pending
-                        </span>
-                      )}
-                      {row.statusCounts.overdue > 0 && (
-                        <span style={{ fontSize: 9, fontWeight: 700, color: "#dc2626", backgroundColor: "#fee2e2", padding: "1px 6px", borderRadius: 4 }}>
-                          {row.statusCounts.overdue} Overdue
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span style={{
-                      fontSize: 10, fontWeight: 700,
-                      color: statusDisplay[row.overallStatus].color,
-                      backgroundColor: statusDisplay[row.overallStatus].bg,
-                      padding: "3px 8px", borderRadius: 6,
-                    }}>
-                      {statusDisplay[row.overallStatus].label}
-                    </span>
-                  )}
-                </div>
+                {!isTablet && (
+                  <div style={{ width: 100, textAlign: "center", flexShrink: 0, padding: "0 4px" }}>
+                    {isMulti ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
+                        {row.statusCounts.completed > 0 && (
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "#7c3aed", backgroundColor: "#f3e8ff", padding: "1px 6px", borderRadius: 4 }}>
+                            {row.statusCounts.completed} Done
+                          </span>
+                        )}
+                        {row.statusCounts.in_progress > 0 && (
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "#9333ea", backgroundColor: "#f5f3ff", padding: "1px 6px", borderRadius: 4 }}>
+                            {row.statusCounts.in_progress} Active
+                          </span>
+                        )}
+                        {row.statusCounts.pending > 0 && (
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "#6b7280", backgroundColor: "#f3f4f6", padding: "1px 6px", borderRadius: 4 }}>
+                            {row.statusCounts.pending} Pending
+                          </span>
+                        )}
+                        {row.statusCounts.overdue > 0 && (
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "#dc2626", backgroundColor: "#fee2e2", padding: "1px 6px", borderRadius: 4 }}>
+                            {row.statusCounts.overdue} Overdue
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700,
+                        color: statusDisplay[row.overallStatus].color,
+                        backgroundColor: statusDisplay[row.overallStatus].bg,
+                        padding: "3px 8px", borderRadius: 6,
+                      }}>
+                        {statusDisplay[row.overallStatus].label}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             );
           }) : (
@@ -559,10 +580,10 @@ export default function TaskGanttChart({
                     width: mh.span * colWidth,
                     minWidth: mh.span * colWidth,
                     textAlign: "center",
-                    fontSize: 11,
+                    fontSize: isMobile ? 9 : isTablet ? 10 : 11,
                     fontWeight: 700,
                     color: "#7c3aed",
-                    padding: "4px 0",
+                    padding: isMobile ? "3px 0" : "4px 0",
                     borderLeft: i > 0 ? "1px solid #e0d6ff" : undefined,
                     letterSpacing: 0.5,
                   }}
@@ -577,11 +598,11 @@ export default function TaskGanttChart({
               style={{
                 display: "flex",
                 position: "sticky",
-                top: 24,
+                top: isMobile ? 20 : 24,
                 zIndex: 3,
                 backgroundColor: "var(--bg-surface)",
                 borderBottom: "1px solid var(--border-light)",
-                minHeight: 44,
+                minHeight: isMobile ? 32 : isTablet ? 38 : 44,
               }}
             >
               {rangeDays.map((d, i) => (
@@ -591,27 +612,29 @@ export default function TaskGanttChart({
                     width: colWidth,
                     minWidth: colWidth,
                     textAlign: "center",
-                    padding: "6px 0",
+                    padding: isMobile ? "3px 0" : "6px 0",
                     borderLeft: d.isFirstOfMonth ? "2px solid #d8b4fe" : "1px solid #f0f0f0",
                     backgroundColor: d.isToday ? "#f5f3ff" : d.isWeekend ? "var(--bg-surface)" : undefined,
                   }}
                 >
                   <div style={{
-                    fontSize: 10,
+                    fontSize: isMobile ? 8 : 10,
                     fontWeight: 600,
                     color: d.isToday ? "#7c3aed" : "var(--text-secondary)",
                     letterSpacing: 0.3,
                   }}>
                     {String(d.day).padStart(2, "0")}
                   </div>
-                  <div style={{
-                    fontSize: 8,
-                    fontWeight: 500,
-                    color: d.isToday ? "#7c3aed" : "var(--text-faint)",
-                    letterSpacing: 0.5,
-                  }}>
-                    {d.dowLabel}
-                  </div>
+                  {!isMobile && (
+                    <div style={{
+                      fontSize: 8,
+                      fontWeight: 500,
+                      color: d.isToday ? "#7c3aed" : "var(--text-faint)",
+                      letterSpacing: 0.5,
+                    }}>
+                      {d.dowLabel}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -678,7 +701,7 @@ export default function TaskGanttChart({
                   onMouseLeave={() => { setHoveredIdx(null); setTooltipPos(null); }}
                   style={{
                     position: "relative",
-                    height: ROW_HEIGHT,
+                    height: responsiveRowHeight,
                     borderBottom: "1px solid var(--border-table)",
                     background: hoveredIdx === idx ? "var(--bg-hover)" : undefined,
                     transition: "background 0.15s",
@@ -692,8 +715,8 @@ export default function TaskGanttChart({
                       position: "absolute",
                       left: row.startIdx * colWidth + 2,
                       width: barWidthPx,
-                      top: isMulti ? 12 : 18,
-                      height: isMulti ? 32 : 28,
+                      top: isMobile ? (isMulti ? 8 : 12) : isTablet ? (isMulti ? 10 : 14) : (isMulti ? 12 : 18),
+                      height: isMobile ? (isMulti ? 24 : 22) : isTablet ? (isMulti ? 28 : 24) : (isMulti ? 32 : 28),
                       borderRadius: 6,
                       background: barColor.bg,
                       display: "flex",
@@ -713,15 +736,15 @@ export default function TaskGanttChart({
                     onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
                     onClick={() => onTaskClick?.(row.tasks[0])}
                   >
-                    {isMulti && barWidthPx >= 80 && (
+                    {isMulti && barWidthPx >= (isMobile ? 60 : 80) && !isMobile && (
                       <div style={{ display: "flex", marginRight: 2 }}>
                         {row.assignees.slice(0, 3).map((a, i) => (
                           <div
                             key={i}
                             style={{
-                              width: 18, height: 18, borderRadius: "50%",
+                              width: isTablet ? 14 : 18, height: isTablet ? 14 : 18, borderRadius: "50%",
                               backgroundColor: "rgba(255,255,255,0.3)",
-                              color: "#fff", fontSize: 7, fontWeight: 700,
+                              color: "#fff", fontSize: isTablet ? 6 : 7, fontWeight: 700,
                               display: "flex", alignItems: "center", justifyContent: "center",
                               marginLeft: i > 0 ? -4 : 0,
                               border: "1.5px solid rgba(255,255,255,0.5)",
@@ -732,7 +755,7 @@ export default function TaskGanttChart({
                         ))}
                       </div>
                     )}
-                    <span style={{ fontSize: 10, fontWeight: 700, color: barColor.text }}>
+                    <span style={{ fontSize: isMobile ? 7 : isTablet ? 8 : 10, fontWeight: 700, color: barColor.text }}>
                       {barLabel}
                     </span>
                     {row.overallStatus === "overdue" && barWidthPx >= 120 && (
@@ -745,7 +768,7 @@ export default function TaskGanttChart({
                       position: "absolute",
                       left: row.startIdx * colWidth + 2,
                       width: barWidthPx,
-                      top: 48,
+                      top: isMobile ? 34 : isTablet ? 40 : 48,
                       height: 3,
                       borderRadius: 2,
                       backgroundColor: "rgba(0,0,0,0.06)",
@@ -769,25 +792,25 @@ export default function TaskGanttChart({
       </div>
 
       {/* Tooltip */}
-      {hoveredIdx !== null && tooltipPos && groupedRows[hoveredIdx] && (() => {
+      {hoveredIdx !== null && tooltipPos && groupedRows[hoveredIdx] && !isMobile && (() => {
         const row = groupedRows[hoveredIdx];
         const isMulti = row.assignees.length > 1;
         return (
           <div
             style={{
               position: "fixed",
-              left: tooltipPos.x + 14,
+              left: Math.min(tooltipPos.x + 14, screenWidth - 260),
               top: tooltipPos.y - (isMulti ? 120 : 80),
               background: "var(--bg-card)",
               borderRadius: 12,
-              padding: "14px 18px",
-              fontSize: 12,
+              padding: isTablet ? "10px 14px" : "14px 18px",
+              fontSize: isTablet ? 11 : 12,
               zIndex: 9999,
               pointerEvents: "none",
               boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
               border: "1px solid var(--border-light)",
-              minWidth: 240,
-              maxWidth: 320,
+              minWidth: isTablet ? 200 : 240,
+              maxWidth: isTablet ? 260 : 320,
             }}
           >
             <div className="d-flex align-items-center gap-2 mb-2">

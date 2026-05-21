@@ -171,7 +171,7 @@ const UserDashboard = () => {
             </div>
 
             {/* Filters */}
-            {/* <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
+            {/* <div className="rounded-2xl p-3 sm:p-4 md:p-5" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-card)", boxShadow: "var(--shadow-card)" }}>
               <div className="d-flex gap-3">
                 <FormControl fullWidth size="small" sx={commonFormControlSx}>
                   <InputLabel>Project</InputLabel>

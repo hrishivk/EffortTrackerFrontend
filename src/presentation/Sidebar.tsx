@@ -6,6 +6,7 @@ import {
   FiLayers,
   FiChevronsLeft,
   FiChevronsRight,
+  FiCalendar,
 } from "react-icons/fi";
 import { useAppSelector } from "../store/configureStore";
 import { AnimatePresence, motion } from "framer-motion";
@@ -38,6 +39,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       return [
         { to: "/am/Dashboard", label: "Dashboard", icon: <FiGrid size={20} /> },
         {
+          to: "/am/attendance",
+          label: "Attendance",
+          icon: <FiCalendar size={20} />,
+        },
+        {
           to: "/am/TeamManagement",
           label: "Team Management",
           icon: <FiUsers size={20} />,
@@ -53,6 +59,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       return [
         { to: "/sp/dashboard", label: "Dashboard", icon: <FiGrid size={20} /> },
         {
+          to: "/sp/attendance",
+          label: "Attendance",
+          icon: <FiCalendar size={20} />,
+        },
+        {
           to: "/sp/userMangement",
           label: "User Management",
           icon: <FiUsers size={20} />,
@@ -67,6 +78,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (role === "USER" || role === "DEVLOPER") {
       return [
         { to: "/user/dashboard", label: "Dashboard", icon: <FiGrid size={20} /> },
+        {
+          to: "/user/attendance",
+          label: "Attendance",
+          icon: <FiCalendar size={20} />,
+        },
       ];
     }
     return [];

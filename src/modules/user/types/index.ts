@@ -15,6 +15,7 @@ export type taskList = {
   daily_log_id?: string;
   project_id?: string;
   updated_at?: string;
+  completed_at?: string;
   dailyLog?: {
     id: string;
     created_by: string;

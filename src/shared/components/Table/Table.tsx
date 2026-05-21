@@ -159,7 +159,7 @@ function TableList<T>({
                           )}
 
                           {columns.map((col) => (
-                            <CTableDataCell key={col.key}>
+                            <CTableDataCell key={col.key} style={col.width ? { width: col.width } : undefined}>
                               {col.render(row)}
                             </CTableDataCell>
                           ))}

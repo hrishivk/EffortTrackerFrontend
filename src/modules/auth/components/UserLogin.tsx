@@ -4,16 +4,34 @@ import RXLogo from "../../../assets/img/logo2.png.png";
 import { loginValidationSchema } from "../../../utils/validation/Validation";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../../store/configureStore";
+import { useAppSelector } from "../../../store/configureStore";
 import { Eye, EyeOff } from "lucide-react";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
 import { login } from "../../../core/actions/action";
 import { useNavigate } from "react-router-dom";
 import type { LoginResponse } from "../types";
+const roleRedirectMap: Record<string, string> = {
+  SP: "/sp/dashboard",
+  AM: "/am/dashboard",
+  USER: "/user/dashboard",
+  DEVLOPER: "/user/dashboard",
+};
+
 const UserLogin: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { showSnackbar } = useSnackbar();
+  const existingUser = useAppSelector((state) => state.user.user);
+  const existingToken = useAppSelector((state) => state.user.token);
   const [showPassword, setShowPassword] = useState<boolean>(false);
+
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    if (existingUser?.email && existingToken) {
+      const path = roleRedirectMap[existingUser.role] || "/";
+      navigate(path, { replace: true });
+    }
+  }, [existingUser, existingToken, navigate]);
   const [role, setRole] = useState<string>("");
   const [formData, setData] = useState<{ [key: string]: string | number }>({
     email: "",

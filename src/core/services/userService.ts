@@ -70,4 +70,22 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
       headers: { "Content-Type": "application/json" },
     });
   },
+
+  // Leave Management
+  applyLeave: (url: string, data: any) => {
+    return apiservice.post(url, data, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+  getLeaves: (url: string, params?: Record<string, any>) => {
+    return apiservice.get(url, {
+      params: { ...params, _t: Date.now() },
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+    });
+  },
+  leaveAction: (url: string, data: any) => {
+    return apiservice.patch(url, data, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
 };

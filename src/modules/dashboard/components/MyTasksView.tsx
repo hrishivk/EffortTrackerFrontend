@@ -126,12 +126,57 @@ interface MyTasksViewProps {
   viewTab?: string;
 }
 
+function LiveTimer({ startTime }: { startTime: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+  const diff = now - new Date(startTime).getTime();
+  if (diff <= 0) return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>--</span>;
+  const totalSeconds = Math.floor(diff / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  parts.push(`${seconds}s`);
+  return (
+    <span
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        color: "#2563eb",
+        backgroundColor: "#dbeafe",
+        padding: "3px 8px",
+        borderRadius: 6,
+        whiteSpace: "nowrap",
+        display: "inline-block",
+      }}
+    >
+      {parts.join(" ")} ⏱
+    </span>
+  );
+}
+
 export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTasksViewProps) {
   const { showSnackbar } = useSnackbar();
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.user);
   const role = user?.role;
   const userId = user?.id;
+
+  // Detect compact screens (mobile/tablet < 768px)
+  const [isCompact, setIsCompact] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const handler = (e: MediaQueryListEvent) => setIsCompact(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const [tasks, setTasks] = useState<taskList[]>([]);
   const [loading, setLoading] = useState(true);
@@ -357,11 +402,11 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
     {
       key: "taskName",
       header: "Task Name",
-      width: "25%",
+      width: "22%",
       render: (row) => {
         const priorityColor = PRIORITY_DOT[(row.priority || "Low")] || "#6b7280";
         return (
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
             <span
               style={{
                 width: 10,
@@ -372,7 +417,16 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                 display: "inline-block",
               }}
             />
-            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
+            <span style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--text-primary)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              display: "block",
+              maxWidth: "100%",
+            }}>
               {row.description}
             </span>
           </div>
@@ -507,7 +561,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       key: "startTime",
       header: "Start Time",
       render: (row) => {
-        if (!row.start_time) return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>--</span>;
+        if (!row.start_time) return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
         const d = new Date(row.start_time);
         return (
           <div style={{ whiteSpace: "nowrap" }}>
@@ -525,10 +579,11 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       key: "endTime",
       header: "End Time",
       render: (row) => {
-        if (!row.end_time) return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>--</span>;
-        const d = new Date(row.end_time);
         const s = (row.status || "").toLowerCase().replace(/[\s_]+/g, "_");
         const isCompleted = s === "completed" || s === "done";
+        const timeToShow = row.end_time;
+        if (!timeToShow) return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
+        const d = new Date(timeToShow);
         return (
           <div style={{ whiteSpace: "nowrap" }}>
             <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>
@@ -538,6 +593,53 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
               {d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
             </div>
           </div>
+        );
+      },
+    },
+    {
+      key: "totalTime",
+      header: "Total Time",
+      render: (row) => {
+        if (!row.start_time)
+          return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
+        const s = (row.status || "").toLowerCase().replace(/[\s_]+/g, "_");
+        const isCompleted = s === "completed" || s === "done";
+        const isInProgress = s === "in_progress";
+        if (!isCompleted && !isInProgress)
+          return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
+        // Live ticking timer for in-progress tasks
+        if (isInProgress) return <LiveTimer startTime={row.start_time} />;
+        // Static time for completed tasks
+        const start = new Date(row.start_time).getTime();
+        const end = new Date(row.end_time || row.start_time).getTime();
+        const diff = end - start;
+        if (diff <= 0)
+          return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>0s</span>;
+        const totalSeconds = Math.floor(diff / 1000);
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        const parts: string[] = [];
+        if (days > 0) parts.push(`${days}d`);
+        if (hours > 0) parts.push(`${hours}h`);
+        if (minutes > 0) parts.push(`${minutes}m`);
+        if (parts.length === 0) parts.push(`${seconds}s`);
+        return (
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#7c3aed",
+              backgroundColor: "#f5f3ff",
+              padding: "3px 8px",
+              borderRadius: 6,
+              whiteSpace: "nowrap",
+              display: "inline-block",
+            }}
+          >
+            {parts.join(" ")}
+          </span>
         );
       },
     },
@@ -609,7 +711,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       render: (row) => {
         const priorityColor = PRIORITY_DOT[(row.priority || "Low")] || "#6b7280";
         return (
-          <span style={{ color: priorityColor, fontWeight: 600, fontSize: 12 }}>
+          <span style={{ color: priorityColor, fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>
             {row.priority}
           </span>
         );
@@ -701,29 +803,30 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div>
-          <h2 className="fw-bold mb-1" style={{ fontSize: "1.65rem" }}>
+          <h2 className="fw-bold mb-1" style={{ fontSize: "clamp(1.15rem, 4vw, 1.65rem)" }}>
             {viewUserId ? `${getUserName(viewUserId)}'s Tasks` : "My Tasks"}
           </h2>
-          <p className="text-muted mt-1 mb-0" style={{ fontSize: "0.95rem" }}>
+          <p className="text-muted mt-1 mb-0" style={{ fontSize: "clamp(0.8rem, 2.5vw, 0.95rem)" }}>
             {viewUserId
               ? `Viewing tasks assigned to ${getUserName(viewUserId)}`
               : "Manage and track your daily activities"}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto flex-shrink-0">
           {/* Project Filter */}
           <FormControl size="small" sx={{
-            minWidth: 140,
+            minWidth: { xs: 0, sm: 140 },
+            flex: { xs: "1 1 0", sm: "0 0 auto" },
             ...selectSx,
           }}>
             <Select
               value={projectFilter}
               onChange={(e) => { setProjectFilter(e.target.value); setPage(1); }}
               displayEmpty
-              renderValue={(val) => val || "All Projects"}
+              renderValue={(val) => val || (isCompact ? "Projects" : "All Projects")}
               MenuProps={menuProps}
             >
               <MenuItem value="">All Projects</MenuItem>
@@ -736,7 +839,8 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
           {/* Assignee Filter — SP sees AMs, AM sees Users/Developers */}
           {filterableUsers.length > 0 && (
             <FormControl size="small" sx={{
-              minWidth: 140,
+              minWidth: { xs: 0, sm: 140 },
+              flex: { xs: "1 1 0", sm: "0 0 auto" },
               ...selectSx,
             }}>
               <Select
@@ -744,8 +848,8 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                 onChange={(e) => { setAssigneeFilter(e.target.value); setPage(1); }}
                 displayEmpty
                 renderValue={(val) => {
-                  if (!val) return role === "SP" ? "All " : "All Members";
-                  if (val === String(userId)) return "My Tasks";
+                  if (!val) return isCompact ? "Members" : (role === "SP" ? "All " : "All Members");
+                  if (val === String(userId)) return isCompact ? "Mine" : "My Tasks";
                   const u = users.find((u) => String(u.id) === val);
                   return u?.fullName || val;
                 }}
@@ -765,7 +869,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
           {/* Create Task Button — only in All Tasks view, hidden when form is open */}
           {viewMode === "all" && !showCreateForm && (
             <button
-              className="btn text-white d-flex align-items-center gap-1"
+              className="btn text-white d-flex align-items-center justify-content-center gap-1 flex-shrink-0"
               style={{
                 background: "linear-gradient(135deg, #7c3aed, #a855f7)",
                 borderRadius: 12,
@@ -776,15 +880,15 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
               }}
               onClick={() => setShowCreateForm(true)}
             >
-              + Create Task
+              {isCompact ? "+ Task" : "+ Create Task"}
             </button>
           )}
         </div>
       </div>
 
       {/* View Tabs + Date Picker + Active Projects Row */}
-      <div className="rounded-2xl shadow-sm px-5 py-3 mb-5 flex flex-wrap justify-between items-center gap-3" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}>
-        <div className="flex items-center gap-3">
+      <div className="rounded-2xl shadow-sm px-3 sm:px-5 py-3 mb-4 sm:mb-5 flex flex-row justify-between items-center gap-2 sm:gap-3" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)", overflow: "hidden" }}>
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {/* View Mode Toggle */}
           <div
             style={{
@@ -793,73 +897,74 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
               border: "1px solid var(--border-light)",
               overflow: "hidden",
               backgroundColor: "var(--bg-hover)",
+              flexShrink: 0,
             }}
           >
             <button
               onClick={() => setViewMode("all")}
-              className="flex items-center gap-1.5"
+              className="flex items-center gap-1 sm:gap-1.5"
               style={{
                 backgroundColor: viewMode === "all" ? "#7c3aed" : "transparent",
                 color: viewMode === "all" ? "#fff" : "var(--text-muted)",
                 borderRadius: 0,
-                fontSize: 13,
+                fontSize: isCompact ? 11 : 12,
                 fontWeight: 600,
-                padding: "8px 18px",
+                padding: isCompact ? "6px 8px" : "7px 12px",
                 whiteSpace: "nowrap",
                 border: "none",
                 cursor: "pointer",
                 transition: "all 0.2s",
               }}
             >
-              <GridViewIcon sx={{ fontSize: 14 }} />
-              All Tasks
+              <GridViewIcon sx={{ fontSize: isCompact ? 12 : 14 }} />
+              {isCompact ? "Tasks" : "All Tasks"}
             </button>
             <button
               onClick={() => setViewMode("gantt")}
-              className="flex items-center gap-1.5"
+              className="flex items-center gap-1 sm:gap-1.5"
               style={{
                 backgroundColor: viewMode === "gantt" ? "#7c3aed" : "transparent",
                 color: viewMode === "gantt" ? "#fff" : "var(--text-muted)",
                 borderRadius: 0,
-                fontSize: 13,
+                fontSize: isCompact ? 11 : 12,
                 fontWeight: 600,
-                padding: "8px 18px",
+                padding: isCompact ? "6px 8px" : "7px 12px",
                 whiteSpace: "nowrap",
                 border: "none",
                 cursor: "pointer",
                 transition: "all 0.2s",
               }}
             >
-              Gantt chart
+              {isCompact ? "Gantt" : "Gantt chart"}
             </button>
           </div>
 
           {/* Date Navigator — hidden when Gantt view is active */}
           {viewMode !== "gantt" && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 sm:gap-1.5">
               <button
                 onClick={goToPrevDay}
-                className="w-8 h-8 flex items-center justify-center transition"
-                style={{ border: "1px solid var(--border-light)", borderRadius: 10, backgroundColor: "var(--bg-card)" }}
+                className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center transition flex-shrink-0"
+                style={{ border: "1px solid var(--border-light)", borderRadius: 8, backgroundColor: "var(--bg-card)" }}
               >
-                <KeyboardArrowLeftIcon sx={{ fontSize: 18, color: "var(--text-muted)" }} />
+                <KeyboardArrowLeftIcon sx={{ fontSize: 16, color: "var(--text-muted)" }} />
               </button>
               <button
-                className="flex items-center gap-1.5 text-white"
+                className="flex items-center gap-1 sm:gap-1.5 text-white"
                 style={{
                   background: "linear-gradient(135deg, #7c3aed, #9333ea)",
-                  borderRadius: 12,
-                  fontSize: 13,
+                  borderRadius: isCompact ? 8 : 12,
+                  fontSize: isCompact ? 10 : 12,
                   fontWeight: 600,
-                  padding: "8px 18px",
+                  padding: isCompact ? "5px 8px" : "7px 10px",
                   whiteSpace: "nowrap",
                 }}
                 onClick={goToToday}
               >
-                <CalendarMonthIcon sx={{ fontSize: 14 }} />
+                <CalendarMonthIcon sx={{ fontSize: isCompact ? 12 : 14 }} />
                 {formatDateLabel(selectedDate)}
               </button>
-              <div className="relative w-8 h-8 flex-shrink-0">
+              <div className="relative w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
                 <input
                   type="date"
                   value={selectedDate.toISOString().split("T")[0]}
@@ -874,29 +979,29 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                 />
                 <div
                   className="absolute inset-0 flex items-center justify-center transition"
-                  style={{ border: "1px solid var(--border-light)", borderRadius: 10, zIndex: 1 }}
+                  style={{ border: "1px solid var(--border-light)", borderRadius: 8, zIndex: 1 }}
                 >
-                  <CalendarMonthIcon sx={{ fontSize: 16, color: "var(--text-muted)" }} />
+                  <CalendarMonthIcon sx={{ fontSize: 14, color: "var(--text-muted)" }} />
                 </div>
               </div>
               <button
                 onClick={goToNextDay}
-                className="w-8 h-8 flex items-center justify-center transition"
-                style={{ border: "1px solid var(--border-light)", borderRadius: 10, backgroundColor: "var(--bg-card)" }}
+                className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center transition flex-shrink-0"
+                style={{ border: "1px solid var(--border-light)", borderRadius: 8, backgroundColor: "var(--bg-card)" }}
               >
-                <KeyboardArrowRightIcon sx={{ fontSize: 18, color: "var(--text-muted)" }} />
+                <KeyboardArrowRightIcon sx={{ fontSize: 16, color: "var(--text-muted)" }} />
               </button>
             </div>
           )}
         </div>
 
-        {activeProjects.length > 0 && (
-          <div className="flex items-center gap-4 text-xs">
-            <span className="font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Projects:</span>
+        {activeProjects.length > 0 && !isCompact && (
+          <div className="flex items-center gap-4 text-xs overflow-x-auto flex-shrink-0">
+            <span className="font-semibold uppercase tracking-wider flex-shrink-0" style={{ color: "var(--text-faint)" }}>Projects:</span>
             {activeProjects.map((p, i) => {
               const color = PROJECT_COLORS[i % PROJECT_COLORS.length].dot;
               return (
-                <div key={p.id} className="flex items-center gap-1.5">
+                <div key={p.id} className="flex items-center gap-1.5 flex-shrink-0">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                   <span className="font-medium" style={{ color: "var(--text-secondary)" }}>{p.name}</span>
                 </div>
@@ -919,18 +1024,18 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
         />
       ) : (
       /* Task Table + Create Form */
-      <div className="flex gap-5">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-5">
         {/* Create Task Form Panel */}
         <AnimatePresence>
           {showCreateForm && (
             <motion.div
-              initial={{ opacity: 0, x: -20, width: 0 }}
-              animate={{ opacity: 1, x: 0, width: 380 }}
-              exit={{ opacity: 0, x: -20, width: 0 }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
-              className="flex-shrink-0 overflow-hidden"
+              className="flex-shrink-0 overflow-hidden w-full lg:w-[380px]"
             >
-              <div className="rounded-2xl shadow-sm p-5 h-full" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}>
+              <div className="rounded-2xl shadow-sm p-4 sm:p-5 h-full" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}>
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="font-bold" style={{ fontSize: 18, color: "var(--text-primary)" }}>
@@ -1215,7 +1320,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                     slotProps={{ inputLabel: { shrink: true } }}
                   />
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3">
                   <button
                     className="flex-1 btn font-semibold"
                     style={{ border: "1px solid var(--border-light)", color: "var(--text-secondary)", borderRadius: 12, fontSize: 13, padding: "10px 0" }}

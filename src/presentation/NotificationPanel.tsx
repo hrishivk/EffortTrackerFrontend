@@ -1,115 +1,48 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   FiBell,
-  FiCheck,
   FiX,
+  FiInbox,
   FiCheckCircle,
   FiXCircle,
-  FiInbox,
+  FiClock,
+  FiSend,
+  FiSlash,
 } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { useAppSelector } from "../store/configureStore";
+import {
+  fetchNotifications,
+  fetchUnreadCount,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "../core/actions/notificationAction";
 
 // ─── Types ───
-export interface Notification {
+interface Notification {
   id: string;
-  type: "due_date_approval" | "task_created" | "task_updated";
-  developerName: string;
-  taskName: string;
-  projectName: string;
-  requestedDueDate: string;
-  priority: "high" | "medium" | "low";
-  status: "pending" | "approved" | "rejected";
-  createdAt: string;
-  isRead: boolean;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  reference_id: string;
+  is_read: boolean;
+  created_at: string;
 }
 
-// ─── Dummy Data ───
-const DUMMY_NOTIFICATIONS: Notification[] = [
-  {
-    id: "1",
-    type: "due_date_approval",
-    developerName: "Rahul Sharma",
-    taskName: "API Integration - User Auth",
-    projectName: "RhythmRx Portal",
-    requestedDueDate: "2026-03-05",
-    priority: "high",
-    status: "pending",
-    createdAt: "2026-02-26T09:30:00",
-    isRead: false,
-  },
-  {
-    id: "2",
-    type: "due_date_approval",
-    developerName: "Priya Patel",
-    taskName: "Dashboard UI Redesign",
-    projectName: "Tracker Frontend",
-    requestedDueDate: "2026-03-10",
-    priority: "medium",
-    status: "pending",
-    createdAt: "2026-02-26T08:15:00",
-    isRead: false,
-  },
-  {
-    id: "3",
-    type: "due_date_approval",
-    developerName: "Amit Kumar",
-    taskName: "Database Migration Script",
-    projectName: "RhythmRx Portal",
-    requestedDueDate: "2026-03-02",
-    priority: "high",
-    status: "pending",
-    createdAt: "2026-02-25T16:45:00",
-    isRead: false,
-  },
-  {
-    id: "4",
-    type: "task_created",
-    developerName: "Sneha Verma",
-    taskName: "Payment Gateway Integration",
-    projectName: "RhythmRx Portal",
-    requestedDueDate: "2026-03-15",
-    priority: "medium",
-    status: "pending",
-    createdAt: "2026-02-25T14:20:00",
-    isRead: true,
-  },
-  {
-    id: "5",
-    type: "due_date_approval",
-    developerName: "Vikram Singh",
-    taskName: "Unit Test Coverage - Auth",
-    projectName: "Tracker Frontend",
-    requestedDueDate: "2026-03-08",
-    priority: "low",
-    status: "pending",
-    createdAt: "2026-02-25T11:00:00",
-    isRead: true,
-  },
-  {
-    id: "6",
-    type: "due_date_approval",
-    developerName: "Rahul Sharma",
-    taskName: "Bug Fix - Login Redirect",
-    projectName: "RhythmRx Portal",
-    requestedDueDate: "2026-02-28",
-    priority: "high",
-    status: "approved",
-    createdAt: "2026-02-24T10:30:00",
-    isRead: true,
-  },
-  {
-    id: "7",
-    type: "due_date_approval",
-    developerName: "Priya Patel",
-    taskName: "Mobile Responsive Fixes",
-    projectName: "Tracker Frontend",
-    requestedDueDate: "2026-02-27",
-    priority: "medium",
-    status: "rejected",
-    createdAt: "2026-02-23T09:00:00",
-    isRead: true,
-  },
-];
+// ─── Icon + color per notification type ───
+const typeConfig: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
+  leave_applied:          { icon: <FiSend size={12} />,        color: "#2563eb", bg: "#dbeafe" },
+  leave_manager_approved: { icon: <FiCheckCircle size={12} />, color: "#16a34a", bg: "#dcfce7" },
+  leave_manager_rejected: { icon: <FiXCircle size={12} />,     color: "#dc2626", bg: "#fee2e2" },
+  leave_pending_admin:    { icon: <FiClock size={12} />,       color: "#d97706", bg: "#fef3c7" },
+  leave_approved:         { icon: <FiCheckCircle size={12} />, color: "#16a34a", bg: "#dcfce7" },
+  leave_rejected:         { icon: <FiXCircle size={12} />,     color: "#dc2626", bg: "#fee2e2" },
+  leave_cancelled:        { icon: <FiSlash size={12} />,       color: "#6b7280", bg: "#f3f4f6" },
+};
+
+const defaultConfig = { icon: <FiBell size={12} />, color: "#7c3aed", bg: "#f5f3ff" };
 
 // ─── Helpers ───
 function timeAgo(dateStr: string): string {
@@ -126,31 +59,9 @@ function timeAgo(dateStr: string): string {
   return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
-function shortDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-}
-
-const P_DOT: Record<string, string> = {
-  high: "bg-red-500",
-  medium: "bg-amber-400",
-  low: "bg-blue-400",
-};
-
-type FilterTab = "all" | "pending" | "approved" | "rejected";
-
-// ─── Compact Card ───
-function NotiCard({
-  n,
-  onApprove,
-  onReject,
-  onRead,
-}: {
-  n: Notification;
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
-  onRead: (id: string) => void;
-}) {
-  const initials = n.developerName.split(" ").map((w) => w[0]).join("").toUpperCase();
+// ─── Notification Card ───
+function NotiCard({ n, onRead, onNavigate }: { n: Notification; onRead: (id: string) => void; onNavigate: (n: Notification) => void }) {
+  const config = typeConfig[n.type] || defaultConfig;
 
   return (
     <motion.div
@@ -158,92 +69,121 @@ function NotiCard({
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -10 }}
-      onClick={() => !n.isRead && onRead(n.id)}
-      className={`relative px-3 py-2 cursor-pointer transition-colors ${
-        !n.isRead ? "bg-purple-50/30" : ""
-      }`}
-      style={{ borderBottom: "1px solid var(--border-light)" }}
+      onClick={() => {
+        if (!n.is_read) onRead(n.id);
+        onNavigate(n);
+      }}
+      className={`relative px-3 py-3 cursor-pointer transition-colors hover:bg-gray-50/50`}
+      style={{
+        borderBottom: "1px solid var(--border-light)",
+        backgroundColor: !n.is_read ? "rgba(124,58,237,0.03)" : "transparent",
+      }}
     >
-      {!n.isRead && (
-        <div className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full bg-[#AD21DB]" />
+      {!n.is_read && (
+        <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ backgroundColor: "#7c3aed" }} />
       )}
 
-      <div className="flex items-start gap-2">
-        {/* Avatar */}
-        <div className="w-6 h-6 rounded-full bg-[#AD21DB] flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0 mt-0.5">
-          {initials}
+      <div className="flex items-start gap-2.5">
+        {/* Icon */}
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{ backgroundColor: config.bg, color: config.color }}
+        >
+          {config.icon}
         </div>
 
         <div className="flex-1 min-w-0">
-          {/* Name + Time */}
+          {/* Title + Time */}
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[11px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>
-              {n.developerName}
+            <span
+              className="text-[12px] font-semibold truncate"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {n.title}
             </span>
             <span className="text-[9px] flex-shrink-0" style={{ color: "var(--text-faint)" }}>
-              {timeAgo(n.createdAt)}
+              {timeAgo(n.created_at)}
             </span>
           </div>
 
-          {/* Task */}
-          <p className="text-[10px] truncate mt-0.5" style={{ color: "var(--text-muted)" }}>
-            {n.taskName}
+          {/* Message */}
+          <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+            {n.message}
           </p>
-
-          {/* Meta row */}
-          <div className="flex items-center gap-1.5 mt-1">
-            <span className="text-[9px] truncate" style={{ color: "var(--text-faint)" }}>{n.projectName}</span>
-            <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>|</span>
-            <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{shortDate(n.requestedDueDate)}</span>
-            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${P_DOT[n.priority]}`} />
-          </div>
-
-          {/* Actions */}
-          {n.type === "due_date_approval" && n.status === "pending" && (
-            <div className="flex items-center gap-1 mt-1">
-              <button
-                onClick={(e) => { e.stopPropagation(); onApprove(n.id); }}
-                className="w-5 h-5 flex items-center justify-center rounded-full text-emerald-600 bg-emerald-50 hover:bg-emerald-100 active:scale-90 transition-all"
-              >
-                <FiCheck size={10} strokeWidth={2.5} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onReject(n.id); }}
-                className="w-5 h-5 flex items-center justify-center rounded-full text-gray-400 bg-gray-50 hover:bg-red-50 hover:text-red-500 active:scale-90 transition-all"
-              >
-                <FiX size={10} strokeWidth={2.5} />
-              </button>
-            </div>
-          )}
-
-          {n.status === "approved" && (
-            <span className="inline-flex items-center gap-0.5 mt-1 text-[8px] font-medium text-emerald-600">
-              <FiCheckCircle size={8} /> Approved
-            </span>
-          )}
-          {n.status === "rejected" && (
-            <span className="inline-flex items-center gap-0.5 mt-1 text-[8px] font-medium text-red-500">
-              <FiXCircle size={8} /> Rejected
-            </span>
-          )}
         </div>
       </div>
     </motion.div>
   );
 }
 
-// ─── Main Panel ───
+
+const typeToTab: Record<string, string> = {
+  leave_applied: "teamLeaves",           // AM sees pending requests
+  leave_manager_approved: "myLeaves",    // USER sees their leave status
+  leave_manager_rejected: "myLeaves",    // USER sees rejection
+  leave_pending_admin: "teamLeaves",     // SP sees manager-approved requests
+  leave_approved: "myLeaves",            // USER sees final approval
+  leave_rejected: "myLeaves",            // USER sees final rejection
+  leave_cancelled: "teamLeaves",         // AM sees cancellation
+};
+
 export default function NotificationPanel() {
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(DUMMY_NOTIFICATIONS);
-  const [filter, _setFilter] = useState<FilterTab>("all");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const navigate = useNavigate();
+  const { user } = useAppSelector((state) => state.user);
+  const role = user?.role?.toLowerCase();
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-  const pendingCount = notifications.filter((n) => n.status === "pending").length;
+  const handleNavigate = (n: Notification) => {
+    const tab = typeToTab[n.type];
+    if (tab) {
+      const rolePath = role === "sp" ? "sp" : role === "am" ? "am" : "user";
+      navigate(`/${rolePath}/attendance?tab=${tab}`);
+      setOpen(false);
+    }
+  };
 
-  const filtered =
-    filter === "all" ? notifications : notifications.filter((n) => n.status === filter);
+  // Fetch unread count only when panel is opened
+  const loadCount = useCallback(async () => {
+    try {
+      const res = await fetchUnreadCount();
+      setUnreadCount(res.data?.unreadCount || 0);
+    } catch {
+      /* silent */
+    }
+  }, []);
 
+  // Fetch notifications when panel opens
+  const loadNotifications = useCallback(async (p: number) => {
+    setLoading(true);
+    try {
+      const res = await fetchNotifications({ page: p, limit: 20 });
+      if (p === 1) {
+        setNotifications(res.data || []);
+      } else {
+        setNotifications((prev) => [...prev, ...(res.data || [])]);
+      }
+      setTotalPages(res.totalPages || 1);
+    } catch {
+      /* silent */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      setPage(1);
+      loadCount();
+      loadNotifications(1);
+    }
+  }, [open, loadCount, loadNotifications]);
+
+  // Escape to close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -252,20 +192,33 @@ export default function NotificationPanel() {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
-  const handleApprove = (id: string) =>
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, status: "approved" as const, isRead: true } : n))
-    );
-  const handleReject = (id: string) =>
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, status: "rejected" as const, isRead: true } : n))
-    );
-  const handleRead = (id: string) =>
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
-  const markAllRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  const handleRead = async (id: string) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch {
+      /* silent */
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch {
+      /* silent */
+    }
+  };
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    loadNotifications(nextPage);
+  };
 
   return (
     <>
@@ -273,17 +226,23 @@ export default function NotificationPanel() {
       <button
         onClick={() => setOpen((prev) => !prev)}
         className="relative p-2 rounded-lg transition-colors"
-        style={{ color: open ? "var(--text-primary)" : "var(--text-muted)", backgroundColor: open ? "var(--bg-hover)" : "transparent" }}
+        style={{
+          color: open ? "var(--text-primary)" : "var(--text-muted)",
+          backgroundColor: open ? "var(--bg-hover)" : "transparent",
+        }}
       >
         <FiBell size={20} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-[16px] px-0.5 text-[9px] font-bold text-white bg-[#AD21DB] rounded-full" style={{ boxShadow: "0 0 0 2px var(--bg-card)" }}>
-            {unreadCount}
+          <span
+            className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-[16px] px-0.5 text-[9px] font-bold text-white rounded-full"
+            style={{ backgroundColor: "#AD21DB", boxShadow: "0 0 0 2px var(--bg-card)" }}
+          >
+            {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Left Sidebar Panel */}
+      {/* Sidebar Panel */}
       <AnimatePresence>
         {open && (
           <>
@@ -306,63 +265,88 @@ export default function NotificationPanel() {
               style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}
             >
               {/* Header */}
-              <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--border-light)" }}>
+              <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-light)" }}>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <FiBell size={14} className="text-[#AD21DB]" />
-                    <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Notifications</span>
-                    {pendingCount > 0 && (
-                      <span className="text-[7px] font-bold px-1 py-[1px] rounded-full bg-amber-100 text-amber-700">
-                        {pendingCount}
+                    <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                      Notifications
+                    </span>
+                    {unreadCount > 0 && (
+                      <span
+                        className="text-[9px] font-bold px-1.5 py-[2px] rounded-full"
+                        style={{ backgroundColor: "#f5f3ff", color: "#7c3aed" }}
+                      >
+                        {unreadCount} new
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
                     {unreadCount > 0 && (
                       <button
-                        onClick={markAllRead}
-                        className="text-[8px] font-medium text-[#AD21DB] hover:underline px-1"
+                        onClick={handleMarkAllRead}
+                        className="text-[10px] font-semibold hover:underline"
+                        style={{ color: "#7c3aed" }}
                       >
-                    
+                        Mark all read
                       </button>
                     )}
                     <button
                       onClick={() => setOpen(false)}
-                      className="p-0.5 rounded transition-colors"
+                      className="p-1 rounded transition-colors hover:bg-gray-100"
                       style={{ color: "var(--text-faint)" }}
                     >
-                      <FiX size={13} />
+                      <FiX size={14} />
                     </button>
                   </div>
                 </div>
-
               </div>
 
               {/* List */}
               <div className="flex-1 overflow-y-auto">
-                <AnimatePresence mode="popLayout">
-                  {filtered.length > 0 ? (
-                    filtered.map((n) => (
-                      <NotiCard
-                        key={n.id}
-                        n={n}
-                        onApprove={handleApprove}
-                        onReject={handleReject}
-                        onRead={handleRead}
-                      />
-                    ))
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex flex-col items-center justify-center py-10"
-                      style={{ color: "var(--text-faint)" }}
+                {loading && notifications.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <span style={{ fontSize: 12, color: "var(--text-faint)" }}>Loading...</span>
+                  </div>
+                ) : (
+                  <AnimatePresence mode="popLayout">
+                    {notifications.length > 0 ? (
+                      notifications.map((n) => (
+                        <NotiCard key={n.id} n={n} onRead={handleRead} onNavigate={handleNavigate} />
+                      ))
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex flex-col items-center justify-center py-16"
+                        style={{ color: "var(--text-faint)" }}
+                      >
+                        <FiInbox size={24} className="mb-2" />
+                        <p className="text-xs">No notifications yet</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                )}
+
+                {/* Load More */}
+                {page < totalPages && notifications.length > 0 && (
+                  <div className="flex justify-center py-3">
+                    <button
+                      onClick={handleLoadMore}
+                      disabled={loading}
+                      className="text-[11px] font-semibold px-4 py-1.5 rounded-lg transition-colors"
+                      style={{
+                        color: "#7c3aed",
+                        backgroundColor: "#f5f3ff",
+                        border: "none",
+                        cursor: "pointer",
+                        opacity: loading ? 0.6 : 1,
+                      }}
                     >
-                      <FiInbox size={18} className="mb-1" style={{ color: "var(--text-faint)" }} />
-                      <p className="text-[10px]">No {filter !== "all" ? filter : ""} notifications</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      {loading ? "Loading..." : "Load More"}
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           </>

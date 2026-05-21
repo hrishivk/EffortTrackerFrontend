@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { FiMenu, FiSun, FiMoon } from "react-icons/fi";
 import Sidebar from "./Sidebar";
-// import NotificationPanel from "./NotificationPanel";
+import NotificationPanel from "./NotificationPanel";
 import logo from "../assets/img/logo2.png.png";
 import prLogo from "../assets/img/prLogo.png";
 import { useAppSelector } from "../store/configureStore";
@@ -57,10 +57,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               {theme === "light" ? <FiMoon size={18} /> : <FiSun size={18} />}
             </button>
 
-            {/* Notification Bell - visible for AM role */}
-            {/* {(user?.role === "AM" || user?.role === "SP") && (
-              <NotificationPanel />
-            )} */}
+            {/* Notification Bell */}
+            <NotificationPanel />
 
           <div className="flex items-center gap-2 px-1.5 py-1.5 sm:pr-3">
             <img

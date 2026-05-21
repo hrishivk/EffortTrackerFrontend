@@ -7,6 +7,7 @@ const DomainProject=React.lazy(()=>import('../../modules/sp/components/DomainPro
 const CreateProject=React.lazy(()=>import('../../modules/sp/components/Create/CreateProject'))
 const CreateUser=React.lazy(()=>import('../../modules/sp/components/Create/CreateUser'))
 const CreateDomain=React.lazy(()=>import('../../modules/sp/components/Create/CreateDomain'))
+const LeaveManagement=React.lazy(()=>import('../../modules/attendance/components/LeaveManagement'))
 const routes = [
   {
     path: '/sp/dashboard',
@@ -61,6 +62,12 @@ const routes = [
     name: 'User Dashboard',
     element: Dashboard,
     roles: ['USER', 'DEVLOPER'],
+  },
+  {
+    path: '/:role/attendance',
+    name: 'Attendance',
+    element: LeaveManagement,
+    roles: ['SP', 'AM', 'USER', 'DEVLOPER'],
   },
 ]
 export default routes

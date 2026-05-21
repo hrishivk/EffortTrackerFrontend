@@ -1,4 +1,3 @@
-
 export const API_URL={
   amService: "https://rxtracker.icu/role-am",
     spService: "https://rxtracker.icu/role-sp",

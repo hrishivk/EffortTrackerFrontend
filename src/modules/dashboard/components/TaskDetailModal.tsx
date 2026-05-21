@@ -147,17 +147,32 @@ export default function TaskDetailModal({
       PaperProps={{
         sx: {
           borderRadius: 4,
-          overflow: "visible",
+          overflow: "hidden",
           maxWidth: 560,
+          maxHeight: "90vh",
           backgroundColor: "var(--bg-card)",
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
-      <div style={{ padding: "28px 32px 24px" }}>
-        {/* Header */}
+      {/* Fixed Header */}
+      <div style={{ padding: "28px 32px 0", flexShrink: 0 }}>
         <div className="d-flex justify-content-between align-items-start mb-3">
           <div style={{ flex: 1, paddingRight: 16 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: 0, lineHeight: 1.4 }}>
+            <h3 style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              margin: 0,
+              lineHeight: 1.4,
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              wordBreak: "break-word",
+            }}>
               {task.description}
             </h3>
             <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "4px 0 0" }}>
@@ -175,6 +190,7 @@ export default function TaskDetailModal({
               display: "flex",
               alignItems: "center",
               color: "var(--text-faint)",
+              flexShrink: 0,
             }}
           >
             <CloseIcon sx={{ fontSize: 20 }} />
@@ -197,6 +213,10 @@ export default function TaskDetailModal({
             {status.label}
           </span>
         </div>
+      </div>
+
+      {/* Scrollable Body */}
+      <div style={{ padding: "0 32px", overflowY: "auto", flex: 1, minHeight: 0 }}>
 
         {/* Info Grid */}
         <div
@@ -320,6 +340,9 @@ export default function TaskDetailModal({
               border: "1px solid var(--border-light)",
               borderRadius: 12,
               minHeight: 60,
+              maxHeight: 200,
+              overflowY: "auto",
+              wordBreak: "break-word",
             }}
           >
             {task.description}
@@ -360,7 +383,7 @@ export default function TaskDetailModal({
         )}
 
         {/* Created By */}
-        <div style={{ marginBottom: 28 }}>
+        <div style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 11, color: "var(--text-faint)", margin: 0 }}>
             Created by <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>{creatorName}</span>
             {assigneeEmail && (
@@ -368,7 +391,10 @@ export default function TaskDetailModal({
             )}
           </p>
         </div>
+      </div>
 
+      {/* Fixed Footer */}
+      <div style={{ padding: "16px 32px 24px", flexShrink: 0, borderTop: "1px solid var(--border-light)" }}>
         {/* Blocked warning */}
         {blockedByInProgress && canStartTask && (
           <div
@@ -387,7 +413,6 @@ export default function TaskDetailModal({
           </div>
         )}
 
-     
         <div className="d-flex justify-content-end gap-3">
           <button
             onClick={onClose}
