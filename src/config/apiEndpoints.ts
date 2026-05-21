@@ -1,6 +1,6 @@
 export const API_URL={
-  amService: "http://rxtracker.icu/role-am",
-    spService: "http://rxtracker.icu/role-sp",
-    apiService:"http://rxtracker.icu/auth",
-    userService: "http://rxtracker.icu/role-user",
+  amService: "https://rxtracker.icu/role-am",
+    spService: "https://rxtracker.icu/role-sp",
+    apiService:"https://rxtracker.icu/auth",
+    userService: "https://rxtracker.icu/role-user",
 }
