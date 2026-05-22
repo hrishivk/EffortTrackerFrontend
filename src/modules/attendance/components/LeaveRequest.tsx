@@ -3,7 +3,13 @@ import { motion } from "framer-motion";
 import { TextField, FormControl, Select, MenuItem } from "@mui/material";
 import { applyLeave, fetchLeaveBalance } from "../../../core/actions/leaveAction";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
+import { leaveRequestValidationSchema } from "../../../utils/validation/Validation";
 import type { LeaveBalance } from "../types";
+
+const ErrorText = ({ message }: { message?: string }) =>
+  message ? (
+    <p style={{ fontSize: 11, color: "#ef4444", fontWeight: 500, margin: "4px 0 0" }}>{message}</p>
+  ) : null;
 
 const selectSx = {
   "& .MuiOutlinedInput-root": {
@@ -16,6 +22,23 @@ const selectSx = {
     "&.Mui-focused fieldset": {
       borderColor: "#7c3aed",
       boxShadow: "0 0 0 2px rgba(124,58,237,0.1)",
+    },
+  },
+  "& .MuiInputBase-input": { padding: "8px 14px", fontSize: 13, color: "var(--text-primary)" },
+};
+
+const errorSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "12px",
+    backgroundColor: "#fef2f2",
+    color: "var(--text-primary)",
+    fontSize: 13,
+    fontWeight: 500,
+    "& fieldset": { borderColor: "#ef4444" },
+    "&:hover fieldset": { borderColor: "#dc2626" },
+    "&.Mui-focused fieldset": {
+      borderColor: "#dc2626",
+      boxShadow: "0 0 0 2px rgba(239,68,68,0.12)",
     },
   },
   "& .MuiInputBase-input": { padding: "8px 14px", fontSize: 13, color: "var(--text-primary)" },
@@ -53,9 +76,44 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
     contact: "",
     reason: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [balanceItems, setBalanceItems] = useState(defaultBalance);
   const { showSnackbar } = useSnackbar();
+
+  const validateField = (field: string, nextForm: typeof form) => {
+    const payload = {
+      leaveType: nextForm.leaveType,
+      fromDate: nextForm.fromDate,
+      toDate: nextForm.toDate || undefined,
+      contact: nextForm.contact || undefined,
+      reason: nextForm.reason,
+    };
+    const result = leaveRequestValidationSchema.safeParse(payload);
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      if (!result.success) {
+        const firstForField = result.error.errors.find(
+          (err) => err.path[0] === field,
+        );
+        if (firstForField) next[field] = firstForField.message;
+      }
+      return next;
+    });
+  };
+
+  const updateField = (field: keyof typeof form, value: string) => {
+    setForm((prev) => {
+      const nextForm = { ...prev, [field]: value };
+      validateField(field, nextForm);
+      // toDate depends on fromDate — re-check toDate when fromDate changes
+      if (field === "fromDate" && nextForm.toDate) validateField("toDate", nextForm);
+      return nextForm;
+    });
+  };
+
+  const sx = (field: string) => (errors[field] ? errorSx : selectSx);
 
   const loadBalance = useCallback(async () => {
     try {
@@ -83,10 +141,25 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
   }, [loadBalance]);
 
   const handleSubmit = async () => {
-    if (!form.leaveType || !form.fromDate || !form.reason) {
-      showSnackbar({ message: "Please fill in leave type, from date, and reason", severity: "error" });
+    const result = leaveRequestValidationSchema.safeParse({
+      leaveType: form.leaveType,
+      fromDate: form.fromDate,
+      toDate: form.toDate || undefined,
+      contact: form.contact || undefined,
+      reason: form.reason,
+    });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        const key = err.path[0] as string;
+        if (!fieldErrors[key]) fieldErrors[key] = err.message;
+      });
+      setErrors(fieldErrors);
+      const firstError = result.error.errors[0]?.message;
+      showSnackbar({ message: firstError || "Please fix the highlighted fields", severity: "error" });
       return;
     }
+    setErrors({});
     setSubmitting(true);
     try {
       await applyLeave({
@@ -136,10 +209,10 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
               <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
                 Leave Type
               </label>
-              <FormControl fullWidth size="small" sx={selectSx}>
+              <FormControl fullWidth size="small" error={!!errors.leaveType} sx={sx("leaveType")}>
                 <Select
                   value={form.leaveType}
-                  onChange={(e) => setForm((f) => ({ ...f, leaveType: e.target.value }))}
+                  onChange={(e) => updateField("leaveType", e.target.value)}
                   displayEmpty
                   renderValue={(val) =>
                     val ? val : <span style={{ color: "#9ca3af" }}>Select Leave Type</span>
@@ -151,6 +224,7 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
                   ))}
                 </Select>
               </FormControl>
+              <ErrorText message={errors.leaveType} />
             </div>
 
             <div>
@@ -200,10 +274,12 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
                 size="small"
                 type="date"
                 value={form.fromDate}
-                onChange={(e) => setForm((f) => ({ ...f, fromDate: e.target.value }))}
-                sx={selectSx}
+                onChange={(e) => updateField("fromDate", e.target.value)}
+                error={!!errors.fromDate}
+                sx={sx("fromDate")}
                 slotProps={{ inputLabel: { shrink: true } }}
               />
+              <ErrorText message={errors.fromDate} />
             </div>
             <div>
               <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
@@ -214,10 +290,13 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
                 size="small"
                 type="date"
                 value={form.toDate}
-                onChange={(e) => setForm((f) => ({ ...f, toDate: e.target.value }))}
-                sx={selectSx}
+                onChange={(e) => updateField("toDate", e.target.value)}
+                error={!!errors.toDate}
+                inputProps={{ min: form.fromDate || undefined }}
+                sx={sx("toDate")}
                 slotProps={{ inputLabel: { shrink: true } }}
               />
+              <ErrorText message={errors.toDate} />
             </div>
           </div>
 
@@ -229,11 +308,17 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
             <TextField
               fullWidth
               size="small"
-              placeholder="+1 (555) 555-5555"
+              placeholder="10-digit mobile number"
               value={form.contact}
-              onChange={(e) => setForm((f) => ({ ...f, contact: e.target.value }))}
-              sx={selectSx}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                updateField("contact", digits);
+              }}
+              inputProps={{ inputMode: "numeric", maxLength: 10 }}
+              error={!!errors.contact}
+              sx={sx("contact")}
             />
+            <ErrorText message={errors.contact} />
           </div>
 
           {/* Reason */}
@@ -248,9 +333,11 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
               rows={3}
               placeholder="Briefly explain the reason for your leave request..."
               value={form.reason}
-              onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
-              sx={selectSx}
+              onChange={(e) => updateField("reason", e.target.value)}
+              error={!!errors.reason}
+              sx={sx("reason")}
             />
+            <ErrorText message={errors.reason} />
           </div>
 
           {/* Buttons */}
@@ -258,6 +345,7 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
             <button
               onClick={() => {
                 setForm({ leaveType: "", session: "Full Day", fromDate: "", toDate: "", contact: "", reason: "" });
+                setErrors({});
               }}
               style={{
                 padding: "10px 24px",
@@ -294,7 +382,8 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
 
         {/* Right — Leave Balance */}
         <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col gap-5">
-          {/* Balance card */}
+          {/* Balance card — commented out */}
+          {false && (
           <div
             className="rounded-2xl p-5"
             style={{
@@ -356,6 +445,7 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
               View Detailed Balance &rsaquo;
             </button>
           </div>
+          )}
 
           {/* Info box */}
           <div

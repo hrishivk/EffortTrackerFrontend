@@ -9,10 +9,6 @@ import {
   TextField,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import FormatBoldIcon from "@mui/icons-material/FormatBold";
-import FormatItalicIcon from "@mui/icons-material/FormatItalic";
-import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
-import LinkIcon from "@mui/icons-material/Link";
 
 import { addProject, assignProjectMembers, fetchUsers, fetchAllUsers, fetchExistDomains } from "../../../../core/actions/spAction";
 import { ProjectValidationSchema } from "../../../../utils/validation/Validation";
@@ -139,6 +135,9 @@ const CreateProject = () => {
       if (field === "category" && value !== prev.category) {
         next.teamMembers = [];
       }
+      if (field === "domainId" && value !== prev.domainId) {
+        next.teamMembers = [];
+      }
       return next;
     });
     setErrors((prev) => {
@@ -164,11 +163,23 @@ const CreateProject = () => {
     }));
   };
 
+  const isSP = role?.toUpperCase() === "SP";
+
+  const domainScopedMembers = (() => {
+    if (!isSP) return members;
+    if (!form.domainId) return [];
+    const selectedDomain = domains.find((d) => String(d.id) === form.domainId);
+    const allowedIds = new Set(
+      (selectedDomain?.assignedUsers || []).map((u) => String(u.id))
+    );
+    return members.filter((m) => allowedIds.has(String(m.id)));
+  })();
+
   const categoryMembers = form.category
-    ? members.filter(
+    ? domainScopedMembers.filter(
         (m) => m.department?.toLowerCase() === form.category.toLowerCase()
       )
-    : members;
+    : domainScopedMembers;
 
   const filteredMembers = categoryMembers.filter(
     (m) =>
@@ -477,26 +488,6 @@ const CreateProject = () => {
               backgroundColor: errors.description ? "#fef2f2" : "var(--bg-card)",
             }}
           >
-            <div
-              className="d-flex align-items-center gap-1 px-3 py-2"
-              style={{
-                borderBottom: `1px solid ${errors.description ? "#ef4444" : "var(--border-light)"}`,
-                backgroundColor: errors.description ? "#fef2f2" : "var(--bg-surface)",
-              }}
-            >
-              <button className="btn btn-sm p-1" style={{ color: "var(--text-muted)" }}>
-                <FormatBoldIcon sx={{ fontSize: 18 }} />
-              </button>
-              <button className="btn btn-sm p-1" style={{ color: "var(--text-muted)" }}>
-                <FormatItalicIcon sx={{ fontSize: 18 }} />
-              </button>
-              <button className="btn btn-sm p-1" style={{ color: "var(--text-muted)" }}>
-                <FormatListBulletedIcon sx={{ fontSize: 18 }} />
-              </button>
-              <button className="btn btn-sm p-1" style={{ color: "var(--text-muted)" }}>
-                <LinkIcon sx={{ fontSize: 18 }} />
-              </button>
-            </div>
             <textarea
               className="form-control border-0"
               rows={4}
@@ -582,7 +573,27 @@ const CreateProject = () => {
         />
 
         {/* Members Grid */}
-        {!form.category && (
+        {isSP && !form.domainId && (
+          <div
+            className="d-flex align-items-center justify-content-center p-4 rounded-3 mb-2"
+            style={{ backgroundColor: "var(--bg-surface)", border: "1px dashed var(--border-light)" }}
+          >
+            <p className="mb-0" style={{ fontSize: 13, color: "var(--text-faint)" }}>
+              Select a domain above to see managers assigned to it.
+            </p>
+          </div>
+        )}
+        {isSP && form.domainId && domainScopedMembers.length === 0 && (
+          <div
+            className="d-flex align-items-center justify-content-center p-4 rounded-3 mb-2"
+            style={{ backgroundColor: "#fef2f2", border: "1px dashed #fecaca" }}
+          >
+            <p className="mb-0" style={{ fontSize: 13, color: "#dc2626" }}>
+              No Account Managers assigned to this domain.
+            </p>
+          </div>
+        )}
+        {!isSP && !form.category && (
           <div
             className="d-flex align-items-center justify-content-center p-4 rounded-3 mb-2"
             style={{ backgroundColor: "var(--bg-surface)", border: "1px dashed var(--border-light)" }}
@@ -592,13 +603,23 @@ const CreateProject = () => {
             </p>
           </div>
         )}
-        {form.category && categoryMembers.length === 0 && (
+        {!isSP && form.category && categoryMembers.length === 0 && (
           <div
             className="d-flex align-items-center justify-content-center p-4 rounded-3 mb-2"
             style={{ backgroundColor: "#fef2f2", border: "1px dashed #fecaca" }}
           >
             <p className="mb-0" style={{ fontSize: 13, color: "#dc2626" }}>
               No team members found in the "{form.category}" department.
+            </p>
+          </div>
+        )}
+        {isSP && form.domainId && domainScopedMembers.length > 0 && form.category && categoryMembers.length === 0 && (
+          <div
+            className="d-flex align-items-center justify-content-center p-4 rounded-3 mb-2"
+            style={{ backgroundColor: "#fef2f2", border: "1px dashed #fecaca" }}
+          >
+            <p className="mb-0" style={{ fontSize: 13, color: "#dc2626" }}>
+              No assigned managers match the "{form.category}" department.
             </p>
           </div>
         )}

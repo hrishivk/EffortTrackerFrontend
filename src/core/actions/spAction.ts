@@ -1,10 +1,17 @@
 import { spserviceMethood } from "../services/spService";
+import { amServiceMethood } from "../services/amService";
 import { userServiceMethood } from "../services/userService";
+import { store } from "../../store/configureStore";
 import type { UserData } from "../types";
 
-export const addDomain = async (data: { [key: string]: string | number }) => {
+const isAmRole = () =>
+  store.getState()?.user?.user?.role?.toUpperCase() === "AM";
+
+export const addDomain = async (data: { [key: string]: string | number | string[] | undefined }) => {
   try {
-    const response = await spserviceMethood.addDomain("/domain", data);
+    const response = isAmRole()
+      ? await amServiceMethood.addDomain("/domain", data)
+      : await spserviceMethood.addDomain("/domain", data);
     return response.data;
   } catch (error) {
     throw error
@@ -12,7 +19,9 @@ export const addDomain = async (data: { [key: string]: string | number }) => {
 };
 export const deleteDomain = async (id: string) => {
   try {
-    const response = await spserviceMethood.deleteDomain(`/domain?id=${id}`);
+    const response = isAmRole()
+      ? await amServiceMethood.deleteDomain(`/domain?id=${id}`)
+      : await spserviceMethood.deleteDomain(`/domain?id=${id}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -20,7 +29,9 @@ export const deleteDomain = async (id: string) => {
 };
 export const fetchExistDomains=async()=>{
   try {
-    const repsonse=await spserviceMethood.listAllDomain("/list-domains")
+    const repsonse = isAmRole()
+      ? await amServiceMethood.listAllDomain("/list-domains")
+      : await spserviceMethood.listAllDomain("/list-domains")
     return repsonse.data
   } catch (error) {
      console.log(error)

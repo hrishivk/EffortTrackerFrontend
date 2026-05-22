@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { TextField } from "@mui/material";
-import FormatBoldIcon from "@mui/icons-material/FormatBold";
-import FormatItalicIcon from "@mui/icons-material/FormatItalic";
-import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
-import LinkIcon from "@mui/icons-material/Link";
+import {
+  Checkbox,
+  FormControl,
+  ListItemText,
+  MenuItem,
+  Select,
+  TextField,
+} from "@mui/material";
 
-import { addDomain, deleteDomain, fetchExistDomains } from "../../../../core/actions/spAction";
+import { addDomain, deleteDomain, fetchExistDomains, fetchUsers } from "../../../../core/actions/spAction";
 import { Trash2 } from "lucide-react";
 import { DomainValidationSchema } from "../../../../utils/validation/Validation";
 import { useSnackbar } from "../../../../contexts/SnackbarContext";
 
 import type { Domain } from "../../../../shared/types/Domain";
+import type { formUserData } from "../../../../shared/types/User";
 import Dialoge from "../../../../presentation/Dialog";
 
 const inputSx = {
@@ -73,6 +77,10 @@ const CreateDomain = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [domains, setDomains] = useState<Domain[]>([]);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [amList, setAmList] = useState<formUserData[]>([]);
+  const [assignedAmIds, setAssignedAmIds] = useState<string[]>([]);
+
+  const isSP = !isAM;
 
   const listAllDomains = useCallback(async () => {
     try {
@@ -83,9 +91,22 @@ const CreateDomain = () => {
     }
   }, []);
 
+  const loadAmUsers = useCallback(async () => {
+    try {
+      const response = await fetchUsers({ role: "AM", limit: 200 });
+      setAmList(response?.users || []);
+    } catch (error) {
+      console.log(error);
+    }
+  }, []);
+
   useEffect(() => {
     listAllDomains();
   }, [listAllDomains]);
+
+  useEffect(() => {
+    if (isSP) loadAmUsers();
+  }, [isSP, loadAmUsers]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -129,7 +150,11 @@ const CreateDomain = () => {
 
     setErrors({});
     try {
-      await addDomain(formData);
+      const payload: { [k: string]: string | number | string[] | undefined } = { ...formData };
+      if (isSP && assignedAmIds.length > 0) {
+        payload.assigned_am_ids = assignedAmIds;
+      }
+      await addDomain(payload);
       showSnackbar({
         message: "Domain Created Successfully",
         severity: "success",
@@ -198,26 +223,6 @@ const CreateDomain = () => {
               backgroundColor: errors.description ? "#fef2f2" : "var(--bg-card)",
             }}
           >
-            <div
-              className="d-flex align-items-center gap-1 px-3 py-2"
-              style={{
-                borderBottom: `1px solid ${errors.description ? "#ef4444" : "var(--border-light)"}`,
-                backgroundColor: errors.description ? "#fef2f2" : "var(--bg-surface)",
-              }}
-            >
-              <button className="btn btn-sm p-1" style={{ color: "var(--text-muted)" }}>
-                <FormatBoldIcon sx={{ fontSize: 18 }} />
-              </button>
-              <button className="btn btn-sm p-1" style={{ color: "var(--text-muted)" }}>
-                <FormatItalicIcon sx={{ fontSize: 18 }} />
-              </button>
-              <button className="btn btn-sm p-1" style={{ color: "var(--text-muted)" }}>
-                <FormatListBulletedIcon sx={{ fontSize: 18 }} />
-              </button>
-              <button className="btn btn-sm p-1" style={{ color: "var(--text-muted)" }}>
-                <LinkIcon sx={{ fontSize: 18 }} />
-              </button>
-            </div>
             <textarea
               className="form-control border-0"
               rows={4}
@@ -235,6 +240,57 @@ const CreateDomain = () => {
           </div>
           <ErrorText message={errors.description} />
         </div>
+
+        {isSP && (
+          <div className="mb-1">
+            <label className="form-label fw-semibold" style={{ fontSize: 13 }}>
+              Assign to AMs <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>(optional)</span>
+            </label>
+            <FormControl fullWidth size="small" sx={inputSx}>
+              <Select
+                multiple
+                displayEmpty
+                value={assignedAmIds}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setAssignedAmIds(typeof v === "string" ? v.split(",") : (v as string[]));
+                }}
+                renderValue={(selected) => {
+                  if ((selected as string[]).length === 0) {
+                    return <span style={{ color: "var(--text-faint)" }}>Select Account Managers</span>;
+                  }
+                  const names = amList
+                    .filter((u) => u.id && (selected as string[]).includes(String(u.id)))
+                    .map((u) => u.fullName);
+                  return names.join(", ");
+                }}
+                MenuProps={{ PaperProps: { sx: { maxHeight: 320, borderRadius: 2 } } }}
+              >
+                {amList.length === 0 ? (
+                  <MenuItem disabled>No AMs available</MenuItem>
+                ) : (
+                  amList.map((u) => {
+                    const id = String(u.id ?? "");
+                    return (
+                      <MenuItem key={id} value={id}>
+                        <Checkbox checked={assignedAmIds.indexOf(id) > -1} size="small" sx={{ p: 0.5, color: "#7c3aed", "&.Mui-checked": { color: "#7c3aed" } }} />
+                        <ListItemText
+                          primary={u.fullName}
+                          secondary={u.email}
+                          primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }}
+                          secondaryTypographyProps={{ fontSize: 11 }}
+                        />
+                      </MenuItem>
+                    );
+                  })
+                )}
+              </Select>
+            </FormControl>
+            <p className="mb-0 mt-1" style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              Selected AMs will see this domain in their workspace.
+            </p>
+          </div>
+        )}
       </div>
       {domains.length > 0 && (
         <div className="rounded-3 p-4 mb-4" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}>

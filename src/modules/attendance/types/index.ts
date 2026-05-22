@@ -29,6 +29,7 @@ export interface LeaveRequest {
     email: string;
     employee_id?: string;
     department?: string;
+    role?: string;
   };
   manager?: {
     id: string;
@@ -41,4 +42,28 @@ export interface LeaveBalance {
   total: number;
   used: number;
   remaining: number;
+}
+
+export interface TeamMember {
+  id: string;
+  fullName: string;
+  employee_id?: string;
+  role?: string;
+}
+
+export interface TeamLeavesFilters {
+  status?: string;
+  leave_type?: string;
+  user_id?: string;
+  from_date?: string;
+  to_date?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedLeaves {
+  data: LeaveRequest[];
+  total: number;
+  page: number;
+  limit: number;
 }

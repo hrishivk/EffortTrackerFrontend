@@ -1,4 +1,6 @@
 import { userServiceMethood } from "../services/userService";
+import { amServiceMethood } from "../services/amService";
+import type { TeamLeavesFilters } from "../../modules/attendance/types";
 
 export const applyLeave = async (data: {
   leave_type: string;
@@ -82,6 +84,39 @@ export const cancelLeave = async (leave_id: string) => {
 export const fetchLeaveHistory = async (params?: { user_id?: string; status?: string; from?: string; to?: string; page?: number; limit?: number }) => {
   try {
     const response = await userServiceMethood.getLeaves("/leave/history", params);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const cleanFilters = (filters?: TeamLeavesFilters) => {
+  if (!filters) return undefined;
+  const out: Record<string, any> = {};
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") out[k] = v;
+  });
+  return out;
+};
+
+export const fetchTeamLeaves = async (filters?: TeamLeavesFilters) => {
+  try {
+    const response = await amServiceMethood.getJson("/leave/team-leaves", cleanFilters(filters));
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const exportTeamLeavesXlsx = async (filters?: TeamLeavesFilters) => {
+  const { page: _p, limit: _l, ...rest } = filters || {};
+  const response = await amServiceMethood.getBlob("/leave/team-leaves/export", cleanFilters(rest));
+  return response as { data: Blob; headers: Record<string, string> };
+};
+
+export const fetchTeamMembers = async () => {
+  try {
+    const response = await amServiceMethood.getJson("/team-members");
     return response.data;
   } catch (error) {
     throw error;

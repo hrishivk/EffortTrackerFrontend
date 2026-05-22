@@ -10,7 +10,7 @@ const apiservice = axios.create({
 
 apiservice.interceptors.response.use(handleResponse, handleAuthError);
 export const spserviceMethood = {
- addDomain: (url: string, data: { [key: string]: string | number }) => {
+ addDomain: (url: string, data: { [key: string]: string | number | string[] | undefined }) => {
   return apiservice.post(url, data, {
     headers: {
       "Content-Type": "application/json",

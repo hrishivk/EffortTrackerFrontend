@@ -147,7 +147,6 @@ export default function NotificationPanel() {
     }
   };
 
-  // Fetch unread count only when panel is opened
   const loadCount = useCallback(async () => {
     try {
       const res = await fetchUnreadCount();
@@ -175,6 +174,12 @@ export default function NotificationPanel() {
     }
   }, []);
 
+  // Fetch unread count on mount (page refresh) and whenever the logged-in user changes
+  useEffect(() => {
+    if (user?.id) loadCount();
+  }, [user?.id, loadCount]);
+
+  // When panel opens, refresh count and load the list from page 1
   useEffect(() => {
     if (open) {
       setPage(1);

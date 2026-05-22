@@ -20,6 +20,20 @@ interface AttendanceRow {
 
 const SHIFT_MINUTES = 9 * 60; // 9-hour working day
 
+const DAY_SHORT = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+// Sundays + 1st/3rd/5th Saturdays of the month are weekend offs.
+// 2nd & 4th Saturdays remain working days.
+function isWeekendDay(d: Date): boolean {
+  const day = d.getDay();
+  if (day === 0) return true;
+  if (day === 6) {
+    const nth = Math.ceil(d.getDate() / 7);
+    return nth === 1 || nth === 3 || nth === 5;
+  }
+  return false;
+}
+
 /** Convert "HH:MM" to percentage of 9-hour shift (capped at 100) */
 function hrsToPercent(hrs: string): number {
   const [h, m] = hrs.split(":").map(Number);
@@ -27,25 +41,52 @@ function hrsToPercent(hrs: string): number {
   return Math.min(100, Math.round((mins / SHIFT_MINUTES) * 100));
 }
 
-// Feb 2026: Sat 7 = 1st Sat (OFF), Sun 8 (OFF), Sat 14 = 2nd Sat (WORKING)
-const dummyRows: AttendanceRow[] = [
-  { dayShort: "SUN", date: 8,  isToday: false, isWeekend: true,  status: "Weekend",   totalHrs: "00:00" },
-  { dayShort: "MON", date: 9,  isToday: false, isWeekend: false, status: "Office In", lateBy: "00:03", punchIn: "10:03 AM", punchOut: "07:04 PM", totalHrs: "09:01" },
-  { dayShort: "TUE", date: 10, isToday: false, isWeekend: false, status: "Office In", punchIn: "09:47 AM", punchOut: "07:00 PM", totalHrs: "09:13" },
-  { dayShort: "WED", date: 11, isToday: false, isWeekend: false, status: "Office In", punchIn: "09:49 AM", punchOut: "07:00 PM", totalHrs: "09:11" },
-  { dayShort: "THU", date: 12, isToday: false, isWeekend: false, status: "Office In", lateBy: "00:04", punchIn: "10:04 AM", punchOut: "07:04 PM", totalHrs: "09:00" },
-  { dayShort: "FRI", date: 13, isToday: false, isWeekend: false, status: "Office In", punchIn: "09:58 AM", punchOut: "07:01 PM", totalHrs: "09:03" },
-  { dayShort: "SAT", date: 14, isToday: true,  isWeekend: false, status: "Office In", punchIn: "09:55 AM", punchOut: "01:20 PM", totalHrs: "03:25" },
+type RawRow = {
+  date: Date;
+  isToday?: boolean;
+  lateBy?: string;
+  punchIn?: string;
+  punchOut?: string;
+  totalHrs: string;
+};
+
+// Feb 2026 week: Sun 8 (weekend), Sat 14 = 2nd Sat (working)
+const rawRows: RawRow[] = [
+  { date: new Date(2026, 1, 8),  totalHrs: "00:00" },
+  { date: new Date(2026, 1, 9),  lateBy: "00:03", punchIn: "10:03 AM", punchOut: "07:04 PM", totalHrs: "09:01" },
+  { date: new Date(2026, 1, 10), punchIn: "09:47 AM", punchOut: "07:00 PM", totalHrs: "09:13" },
+  { date: new Date(2026, 1, 11), punchIn: "09:49 AM", punchOut: "07:00 PM", totalHrs: "09:11" },
+  { date: new Date(2026, 1, 12), lateBy: "00:04", punchIn: "10:04 AM", punchOut: "07:04 PM", totalHrs: "09:00" },
+  { date: new Date(2026, 1, 13), punchIn: "09:58 AM", punchOut: "07:01 PM", totalHrs: "09:03" },
+  { date: new Date(2026, 1, 14), isToday: true, punchIn: "09:55 AM", punchOut: "01:20 PM", totalHrs: "03:25" },
 ];
-// SAT 14 = 2nd Sat → working day, SUN 8 = weekend off
+
+const dummyRows: AttendanceRow[] = rawRows.map((r) => {
+  const weekend = isWeekendDay(r.date);
+  return {
+    dayShort: DAY_SHORT[r.date.getDay()],
+    date: r.date.getDate(),
+    isToday: !!r.isToday,
+    isWeekend: weekend,
+    status: weekend ? "Weekend" : "Office In",
+    lateBy: weekend ? undefined : r.lateBy,
+    punchIn: weekend ? undefined : r.punchIn,
+    punchOut: weekend ? undefined : r.punchOut,
+    totalHrs: weekend ? "00:00" : r.totalHrs,
+  };
+});
 // Payable: 7, Present: 5 (Mon-Fri), On Duty: 0, Paid Leave: 0, Weekend: 1 (Sun), Working Sat: 1 (today in progress)
 
+const weekendCount = dummyRows.filter((r) => r.isWeekend).length;
+const presentCount = dummyRows.filter((r) => !r.isWeekend && r.punchIn).length;
+const payableCount = dummyRows.length - weekendCount;
+
 const summaryStats = [
-  { label: "PAYABLE DAYS", value: "7", sub: "Days" },
-  { label: "PRESENT",      value: "5", sub: "Days" },
+  { label: "PAYABLE DAYS", value: String(payableCount), sub: payableCount === 1 ? "Day" : "Days" },
+  { label: "PRESENT",      value: String(presentCount), sub: presentCount === 1 ? "Day" : "Days" },
   { label: "ON DUTY",      value: "0", sub: "Day" },
   { label: "PAID LEAVE",   value: "0", sub: "Day" },
-  { label: "WEEKEND",      value: "1", sub: "Day", highlight: true },
+  { label: "WEEKEND",      value: String(weekendCount), sub: weekendCount === 1 ? "Day" : "Days", highlight: true },
 ];
 
 const thStyle: React.CSSProperties = {

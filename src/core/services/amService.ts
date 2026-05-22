@@ -12,5 +12,20 @@ const apiservice = axios.create({
 apiservice.interceptors.response.use(handleResponse, handleAuthError);
 
 export const amServiceMethood = {
-    listAllUsers:(url:string)=>{return apiservice.get(url)}
+    listAllUsers:(url:string)=>{return apiservice.get(url)},
+    listAllDomain:(url:string)=>{return apiservice.get(url)},
+    addDomain:(url:string,data:{[key:string]:string|number|string[]|undefined})=>{return apiservice.post(url,data)},
+    deleteDomain:(url:string)=>{return apiservice.delete(url)},
+    getJson: (url: string, params?: Record<string, any>) => {
+      return apiservice.get(url, {
+        params: { ...params, _t: Date.now() },
+        headers: { "Cache-Control": "no-cache" },
+      });
+    },
+    getBlob: (url: string, params?: Record<string, any>) => {
+      return apiservice.get(url, {
+        params,
+        responseType: "blob",
+      });
+    },
 };

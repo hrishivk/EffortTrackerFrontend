@@ -19,12 +19,26 @@ export const uservalidationSchema=z.object({
   }),
     jobTitle:z.string().min(1,"Job title is required"),
     employeeId:z.string().min(1,"Employee ID is required"),
-    contactNumber:z.string().min(1,"Contact number is required"),
+    contactNumber:z.string()
+      .min(1,"Contact number is required")
+      .regex(/^\d{10}$/, "Contact number must be exactly 10 digits")
+      .refine((val) => !/^(\d)\1{9}$/.test(val), {
+        message: "Contact number cannot have all same digits",
+      }),
     dateOfBirth:z.string().min(1,"Date of birth is required"),
     bloodGroup:z.string().min(1,"Blood group is required"),
     department:z.string().min(1,"Department is required"),
     workSchedule:z.string().min(1,"Work schedule is required"),
-    joiningDate:z.string().min(1,"Joining date is required"),
+    joiningDate:z.string()
+      .min(1,"Joining date is required")
+      .refine((val) => {
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return false;
+        d.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return d <= today;
+      }, { message: "Joining date cannot be in the future" }),
 })
 export const baseValidationSchema=z.object({
     fullName:z.string().min(1,"full name is required").regex(/^[A-Za-z\s]+$/, "Full name must contain only letters "),
@@ -56,6 +70,30 @@ export const DomainValidationSchema=z.object({
   name:z.string().min(1,"Domain name is required").regex(/^[A-Za-z\s]+$/, "Domain name must contain only letters "),
   description:z.string().min(10,"Desctiption is required")
 })
+export const leaveRequestValidationSchema = z.object({
+  leaveType: z.string().min(1, "Leave type is required"),
+  fromDate: z.string().min(1, "From date is required"),
+  toDate: z.string().optional(),
+  contact: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d{10}$/.test(val), {
+      message: "Contact number must be exactly 10 digits",
+    })
+    .refine((val) => !val || !/^(\d)\1{9}$/.test(val), {
+      message: "Contact number cannot have all same digits",
+    }),
+  reason: z.string().min(5, "Reason must be at least 5 characters"),
+}).refine(
+  (data) => {
+    if (!data.toDate) return true;
+    return new Date(data.toDate) >= new Date(data.fromDate);
+  },
+  { message: "To date cannot be before From date", path: ["toDate"] },
+);
+
+export type leaveRequestValidationSchema = z.infer<typeof leaveRequestValidationSchema>;
+
 export const taskWithDateValidationSchema = z.object({
   dueDate: z
     .string()

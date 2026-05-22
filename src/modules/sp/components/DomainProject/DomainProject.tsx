@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@mui/material";
 import { motion } from "framer-motion";
+import { LayoutGrid, FolderTree } from "lucide-react";
 
 import TableList from "../../../../shared/components/Table/Table";
 import GanttChart from "../../../../shared/components/GanttChart/GanttChart";
@@ -17,17 +18,22 @@ import {
   fetchAllExistProjects,
   updateProjectStatus,
   fetchProjectStats,
+  fetchExistDomains,
+  deleteDomain,
 } from "../../../../core/actions/spAction";
 import { getProjectColumns } from "./domainProjectColumns";
+import { getDomainColumns } from "./domainColumns";
 import { useSnackbar } from "../../../../contexts/SnackbarContext";
 import { exportProjectReport } from "../../../../shared/utils/exportProjectReport";
 import { exportTaskReport } from "../../../../shared/utils/exportTaskReport";
+import Dialoge from "../../../../presentation/Dialog";
 
 import StatCard from "./StatCard";
 import ProjectDetailsView from "./ProjectDetailsView";
 import ProjectExpandedRow from "./ProjectExpandedRow";
 import { allTabs, PROJECT_STATUS_OPTIONS } from "./constants";
 import type { DomainTab, ProjectRow, PhaseItem, CriticalUpdate } from "../../types";
+import type { Domain } from "../../../../shared/types/Domain";
 
 const DomainProject = () => {
   const navigate = useNavigate();
@@ -56,6 +62,9 @@ const DomainProject = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [deleteDomainId, setDeleteDomainId] = useState<number | null>(null);
+  const [listView, setListView] = useState<"projects" | "domains">("projects");
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -68,6 +77,34 @@ const DomainProject = () => {
       .then((res) => setStats(res?.data || null))
       .catch(() => {});
   }, []);
+
+  const fetchDomains = useCallback(async () => {
+    try {
+      const response = await fetchExistDomains();
+      const list = response?.data;
+      setDomains(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.log(error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDomains();
+  }, [fetchDomains]);
+
+  const confirmDeleteDomain = async () => {
+    if (!deleteDomainId) return;
+    try {
+      await deleteDomain(String(deleteDomainId));
+      showSnackbar({ message: "Domain deleted successfully", severity: "success" });
+      await fetchDomains();
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || "Failed to delete domain.";
+      showSnackbar({ message: msg, severity: "error" });
+    } finally {
+      setDeleteDomainId(null);
+    }
+  };
 
   const fetchData = useCallback(async (page?: number) => {
     try {
@@ -344,7 +381,59 @@ const DomainProject = () => {
         );
       })()}
 
-      {activeTab === "overview" && (() => {
+      {activeTab === "overview" && (
+        <div
+          className="mb-3"
+          style={{
+            display: "inline-flex",
+            borderRadius: 12,
+            border: "1px solid var(--border-light)",
+            overflow: "hidden",
+            backgroundColor: "var(--bg-hover)",
+          }}
+        >
+          <button
+            onClick={() => setListView("projects")}
+            className="d-flex align-items-center gap-1"
+            style={{
+              backgroundColor: listView === "projects" ? "#7c3aed" : "transparent",
+              color: listView === "projects" ? "#fff" : "var(--text-muted)",
+              borderRadius: 0,
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "7px 14px",
+              whiteSpace: "nowrap",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            <LayoutGrid size={14} />
+            Projects
+          </button>
+          <button
+            onClick={() => setListView("domains")}
+            className="d-flex align-items-center gap-1"
+            style={{
+              backgroundColor: listView === "domains" ? "#7c3aed" : "transparent",
+              color: listView === "domains" ? "#fff" : "var(--text-muted)",
+              borderRadius: 0,
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "7px 14px",
+              whiteSpace: "nowrap",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            <FolderTree size={14} />
+            Domains
+          </button>
+        </div>
+      )}
+
+      {activeTab === "overview" && listView === "projects" && (() => {
         const handleManageMembers = (projectId: number) => {
           const idx = projects.findIndex((p) => p.id === projectId);
           setExpandedIndex(expandedIndex === idx ? null : idx);
@@ -379,6 +468,14 @@ const DomainProject = () => {
           />
         );
       })()}
+
+      {activeTab === "overview" && listView === "domains" && (
+        <TableList
+          columns={getDomainColumns((id) => setDeleteDomainId(id))}
+          data={domains}
+          emptyMessage="No domains found"
+        />
+      )}
 
       {activeTab === "overview" && (
       <div className="d-flex flex-column flex-lg-row gap-4 mt-4">
@@ -581,6 +678,12 @@ const DomainProject = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Dialoge
+        open={deleteDomainId !== null}
+        data="delete"
+        onClose={() => setDeleteDomainId(null)}
+        onConfirm={confirmDeleteDomain}
+      />
     </motion.div>
   );
 };

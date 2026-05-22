@@ -15,13 +15,14 @@ import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { useAppSelector } from "../../../store/configureStore";
-import AttendanceSummary from "./AttendanceSummary";
+// import AttendanceSummary from "./AttendanceSummary";
 import HolidayList from "./HolidayList";
 import LeaveRequest from "./LeaveRequest";
 import MyLeaves from "./MyLeaves";
 import TeamLeaves from "./TeamLeaves";
+import TeamLeaveHistory from "./TeamLeaveHistory";
 
-type Tab = "management" | "summary" | "balance" | "requests" | "myLeaves" | "teamLeaves";
+type Tab = "management" | "summary" | "balance" | "requests" | "myLeaves" | "teamLeaves" | "teamLeaveHistory";
 
 interface LeaveCard {
   title: string;
@@ -99,17 +100,22 @@ const LeaveManagement = () => {
         { key: "balance", label: "Holiday List" },
       ]
     : [
-        { key: "management", label: "Leave Management" },
+        // { key: "management", label: "Leave Management" },
         { key: "myLeaves", label: "My Leaves" },
-        { key: "summary", label: "Attendance Summary" },
+        // { key: "summary", label: "Attendance Summary" },
         { key: "balance", label: "Holiday List" },
         { key: "requests", label: "Apply Leave" },
-        ...(role === "AM" ? [{ key: "teamLeaves" as Tab, label: "Team Leaves" }] : []),
+        ...(role === "AM"
+          ? [
+              { key: "teamLeaves" as Tab, label: "Team Leaves" },
+              { key: "teamLeaveHistory" as Tab, label: "Team Leave History" },
+            ]
+          : []),
       ];
 
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") as Tab | null;
-  const defaultTab = role === "SP" ? "teamLeaves" as Tab : "management";
+  const defaultTab = role === "SP" ? "teamLeaves" as Tab : "myLeaves";
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl || defaultTab);
 
   useEffect(() => {
@@ -169,9 +175,9 @@ const LeaveManagement = () => {
         </div>
 
         {/* ══════ TAB CONTENT ══════ */}
-        {activeTab === "summary" ? (
+        {/* activeTab === "summary" ? (
           <AttendanceSummary />
-        ) : activeTab === "balance" ? (
+        ) : */ activeTab === "balance" ? (
           <HolidayList />
         ) : activeTab === "requests" ? (
           <LeaveRequest onSuccess={() => setActiveTab("myLeaves")} />
@@ -179,7 +185,11 @@ const LeaveManagement = () => {
           <MyLeaves />
         ) : activeTab === "teamLeaves" ? (
           <TeamLeaves />
-        ) : (
+        ) : activeTab === "teamLeaveHistory" ? (
+          <TeamLeaveHistory />
+        ) : null}
+        {/* Leave Management view commented out */}
+        {false && (
           <>
             {/* Header row — same sizes as Dashboard */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

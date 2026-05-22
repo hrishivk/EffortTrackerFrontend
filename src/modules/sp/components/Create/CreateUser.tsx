@@ -92,6 +92,7 @@ const CreateUser = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [projectList, setProjectList] = useState<project[]>([]);
+  const todayStr = new Date().toISOString().split("T")[0];
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -118,12 +119,40 @@ const CreateUser = () => {
     fetchProjects();
   }, [fetchProjects]);
 
-  const handleChange = (field: string, value: string | boolean) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const validateField = (field: string, nextForm: typeof form) => {
+    const payload: Record<string, any> = {
+      fullName: nextForm.fullName,
+      email: nextForm.email,
+      password: nextForm.password,
+      role: nextForm.role,
+      jobTitle: nextForm.jobTitle,
+      employeeId: nextForm.employeeId,
+      contactNumber: nextForm.contactNumber,
+      dateOfBirth: nextForm.dateOfBirth,
+      bloodGroup: nextForm.bloodGroup,
+      department: nextForm.department,
+      workSchedule: nextForm.workSchedule,
+      joiningDate: nextForm.joiningDate,
+    };
+    const result = uservalidationSchema.safeParse(payload);
     setErrors((prev) => {
       const next = { ...prev };
       delete next[field];
+      if (!result.success) {
+        const firstForField = result.error.errors.find(
+          (err) => err.path[0] === field,
+        );
+        if (firstForField) next[field] = firstForField.message;
+      }
       return next;
+    });
+  };
+
+  const handleChange = (field: string, value: string | boolean) => {
+    setForm((prev) => {
+      const nextForm = { ...prev, [field]: value };
+      if (typeof value === "string") validateField(field, nextForm);
+      return nextForm;
     });
   };
 
@@ -333,9 +362,13 @@ const CreateUser = () => {
             <TextField
               fullWidth
               size="small"
-              placeholder="+1 (555) 000-0000"
+              placeholder="10-digit mobile number"
               value={form.contactNumber}
-              onChange={(e) => handleChange("contactNumber", e.target.value)}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                handleChange("contactNumber", digits);
+              }}
+              inputProps={{ inputMode: "numeric", maxLength: 10 }}
               error={!!errors.contactNumber}
               helperText={errors.contactNumber}
               sx={sx("contactNumber")}
@@ -443,7 +476,7 @@ const CreateUser = () => {
                 renderValue={(val) => val || "Select Schedule"}
                 sx={{ color: form.workSchedule ? "var(--text-primary)" : "var(--text-faint)" }}
               >
-                {["Full-Time (9 AM - 5 PM)", "Part-Time", "Flexible", "Remote"].map((s) => (
+                {["Full-Time (10 AM - 7 PM)", "Part-Time", "Flexible", "Remote"].map((s) => (
                   <MenuItem key={s} value={s}>{s}</MenuItem>
                 ))}
               </Select>
@@ -460,6 +493,7 @@ const CreateUser = () => {
               type="date"
               value={form.joiningDate}
               onChange={(e) => handleChange("joiningDate", e.target.value)}
+              inputProps={{ max: todayStr }}
               error={!!errors.joiningDate}
               helperText={errors.joiningDate}
               sx={sx("joiningDate")}
