@@ -97,7 +97,14 @@ const DomainProject = () => {
     try {
       await deleteDomain(String(deleteDomainId));
       showSnackbar({ message: "Domain deleted successfully", severity: "success" });
-      await fetchDomains();
+      // Domain delete cascades to its projects, so refresh domains, projects, and stats
+      await Promise.all([
+        fetchDomains(),
+        fetchData(currentPage),
+        fetchProjectStats()
+          .then((res) => setStats(res?.data || null))
+          .catch(() => {}),
+      ]);
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Failed to delete domain.";
       showSnackbar({ message: msg, severity: "error" });
