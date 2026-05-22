@@ -9,6 +9,15 @@ const apiservice = axios.create({
 });
 
 apiservice.interceptors.response.use(handleResponse, handleAuthError);
+
+// Bust browser cache on every GET so screens reflect the latest data after mutations
+apiservice.interceptors.request.use((config) => {
+  if (config.method?.toLowerCase() === "get") {
+    config.params = { ...(config.params || {}), _t: Date.now() };
+  }
+  return config;
+});
+
 export const userServiceMethood = {
 
   createTask: (url: string, data:taskList) => {

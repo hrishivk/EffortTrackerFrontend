@@ -9,6 +9,15 @@ const apiservice = axios.create({
 });
 
 apiservice.interceptors.response.use(handleResponse, handleAuthError);
+
+
+apiservice.interceptors.request.use((config) => {
+  if (config.method?.toLowerCase() === "get") {
+    config.params = { ...(config.params || {}), _t: Date.now() };
+  }
+  return config;
+});
+
 export const spserviceMethood = {
  addDomain: (url: string, data: { [key: string]: string | number | string[] | undefined }) => {
   return apiservice.post(url, data, {
