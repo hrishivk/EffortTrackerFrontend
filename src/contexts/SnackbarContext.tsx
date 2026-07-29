@@ -32,7 +32,7 @@ export const SnackbarProvider: React.FC<{ children: ReactNode }> = ({ children }
       {children}
       <Snackbar
         open={open}
-        autoHideDuration={1000}
+        autoHideDuration={severity === 'error' || severity === 'warning' ? 4000 : 1500}
         onClose={handleClose}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >

@@ -58,7 +58,7 @@ export const spserviceMethood = {
       "Content-Type": "application/json",
     },
   })},
-  editUser:(url:string,data:UserData)=>{return apiservice.post(url,data,{
+  editUser:(url:string,data:UserData)=>{return apiservice.patch(url,data,{
     headers: {
      "Content-Type": "application/json",
     },

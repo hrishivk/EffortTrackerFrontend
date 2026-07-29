@@ -1,10 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git checkout:*)",
-      "Bash(find:*)",
-      "Bash(sed:*)",
-      "Bash(npx tsc:*)"
+      "Bash(grep -rn \"m \\\\${\\\\|}h \\\\|h \\\\${\\\\|}m \\\\|useLiveTimer\\\\|setInterval\" src/modules/dashboard/components/MyTasksView.tsx src/modules/dashboard/components/TaskDetailModal.tsx)",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "Bash(grep -n \"roleOptions\\\\|const \\\\[form\\\\|requirePasswordChange:\\\\|handleChange = \\\\|projectList.length > 0\\\\|Switch$\\\\|payload.projects\\\\|const roleOptionsFor\" src/modules/sp/components/Create/CreateUser.tsx)",
+      "Bash(python -)"
     ]
   }
 }

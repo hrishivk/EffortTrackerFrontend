@@ -37,6 +37,7 @@ const UserModal: React.FC<UserModalProps> = ({
     role: "",
     projects: "",
     manager_id: user?.id,
+    is_shared: false,
   });
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
@@ -50,6 +51,7 @@ const UserModal: React.FC<UserModalProps> = ({
         role: data.role || "",
         projects: data.projects || "",
         manager_id: data.manager_id || user?.id || "",
+        is_shared: Boolean(data.is_shared),
       });
     }
   }, []);
@@ -246,6 +248,40 @@ const handleChange = (
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Editing is guarded by SuperAdmin on the API, so only SP may toggle
+              an existing user; on create an AM may set it. */}
+          <div className="mb-3 px-20 text-lg">
+            <div className="form-check d-flex align-items-start gap-2">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="is_shared"
+                checked={Boolean(formData.is_shared)}
+                disabled={Boolean(data) && role !== "SP"}
+                onChange={(e) =>
+                  setFormData((prev: UserData) => ({
+                    ...prev,
+                    is_shared: e.target.checked,
+                  }))
+                }
+              />
+              <label className="form-check-label mb-0" htmlFor="is_shared">
+                <span style={{ fontSize: 14, fontWeight: 600 }}>
+                  Shared across all managers
+                </span>
+                <span style={{ display: "block", fontSize: 12, color: "#6b7280" }}>
+                  For staff who work across every project (testers, QA, designers).
+                  Every manager will see this user in their list.
+                </span>
+                {Boolean(data) && role !== "SP" && (
+                  <span style={{ display: "block", fontSize: 12, color: "#d97706" }}>
+                    Only a super admin can change this.
+                  </span>
+                )}
+              </label>
             </div>
           </div>
         </CForm>

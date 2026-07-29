@@ -11,15 +11,16 @@ import type { formUserData } from "../../../../shared/types/User";
 import type { project } from "../../../../shared/types/Project";
 import { getUserColumns } from "./tableColoumn";
 import SearchIcon from "@mui/icons-material/Search";
-import {
-  FormControl,
-  MenuItem,
-  Select,
-  TextField,
-  InputAdornment,
-} from "@mui/material";
+import { TextField, InputAdornment } from "@mui/material";
 import { motion } from "framer-motion";
+import { FiGrid, FiLayers, FiUsers } from "react-icons/fi";
 import Dialoge from "../../../../presentation/Dialog";
+import FilterPanel, {
+  FilterTrigger,
+  countActiveFilters,
+  type FilterCategory,
+  type FilterValues,
+} from "../../../../shared/components/FilterPanel/FilterPanel";
 const ITEMS_PER_PAGE = 10;
 const selectSx = {
   "& .MuiOutlinedInput-root": {
@@ -50,8 +51,11 @@ const UserManagement: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [projectFilter, setProjectFilter] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
+  const [filters, setFilters] = useState<FilterValues>({
+    projectId: "",
+    role: "",
+  });
+  const [filterOpen, setFilterOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,14 +65,14 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, projectFilter, roleFilter]);
+  }, [debouncedSearch, filters]);
 
   const loadUsers = useCallback(async () => {
     try {
       const result = await fetchUsers({
         search: debouncedSearch,
-        role: roleFilter,
-        project_id: projectFilter,
+        role: filters.role,
+        project_id: filters.projectId,
         page,
         limit: ITEMS_PER_PAGE,
       });
@@ -78,7 +82,7 @@ const UserManagement: React.FC = () => {
     } catch (error) {
       console.error("Error fetching users:", error);
     }
-  }, [debouncedSearch, roleFilter, projectFilter, page]);
+  }, [debouncedSearch, filters, page]);
 
   const loadProjects = useCallback(async () => {
     const res = await fetchAllExistProjects();
@@ -112,6 +116,37 @@ const UserManagement: React.FC = () => {
   };
 
   const columns = getUserColumns({ onViewTasks, onDeleteUser });
+  const activeFilterCount = countActiveFilters(filters);
+
+  const filterCategories: FilterCategory[] = [
+    {
+      key: "projectsRoles",
+      label: "Projects & Roles",
+      icon: <FiGrid size={16} />,
+      caption: "Filter by project and role",
+      fields: [
+        {
+          key: "projectId",
+          label: "Project",
+          placeholder: "Select project",
+          emptyText: "No projects available",
+          icon: <FiLayers size={15} />,
+          options: projects.map((p) => ({
+            value: String(p.id),
+            label: p.name,
+          })),
+        },
+        {
+          key: "role",
+          label: "Role",
+          placeholder: "Select role",
+          emptyText: "No roles available",
+          icon: <FiUsers size={15} />,
+          options: roles.map((r) => ({ value: r, label: r })),
+        },
+      ],
+    },
+  ];
 
   return (
     <motion.div
@@ -145,41 +180,10 @@ const UserManagement: React.FC = () => {
             }}
           />
 
-          <FormControl size="small" className="um-filter-select" sx={selectSx}>
-            <Select
-              displayEmpty
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-              renderValue={(val) => {
-                if (!val) return "Project: All";
-                const found = projects.find((p) => String(p.id) === val);
-                return `Project: ${found?.name || val}`;
-              }}
-            >
-              <MenuItem value="">All Projects</MenuItem>
-              {projects.map((p) => (
-                <MenuItem key={p.id} value={p.id}>
-                  {p.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" className="um-filter-select" sx={selectSx}>
-            <Select
-              displayEmpty
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              renderValue={(val) => (val ? `Role: ${val}` : "Role: All")}
-            >
-              <MenuItem value="">All Roles</MenuItem>
-              {roles.map((r) => (
-                <MenuItem key={r} value={r}>
-                  {r}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <FilterTrigger
+            count={activeFilterCount}
+            onClick={() => setFilterOpen(true)}
+          />
 
           <button
             className="um-add-btn"
@@ -198,6 +202,15 @@ const UserManagement: React.FC = () => {
           totalPages,
           onPageChange: setPage,
         }}
+      />
+
+      <FilterPanel
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        title="Filter Users"
+        categories={filterCategories}
+        values={filters}
+        onApply={setFilters}
       />
 
       <Dialoge

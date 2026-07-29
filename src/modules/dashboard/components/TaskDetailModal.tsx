@@ -5,6 +5,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import type { taskList } from "../../user/types";
 import { updateTaskStatus } from "../../../core/actions/action";
+import { parseServerTime } from "../../../shared/utils/serverTime";
 
 const PROJECT_COLORS = [
   { bg: "#dbeafe", text: "#2563eb" },
@@ -38,7 +39,9 @@ function getStatusInfo(status: string) {
 
 function formatDate(d?: string | null) {
   if (!d) return "-";
-  return new Date(d).toLocaleDateString("en-US", {
+  const ms = parseServerTime(d);
+  if (Number.isNaN(ms)) return "-";
+  return new Date(ms).toLocaleDateString("en-US", {
     month: "short",
     day: "2-digit",
     year: "numeric",
@@ -47,7 +50,7 @@ function formatDate(d?: string | null) {
 
 function isOverdue(task: taskList) {
   if (!task.end_time) return false;
-  const end = new Date(task.end_time);
+  const end = new Date(parseServerTime(task.end_time));
   end.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);

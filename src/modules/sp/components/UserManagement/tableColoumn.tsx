@@ -32,7 +32,17 @@ export const getUserColumns = ({
       <div className="um-user-name">
         <div className="um-avatar">{getInitials(u.fullName)}</div>
         <div>
-          <div className="um-name-text">{u.fullName}</div>
+          <div className="d-flex align-items-center gap-2">
+            <span className="um-name-text">{u.fullName}</span>
+            {u.is_shared && (
+              <span
+                className="um-shared-badge"
+                title="Visible to every manager"
+              >
+                Shared
+              </span>
+            )}
+          </div>
           <div className="um-email-text">{u.email}</div>
         </div>
       </div>

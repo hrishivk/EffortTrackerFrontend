@@ -1,12 +1,13 @@
 import type { taskList } from "../../user/types";
 import type { TaskBarStatus, DayInfo } from "../types";
 import { monthAbbr, monthNames, dayNames } from "./ganttConstants";
+import { parseServerTime } from "../../../shared/utils/serverTime";
 
 export function getTaskBarStatus(task: taskList): TaskBarStatus {
   const s = (task.status || "").toLowerCase().replace(/[\s_]+/g, "_");
   if (s === "completed" || s === "done") return "completed";
   if (task.end_time) {
-    const end = new Date(task.end_time);
+    const end = new Date(parseServerTime(task.end_time));
     end.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);

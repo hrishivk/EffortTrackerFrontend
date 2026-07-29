@@ -8,8 +8,9 @@ import {
   FiChevronsRight,
   FiCalendar,
 } from "react-icons/fi";
-import { useAppSelector } from "../store/configureStore";
 import { AnimatePresence, motion } from "framer-motion";
+import { useAppSelector } from "../store/configureStore";
+import logo from "../assets/img/logo2.png.png";
 
 interface SidebarProps {
   open: boolean;
@@ -24,6 +25,67 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const getSections = (role?: string): NavSection[] => {
+  const icon = (El: React.ElementType) => <El size={18} />;
+
+  if (role === "SP") {
+    return [
+      {
+        title: "Main",
+        items: [
+          { to: "/sp/dashboard", label: "Dashboard", icon: icon(FiGrid) },
+          { to: "/sp/attendance", label: "Attendance", icon: icon(FiCalendar) },
+        ],
+      },
+      {
+        title: "Manage",
+        items: [
+          { to: "/sp/userMangement", label: "User Management", icon: icon(FiUsers) },
+          { to: "/sp/domain-project", label: "Domains & Projects", icon: icon(FiLayers) },
+        ],
+      },
+    ];
+  }
+
+  if (role === "AM") {
+    return [
+      {
+        title: "Main",
+        items: [
+          { to: "/am/dashboard", label: "Dashboard", icon: icon(FiGrid) },
+          { to: "/am/attendance", label: "Attendance", icon: icon(FiCalendar) },
+        ],
+      },
+      {
+        title: "Manage",
+        items: [
+          { to: "/am/TeamManagement", label: "Team Management", icon: icon(FiUsers) },
+          { to: "/am/domain-project", label: "Domains & Projects", icon: icon(FiLayers) },
+        ],
+      },
+    ];
+  }
+
+  if (role === "USER" || role === "DEVLOPER") {
+    return [
+      {
+        title: "Main",
+        items: [
+          { to: "/user/dashboard", label: "Dashboard", icon: icon(FiGrid) },
+          { to: "/user/attendance", label: "Attendance", icon: icon(FiCalendar) },
+        ],
+      },
+    ];
+  }
+
+  return [];
+};
+
 const Sidebar: React.FC<SidebarProps> = ({
   open,
   onClose,
@@ -34,147 +96,163 @@ const Sidebar: React.FC<SidebarProps> = ({
   const role = user?.role;
   const { pathname } = useLocation();
 
-  const getLinks = (): NavItem[] => {
-    if (role === "AM") {
-      return [
-        { to: "/am/Dashboard", label: "Dashboard", icon: <FiGrid size={20} /> },
-        {
-          to: "/am/attendance",
-          label: "Attendance",
-          icon: <FiCalendar size={20} />,
-        },
-        {
-          to: "/am/TeamManagement",
-          label: "Team Management",
-          icon: <FiUsers size={20} />,
-        },
-        {
-          to: "/am/domain-project",
-          label: "Domains & Projects",
-          icon: <FiLayers size={20} />,
-        },
-      ];
-    }
-    if (role === "SP") {
-      return [
-        { to: "/sp/dashboard", label: "Dashboard", icon: <FiGrid size={20} /> },
-        {
-          to: "/sp/attendance",
-          label: "Attendance",
-          icon: <FiCalendar size={20} />,
-        },
-        {
-          to: "/sp/userMangement",
-          label: "User Management",
-          icon: <FiUsers size={20} />,
-        },
-        {
-          to: "/sp/domain-project",
-          label: "Domains & Projects",
-          icon: <FiLayers size={20} />,
-        },
-      ];
-    }
-    if (role === "USER" || role === "DEVLOPER") {
-      return [
-        { to: "/user/dashboard", label: "Dashboard", icon: <FiGrid size={20} /> },
-        {
-          to: "/user/attendance",
-          label: "Attendance",
-          icon: <FiCalendar size={20} />,
-        },
-      ];
-    }
-    return [];
-  };
+  const sections = getSections(role);
 
-  const links = getLinks();
+  /**
+   * `isCollapsed` is passed explicitly so the mobile drawer always renders the
+   * full-width layout, even while the desktop sidebar is collapsed.
+   * `pillId` keeps the framer-motion layout animation scoped per instance.
+   */
+  const renderInner = (isCollapsed: boolean, pillId: string) => (
+    <div
+      className="flex flex-col h-full"
+      style={{ backgroundColor: "var(--bg-card)" }}
+    >
+      {/* ─── Brand ─── */}
+      <div
+        className={`flex items-center h-[64px] shrink-0 ${
+          isCollapsed ? "justify-center px-2" : "gap-2.5 px-4"
+        }`}
+      >
+        <img
+          src={logo}
+          alt="RhythmRx"
+          className="h-9 w-9 shrink-0 object-contain"
+        />
 
-  const sidebarInner = (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--bg-card)" }}>
-      <div className="flex justify-end p-3 md:hidden">
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg transition-colors"
-          style={{ color: "var(--text-faint)" }}
-        >
-          <FiX size={20} />
-        </button>
-      </div>
-      <nav className="flex-1 px-3 pt-4 md:pt-5 pb-4 overflow-y-auto">
-        {!collapsed && (
-          <p className="px-3 mb-2 text-xs font-semibold tracking-[0.15em] uppercase select-none" style={{ color: "var(--text-faint)" }}>
-            Menu
-          </p>
+        {!isCollapsed && (
+          <div className="min-w-0 flex-1 leading-[1.15]">
+            <p
+              className="truncate text-[13px] font-bold"
+              style={{ color: "var(--text-primary)", margin: "0rem" }}
+            >
+              RhythmRx
+            </p>
+            <p
+              className="truncate text-[13px] font-bold"
+              style={{ color: "var(--text-primary)", margin: "0rem" }}
+            >
+              Effort Tracker
+            </p>
+          </div>
         )}
-        <div className="flex flex-col gap-1">
-          {links.map((item) => {
-            const isActive = pathname
-              .toLowerCase()
-              .startsWith(item.to.toLowerCase());
 
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={onClose}
-                title={collapsed ? item.label : undefined}
-                className={`relative flex items-center gap-3 rounded-xl text-[13px] lg:text-[14px] xl:text-[15px] font-medium transition-colors duration-150 ${
-                  collapsed
-                    ? "justify-center px-0 py-3"
-                    : "px-3 py-2.5 lg:py-3"
-                }`}
+        {!isCollapsed && (
+          <button
+            onClick={onClose}
+            title="Close menu"
+            className="md:hidden flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+            style={{
+              backgroundColor: "var(--bg-hover)",
+              color: "var(--text-faint)",
+            }}
+          >
+            <FiX size={15} />
+          </button>
+        )}
+      </div>
+
+      {/* ─── Nav sections ─── */}
+      <nav className="flex-1 overflow-y-auto px-3 pt-2 pb-4">
+        {sections.map((section) => (
+          <div key={section.title} className="mb-5 last:mb-0">
+            {isCollapsed ? (
+              <div
+                className="mx-auto mb-2 h-px w-6"
+                style={{ backgroundColor: "var(--border-light)" }}
+              />
+            ) : (
+              <p
+                className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] select-none"
+                style={{ color: "var(--text-faint)" }}
               >
-                {isActive && (
-                  <motion.div
-                    layoutId="sidebar-pill"
-                    className="absolute inset-0 rounded-xl"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #AD21DB 0%, #7C3AED 50%, #4F46E5 100%)",
-                    }}
-                    transition={{ type: "spring", damping: 30, stiffness: 350 }}
-                  />
-                )}
+                {section.title}
+              </p>
+            )}
 
-                <span
-                  className={`relative z-10 transition-colors duration-150`}
-                  style={{ color: isActive ? "#ffffff" : "var(--text-faint)" }}
-                >
-                  {item.icon}
-                </span>
+            <div className="flex flex-col gap-1">
+              {section.items.map((item) => {
+                const isActive = pathname
+                  .toLowerCase()
+                  .startsWith(item.to.toLowerCase());
 
-                {!collapsed && (
-                  <span
-                    className={`relative z-10 transition-colors duration-150 ${
-                      isActive ? "font-semibold" : ""
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={onClose}
+                    title={isCollapsed ? item.label : undefined}
+                    className={`relative flex items-center gap-3 rounded-xl text-[14px] font-medium transition-colors duration-150 ${
+                      isCollapsed
+                        ? "justify-center px-0 py-2.5"
+                        : "px-3 py-2.5"
                     }`}
-                    style={{ color: isActive ? "#ffffff" : "var(--text-muted)" }}
                   >
-                    {item.label}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
+                    {isActive && (
+                      <motion.div
+                        layoutId={pillId}
+                        className="absolute inset-0 rounded-xl"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #AD21DB 0%, #7C3AED 50%, #4F46E5 100%)",
+                          boxShadow: "0 4px 12px rgba(124, 58, 237, 0.28)",
+                        }}
+                        transition={{
+                          type: "spring",
+                          damping: 30,
+                          stiffness: 350,
+                        }}
+                      />
+                    )}
+
+                    <span
+                      className="relative z-10 shrink-0 transition-colors duration-150"
+                      style={{
+                        color: isActive ? "#ffffff" : "var(--text-faint)",
+                      }}
+                    >
+                      {item.icon}
+                    </span>
+
+                    {!isCollapsed && (
+                      <span
+                        className={`relative z-10 truncate transition-colors duration-150 ${
+                          isActive ? "font-semibold" : ""
+                        }`}
+                        style={{
+                          color: isActive ? "#ffffff" : "var(--text-secondary)",
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* Collapse toggle button — desktop only */}
-      <div className="hidden md:flex p-3" style={{ borderTop: "1px solid var(--border-light)" }}>
+      {/* ─── Collapse toggle — desktop only ─── */}
+      <div
+        className="hidden md:block shrink-0 px-3 py-2"
+        style={{ borderTop: "1px solid var(--border-light)" }}
+      >
         <button
           onClick={onToggleCollapse}
-          className={`flex items-center gap-2 w-full rounded-xl py-2.5 transition-colors ${
-            collapsed ? "justify-center px-0" : "px-3"
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={`flex w-full items-center gap-2 rounded-xl py-2 text-[13px] font-medium transition-colors ${
+            isCollapsed ? "justify-center px-0" : "px-3"
           }`}
           style={{ color: "var(--text-faint)" }}
         >
-          {collapsed ? (
-            <FiChevronsRight size={20} />
+          {isCollapsed ? (
+            <FiChevronsRight size={18} />
           ) : (
             <>
-              <FiChevronsLeft size={20} />
-              <span className="text-sm font-medium">Collapse</span>
+              <FiChevronsLeft size={18} />
+              <span>Collapse</span>
             </>
           )}
         </button>
@@ -186,12 +264,15 @@ const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:block fixed left-0 top-[60px] h-[calc(100vh-60px)] transition-all duration-300 ${
-          collapsed ? "w-[72px]" : "w-[220px] lg:w-[250px] xl:w-[280px]"
+        className={`hidden md:block fixed left-0 top-0 z-40 h-screen transition-all duration-300 ${
+          collapsed ? "w-[76px]" : "w-[240px] xl:w-[260px]"
         }`}
-        style={{ backgroundColor: "var(--bg-card)", borderRight: "1px solid var(--border-light)" }}
+        style={{
+          backgroundColor: "var(--bg-card)",
+          borderRight: "1px solid var(--border-light)",
+        }}
       >
-        {sidebarInner}
+        {renderInner(collapsed, "sidebar-pill-desktop")}
       </aside>
 
       {/* Mobile drawer */}
@@ -213,7 +294,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               transition={{ type: "spring", damping: 26, stiffness: 280 }}
               className="fixed top-0 left-0 w-[260px] h-screen z-50 md:hidden shadow-xl"
             >
-              {sidebarInner}
+              {renderInner(false, "sidebar-pill-mobile")}
             </motion.aside>
           </>
         )}

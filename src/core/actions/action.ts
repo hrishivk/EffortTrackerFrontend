@@ -11,12 +11,15 @@ export const login = createAsyncThunk(
       const respnse = await apiserviceMethood.login("/login", data);
       return respnse;
     } catch (error: any) {
-      if (
-        error.response &&
-        error.response.data &&
-        error.response.data.message
-      ) {
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        return rejectWithValue("Invalid credentials");
+      }
+      if (error.response?.data?.message) {
         return rejectWithValue(error.response.data.message);
+      }
+      if (error.code === "ERR_NETWORK") {
+        return rejectWithValue("Unable to reach the server. Please try again.");
       }
       return rejectWithValue("An unexpected error occurred");
     }

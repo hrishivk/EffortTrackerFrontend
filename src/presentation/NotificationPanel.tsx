@@ -257,7 +257,7 @@ export default function NotificationPanel() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setOpen(false)}
-              className="fixed inset-0 top-[60px] bg-black/10 z-40"
+              className="fixed inset-0 top-[64px] bg-black/10 z-40"
             />
 
             {/* Sidebar */}
@@ -266,7 +266,7 @@ export default function NotificationPanel() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="fixed top-[70px] right-2 bottom-2 w-[380px] rounded-xl z-50 flex flex-col shadow-lg overflow-hidden"
+              className="fixed top-[74px] right-2 bottom-2 w-[380px] max-w-[calc(100vw-1rem)] rounded-xl z-50 flex flex-col shadow-lg overflow-hidden"
               style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}
             >
               {/* Header */}

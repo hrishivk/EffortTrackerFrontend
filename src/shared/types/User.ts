@@ -11,6 +11,8 @@ export interface formUserData {
   isBlocked?: boolean;
   lastSeenAt: string | Date;
   manager_id?: string | number | null;
+  /** Visible to every manager, not just the one who created them. */
+  is_shared?: boolean;
 }
 
 export interface UserModalProps {

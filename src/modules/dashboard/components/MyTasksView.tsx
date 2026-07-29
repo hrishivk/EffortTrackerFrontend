@@ -13,6 +13,7 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { motion, AnimatePresence } from "framer-motion";
+import { FiGrid, FiLayers, FiUsers } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 
 import { useAppSelector } from "../../../store/configureStore";
@@ -29,6 +30,13 @@ import type { taskList } from "../../user/types";
 import TaskGanttChart from "./TaskGanttChart";
 import TaskDetailModal from "./TaskDetailModal";
 import SpinLoader from "../../../presentation/SpinLoader";
+import { parseServerTime } from "../../../shared/utils/serverTime";
+import FilterPanel, {
+  FilterTrigger,
+  countActiveFilters,
+  type FilterCategory,
+  type FilterValues,
+} from "../../../shared/components/FilterPanel/FilterPanel";
 
 const PROJECT_COLORS = [
   { bg: "#dbeafe", text: "#2563eb", dot: "#2563eb" },
@@ -132,8 +140,10 @@ function LiveTimer({ startTime }: { startTime: string }) {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
-  const diff = now - new Date(startTime).getTime();
-  if (diff <= 0) return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>--</span>;
+  const diff = now - parseServerTime(startTime);
+  if (Number.isNaN(diff) || diff < 0) {
+    return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>--</span>;
+  }
   const totalSeconds = Math.floor(diff / 1000);
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
@@ -191,6 +201,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
   const [viewMode, setViewMode] = useState<"all" | "gantt">(
     viewTab === "gantt" ? "gantt" : "all"
   );
+  const [filterOpen, setFilterOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [assignToSelf, setAssignToSelf] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -314,6 +325,92 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
     return [];
   })();
 
+  // ─── Filter panel ───
+  const taskFilterValues: FilterValues = {
+    project: projectFilter,
+    assignee: assigneeFilter,
+  };
+
+  /**
+   * Scope projects to whoever's tasks are on screen: viewing one person shows
+   * only the projects they're assigned to, not every project in the system.
+   * An empty scope (SP/AM on "All members") keeps the full list.
+   */
+  const scopedUserId =
+    viewUserId || assigneeFilter || (isUserOrDev ? String(userId) : "");
+
+  const scopedProjects = scopedUserId
+    ? projects.filter((p) =>
+        (p.teamAssigned || []).some(
+          (member: any) => String(member.id) === String(scopedUserId)
+        )
+      )
+    : projects;
+
+  const projectFilterOptions = scopedProjects.map((p) => ({
+    value: p.name,
+    label: p.name,
+  }));
+
+  // An applied project that falls outside the current scope (deep link, or a
+  // changed assignee) stays listed so it is still visible and removable.
+  if (
+    projectFilter &&
+    !projectFilterOptions.some((option) => option.value === projectFilter)
+  ) {
+    projectFilterOptions.unshift({ value: projectFilter, label: projectFilter });
+  }
+
+  const taskFilterCategories: FilterCategory[] = [
+    {
+      key: "taskFilters",
+      label: "Project & People",
+      icon: <FiGrid size={16} />,
+      caption:
+        filterableUsers.length > 0
+          ? "Filter tasks by project and assignee"
+          : "Filter tasks by project",
+      fields: [
+        {
+          key: "project",
+          label: "Project",
+          placeholder: "All projects",
+          emptyText: scopedUserId
+            ? "No projects assigned"
+            : "No projects available",
+          icon: <FiLayers size={15} />,
+          options: projectFilterOptions,
+        },
+        ...(filterableUsers.length > 0
+          ? [
+              {
+                key: "assignee",
+                label: role === "SP" ? "Assignee" : "Assigned to",
+                placeholder: "All members",
+                emptyText: "No members available",
+                icon: <FiUsers size={15} />,
+                options: [
+                  ...(role === "AM"
+                    ? [{ value: String(userId), label: "My Tasks" }]
+                    : []),
+                  ...filterableUsers.map((u) => ({
+                    value: String(u.id),
+                    label: u.fullName || String(u.id),
+                  })),
+                ],
+              },
+            ]
+          : []),
+      ],
+    },
+  ];
+
+  const applyTaskFilters = (values: FilterValues) => {
+    setProjectFilter(values.project ?? "");
+    setAssigneeFilter(values.assignee ?? "");
+    setPage(1);
+  };
+
   const filtered = tasks.filter((t) => {
     if (!search) return true;
     return (t.description || "").toLowerCase().includes(search.toLowerCase());
@@ -425,7 +522,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               display: "block",
-              maxWidth: "100%",
+              maxWidth: "min(360px, 28vw)",
             }}>
               {row.description}
             </span>
@@ -562,7 +659,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       header: "Start Time",
       render: (row) => {
         if (!row.start_time) return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
-        const d = new Date(row.start_time);
+        const d = new Date(parseServerTime(row.start_time));
         return (
           <div style={{ whiteSpace: "nowrap" }}>
             <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>
@@ -583,7 +680,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
         const isCompleted = s === "completed" || s === "done";
         const timeToShow = row.end_time;
         if (!timeToShow) return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
-        const d = new Date(timeToShow);
+        const d = new Date(parseServerTime(timeToShow));
         return (
           <div style={{ whiteSpace: "nowrap" }}>
             <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>
@@ -610,8 +707,8 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
         // Live ticking timer for in-progress tasks
         if (isInProgress) return <LiveTimer startTime={row.start_time} />;
         // Static time for completed tasks
-        const start = new Date(row.start_time).getTime();
-        const end = new Date(row.end_time || row.start_time).getTime();
+        const start = parseServerTime(row.start_time);
+        const end = parseServerTime(row.end_time || row.start_time);
         const diff = end - start;
         if (diff <= 0)
           return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>0s</span>;
@@ -774,7 +871,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
   };
 
   // Active projects
-  const activeProjects = projects.filter(
+  const activeProjects = scopedProjects.filter(
     (p) => (p.status || "").toLowerCase().replace(/\s+/g, "_") === "active"
   );
 
@@ -816,55 +913,11 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto flex-shrink-0">
-          {/* Project Filter */}
-          <FormControl size="small" sx={{
-            minWidth: { xs: 0, sm: 140 },
-            flex: { xs: "1 1 0", sm: "0 0 auto" },
-            ...selectSx,
-          }}>
-            <Select
-              value={projectFilter}
-              onChange={(e) => { setProjectFilter(e.target.value); setPage(1); }}
-              displayEmpty
-              renderValue={(val) => val || (isCompact ? "Projects" : "All Projects")}
-              MenuProps={menuProps}
-            >
-              <MenuItem value="">All Projects</MenuItem>
-              {projects.map((p, i) => (
-                <MenuItem key={i} value={p.name}>{p.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Assignee Filter — SP sees AMs, AM sees Users/Developers */}
-          {filterableUsers.length > 0 && (
-            <FormControl size="small" sx={{
-              minWidth: { xs: 0, sm: 140 },
-              flex: { xs: "1 1 0", sm: "0 0 auto" },
-              ...selectSx,
-            }}>
-              <Select
-                value={assigneeFilter}
-                onChange={(e) => { setAssigneeFilter(e.target.value); setPage(1); }}
-                displayEmpty
-                renderValue={(val) => {
-                  if (!val) return isCompact ? "Members" : (role === "SP" ? "All " : "All Members");
-                  if (val === String(userId)) return isCompact ? "Mine" : "My Tasks";
-                  const u = users.find((u) => String(u.id) === val);
-                  return u?.fullName || val;
-                }}
-                MenuProps={menuProps}
-              >
-                <MenuItem value="">{role === "SP" ? "All " : "All Members"}</MenuItem>
-                {role === "AM" && (
-                  <MenuItem value={String(userId)}>My Tasks</MenuItem>
-                )}
-                {filterableUsers.map((u) => (
-                  <MenuItem key={u.id} value={String(u.id)}>{u.fullName}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
+          {/* Project + Assignee filters */}
+          <FilterTrigger
+            count={countActiveFilters(taskFilterValues)}
+            onClick={() => setFilterOpen(true)}
+          />
 
           {/* Create Task Button — only in All Tasks view, hidden when form is open */}
           {viewMode === "all" && !showCreateForm && (
@@ -1390,6 +1443,16 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
         }
         projectColorMap={projectColorMap}
         showSnackbar={showSnackbar}
+      />
+
+      {/* Filter Tasks panel */}
+      <FilterPanel
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        title="Filter Tasks"
+        categories={taskFilterCategories}
+        values={taskFilterValues}
+        onApply={applyTaskFilters}
       />
     </div>
   );

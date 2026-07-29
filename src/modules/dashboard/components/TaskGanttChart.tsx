@@ -812,7 +812,20 @@ export default function TaskGanttChart({
             }}
           >
             <div className="d-flex align-items-center gap-2 mb-2">
-              <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
+              {/* Clamped — a long name would otherwise stretch the tooltip.
+                  The full text is in the task detail modal. */}
+              <span
+                style={{
+                  fontWeight: 700,
+                  fontSize: 14,
+                  color: "var(--text-primary)",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  wordBreak: "break-word",
+                }}
+              >
                 {row.description}
               </span>
             </div>

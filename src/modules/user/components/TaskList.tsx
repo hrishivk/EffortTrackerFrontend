@@ -9,6 +9,7 @@ import {
   taskWithDateValidationSchema,
 } from "../../../utils/validation/Validation";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
+import { parseServerTime } from "../../../shared/utils/serverTime";
 import {
   type SelectChangeEvent,
   FormControl,
@@ -250,14 +251,14 @@ const TaskList: React.FC = () => {
     ];
     const rows = filterData.map((task) => {
       const start = task.start_time
-        ? new Date(task.start_time).toLocaleTimeString([], {
+        ? new Date(parseServerTime(task.start_time)).toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
           })
         : "Not Started";
 
       const end = task.end_time
-        ? new Date(task.end_time).toLocaleTimeString([], {
+        ? new Date(parseServerTime(task.end_time)).toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
           })
@@ -267,8 +268,8 @@ const TaskList: React.FC = () => {
         task.start_time && task.end_time
           ? (() => {
               const diffMs =
-                new Date(task.end_time).getTime() -
-                new Date(task.start_time).getTime();
+                parseServerTime(task.end_time) -
+                parseServerTime(task.start_time);
               if (isNaN(diffMs) || diffMs < 0) return "Invalid Time";
               const h = Math.floor(diffMs / 3600000);
               const m = Math.floor((diffMs % 3600000) / 60000);
@@ -437,7 +438,7 @@ const TaskList: React.FC = () => {
                       <td className="px-4 py-4">
                         <span>
                           {task.start_time
-                            ? new Date(task.start_time).toLocaleTimeString([], {
+                            ? new Date(parseServerTime(task.start_time)).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })
@@ -448,7 +449,7 @@ const TaskList: React.FC = () => {
                       <td className="px-4 py-4">
                         <span>
                           {task.end_time
-                            ? new Date(task.end_time).toLocaleTimeString([], {
+                            ? new Date(parseServerTime(task.end_time)).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })
@@ -460,8 +461,8 @@ const TaskList: React.FC = () => {
                         <span>
                           {task.start_time && task.end_time
                             ? (() => {
-                                const start = new Date(task.start_time);
-                                const end = new Date(task.end_time);
+                                const start = new Date(parseServerTime(task.start_time));
+                                const end = new Date(parseServerTime(task.end_time));
 
                                 if (
                                   isNaN(start.getTime()) ||

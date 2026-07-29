@@ -25,6 +25,7 @@ import { useSnackbar } from "../../../../contexts/SnackbarContext";
 import SpinLoader from "../../../../presentation/SpinLoader";
 import type { formUserData } from "../../../../shared/types/User";
 import type { taskList } from "../../../user/types";
+import { parseServerTime } from "../../../../shared/utils/serverTime";
 
 const selectSx = {
   "& .MuiOutlinedInput-root": {
@@ -441,7 +442,7 @@ const CreateTask = () => {
               const pColor = priorityColors[priority] || priorityColors.LOW;
               const pIcon = priorityIcons[priority] || priorityIcons.LOW;
               const deadline = task.end_time
-                ? new Date(task.end_time).toLocaleDateString("en-US", {
+                ? new Date(parseServerTime(task.end_time)).toLocaleDateString("en-US", {
                     month: "long",
                     day: "2-digit",
                     year: "numeric",

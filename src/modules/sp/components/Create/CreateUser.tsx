@@ -68,7 +68,13 @@ const CreateUser = () => {
   const backPath = role === "SP" ? "/sp/userMangement" : `/${currentRole}/TeamManagement`;
 
   const { showSnackbar } = useSnackbar();
-  const roleOptions = role === "SP" ? ["AM"] : ["USER", "DEVLOPER"];
+  /**
+   * Shared staff (testers, QA, designers) are always plain users — never
+   * managers — whoever creates them. Otherwise SP creates managers and AM
+   * creates its own team members.
+   */
+  const roleOptionsFor = (shared: boolean) =>
+    shared ? ["USER"] : role === "SP" ? ["AM"] : ["USER", "DEVLOPER"];
 
   const [form, setForm] = useState({
     fullName: "",
@@ -87,12 +93,22 @@ const CreateUser = () => {
     projects: [] as string[],
     sendWelcomeEmail: true,
     requirePasswordChange: true,
+    is_shared: false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [projectList, setProjectList] = useState<project[]>([]);
   const todayStr = new Date().toISOString().split("T")[0];
+  const [projectSearch, setProjectSearch] = useState("");
+
+  const roleOptions = roleOptionsFor(form.is_shared);
+
+  const visibleProjects = projectSearch.trim()
+    ? projectList.filter((p) =>
+        (p.name || "").toLowerCase().includes(projectSearch.trim().toLowerCase())
+      )
+    : projectList;
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -156,6 +172,25 @@ const CreateUser = () => {
     });
   };
 
+  const handleSharedToggle = (shared: boolean) => {
+    const nextOptions = roleOptionsFor(shared);
+    setForm((prev) => ({
+      ...prev,
+      is_shared: shared,
+      // Force USER when shared; on unshare keep the role only if still offered.
+      role: shared
+        ? "USER"
+        : nextOptions.includes(prev.role)
+          ? prev.role
+          : "",
+    }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.role;
+      return next;
+    });
+  };
+
   const toggleProject = (id: string) => {
     setForm((prev) => ({
       ...prev,
@@ -192,6 +227,8 @@ const CreateUser = () => {
       manager_id: form.manager_id,
       sendWelcomeEmail: form.sendWelcomeEmail,
       requirePasswordChange: form.requirePasswordChange,
+      // snake_case to match the API, alongside manager_id
+      is_shared: form.is_shared,
     };
 
     // Send projects as comma-separated string or empty string
@@ -440,6 +477,11 @@ const CreateUser = () => {
               </Select>
             </FormControl>
             <ErrorText message={errors.role} />
+            {form.is_shared && (
+              <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "4px 0 0" }}>
+                Shared users are always created with the USER role.
+              </p>
+            )}
           </div>
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
@@ -565,8 +607,63 @@ const CreateUser = () => {
         </p>
 
         {projectList.length > 0 ? (
-          <div className="row g-2 mb-4">
-            {projectList.map((proj) => {
+          <div className="mb-4">
+            {/* Search only earns its place once the list outgrows the viewport */}
+            {projectList.length > 6 && (
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search projects..."
+                value={projectSearch}
+                onChange={(e) => setProjectSearch(e.target.value)}
+                sx={{ ...inputSx, marginBottom: "8px" }}
+              />
+            )}
+
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                {form.projects.length > 0
+                  ? `${form.projects.length} of ${projectList.length} selected`
+                  : `${projectList.length} project${projectList.length === 1 ? "" : "s"} available`}
+              </span>
+              {form.projects.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, projects: [] }))}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "#7c3aed",
+                    cursor: "pointer",
+                  }}
+                >
+                  Clear selection
+                </button>
+              )}
+            </div>
+
+            <div
+              className="row g-2"
+              style={{
+                maxHeight: 260,
+                overflowY: "auto",
+                overflowX: "hidden",
+                margin: 0,
+                paddingRight: 4,
+              }}
+            >
+              {visibleProjects.length === 0 && (
+                <p
+                  className="mb-0 text-center"
+                  style={{ fontSize: 12, color: "var(--text-faint)", padding: "16px 0" }}
+                >
+                  No projects match &ldquo;{projectSearch}&rdquo;.
+                </p>
+              )}
+              {visibleProjects.map((proj) => {
               const isSelected = form.projects.includes(proj.id);
               return (
                 <div key={proj.id} className="col-md-6">
@@ -602,7 +699,8 @@ const CreateUser = () => {
                   </div>
                 </div>
               );
-            })}
+              })}
+            </div>
           </div>
         ) : (
           <div
@@ -660,6 +758,41 @@ const CreateUser = () => {
             <Switch
               checked={form.requirePasswordChange}
               onChange={(e) => handleChange("requirePasswordChange", e.target.checked)}
+              sx={{
+                "& .MuiSwitch-switchBase.Mui-checked": { color: "#7c3aed" },
+                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#7c3aed" },
+              }}
+            />
+          </div>
+
+          <div
+            className="d-flex align-items-center justify-content-between p-3 rounded-3"
+            style={{
+              backgroundColor: form.is_shared ? "#f5f3ff" : "var(--bg-surface)",
+              border: form.is_shared ? "1px solid #ddd6fe" : "1px solid transparent",
+            }}
+          >
+            <div className="d-flex align-items-center gap-2">
+              <span style={{ fontSize: 16, color: "#7c3aed" }}>&#128101;</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                  Shared across all managers
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  For staff who work across every project (testers, QA, designers).
+                  Every manager will see this user in their list.
+                </div>
+                {/* /edit-user is super-admin only, so an AM cannot undo this later. */}
+                {isAM && form.is_shared && (
+                  <div style={{ fontSize: 11, fontWeight: 500, color: "#d97706", marginTop: 4 }}>
+                    Only a super admin can turn this off later.
+                  </div>
+                )}
+              </div>
+            </div>
+            <Switch
+              checked={form.is_shared}
+              onChange={(e) => handleSharedToggle(e.target.checked)}
               sx={{
                 "& .MuiSwitch-switchBase.Mui-checked": { color: "#7c3aed" },
                 "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#7c3aed" },
