@@ -11,6 +11,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 
 import { addProject, assignProjectMembers, fetchUsers, fetchAllUsers, fetchExistDomains } from "../../../../core/actions/spAction";
+import { PROJECT_CATEGORIES } from "../DomainProject/constants";
 import { ProjectValidationSchema } from "../../../../utils/validation/Validation";
 import { useSnackbar } from "../../../../contexts/SnackbarContext";
 import type { AvailableMember, ProjectFormData } from "../../types";
@@ -277,7 +278,7 @@ const CreateProject = () => {
         <div className="d-flex justify-content-between align-items-center mb-3">
           <div className="d-flex align-items-center gap-2">
             <span style={{ fontSize: 18, color: "#7c3aed" }}>🏷️</span>
-            <h5 className="fw-bold mb-0">Select Domain <span style={{ color: "#ef4444" }}>*</span></h5>
+            <h5 className="fw-bold mb-0">Select Department <span style={{ color: "#ef4444" }}>*</span></h5>
           </div>
           <span style={{ fontSize: 13, color: "#7c3aed", fontWeight: 500 }}>
             {domains.length} Domains
@@ -292,7 +293,7 @@ const CreateProject = () => {
           return selected ? (
             <div className="mb-3 p-3 rounded-3" style={{ backgroundColor: "#f5f3ff", border: "1px solid #e9d5ff" }}>
               <p className="mb-1" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Selected Domain:
+                Selected Department:
               </p>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
@@ -408,7 +409,7 @@ const CreateProject = () => {
         {domains.length === 0 && (
           <div className="text-center py-4">
             <p style={{ fontSize: 13, color: "var(--text-faint)" }}>
-              No domains found. Create a domain first.
+              No departments found. Create a department first.
             </p>
             <button
               onClick={() => navigate(`/${currentRole}/create-domain`)}
@@ -421,7 +422,7 @@ const CreateProject = () => {
                 padding: "6px 16px",
               }}
             >
-              + Create Domain
+              + Create Department
             </button>
           </div>
         )}
@@ -463,13 +464,11 @@ const CreateProject = () => {
                 sx={{ color: form.category ? "#111827" : "#9ca3af" }}
                 MenuProps={menuProps}
               >
-                <MenuItem value="Engineering">Engineering</MenuItem>
-                <MenuItem value="Design">Design</MenuItem>
-                <MenuItem value="Marketing">Marketing</MenuItem>
-                <MenuItem value="Finance">Finance</MenuItem>
-                <MenuItem value="HR">HR</MenuItem>
-                <MenuItem value="Operations">Operations</MenuItem>
-                <MenuItem value="Electronics">Electronics</MenuItem>
+                {PROJECT_CATEGORIES.map((c) => (
+                  <MenuItem key={c} value={c}>
+                    {c}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
             <ErrorText message={errors.category} />
@@ -579,7 +578,7 @@ const CreateProject = () => {
             style={{ backgroundColor: "var(--bg-surface)", border: "1px dashed var(--border-light)" }}
           >
             <p className="mb-0" style={{ fontSize: 13, color: "var(--text-faint)" }}>
-              Select a domain above to see managers assigned to it.
+              Select a department above to see managers assigned to it.
             </p>
           </div>
         )}
@@ -589,7 +588,7 @@ const CreateProject = () => {
             style={{ backgroundColor: "#fef2f2", border: "1px dashed #fecaca" }}
           >
             <p className="mb-0" style={{ fontSize: 13, color: "#dc2626" }}>
-              No Account Managers assigned to this domain.
+              No Account Managers assigned to this department.
             </p>
           </div>
         )}

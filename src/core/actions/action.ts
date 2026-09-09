@@ -1,8 +1,8 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { apiserviceMethood } from "../services/apiService";
 import { spserviceMethood } from "../services/spService";
-import { userServiceMethood } from "../services/userService";
-import type { taskList } from "../../modules/user/types";
+import { userServiceMethood, type TaskListFilters } from "../services/userService";
+import type { CreateTaskPayload } from "../../modules/user/types";
 
 export const login = createAsyncThunk(
   "auth/login",
@@ -43,7 +43,7 @@ export const authLogout = async (id:string) => {
   }
 };
 
-export const addTask=async(data:taskList)=>{
+export const addTask=async(data:CreateTaskPayload)=>{
   try {
     const response= await userServiceMethood.createTask("/task",data)
     return response.data
@@ -51,7 +51,7 @@ export const addTask=async(data:taskList)=>{
     throw error
   }
 }
-export const fetchTask = async (date: Date | null, id: string, role: string, filters?: { assigned_to?: string; project?: string }, pagination?: { page?: number; limit?: number }) => {
+export const fetchTask = async (date: Date | null, id: string, role: string, filters?: TaskListFilters, pagination?: { page?: number; limit?: number }) => {
   try {
     const response = await userServiceMethood.listTask('/task-list', date, id, role, filters, pagination);
     return response.data;
@@ -89,6 +89,52 @@ export const fetchTasksByProject = async (project: string, pagination?: { page?:
     throw error;
   }
 };
+/**
+ * Move a task into a board lane.
+ *
+ * A built-in status lane sets `status` and clears any group link; a custom group
+ * sets `group_id` and leaves the status alone, so `status` stays one of the
+ * values the API validates.
+ */
+export const updateTaskLane = async (
+  taskId: string,
+  lane: { status?: string; groupId?: string | null }
+) => {
+  const payload: Record<string, unknown> = {};
+  if (lane.status !== undefined) payload.status = lane.status;
+  if (lane.groupId !== undefined) payload.group_id = lane.groupId;
+  const response = await userServiceMethood.patchTask(`/updateTask?id=${taskId}`, payload);
+  return response.data;
+};
+
+// ─── Board groups ─────────────────────────────────────────────────
+
+export const fetchTaskGroups = async (assignedTo?: string) => {
+  const response = await userServiceMethood.listTaskGroups("/task-groups", assignedTo);
+  return response.data;
+};
+
+export const createTaskGroup = async (data: { name: string; color: string }) => {
+  const response = await userServiceMethood.createTaskGroup("/task-groups", data);
+  return response.data;
+};
+
+export const updateTaskGroup = async (
+  groupId: string,
+  data: { name?: string; color?: string; position?: number }
+) => {
+  const response = await userServiceMethood.updateTaskGroup(
+    `/task-groups?id=${groupId}`,
+    data
+  );
+  return response.data;
+};
+
+export const deleteTaskGroup = async (groupId: string) => {
+  const response = await userServiceMethood.deleteTaskGroup(`/task-groups?id=${groupId}`);
+  return response.data;
+};
+
 export const updateTaskStatus=async(taskId:string, newStatus:string)=>{
   try {
     const response= await userServiceMethood.editTask(`/updateTask?id=${taskId}`,newStatus,)

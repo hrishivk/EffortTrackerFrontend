@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   FiBell,
   FiX,
@@ -12,6 +13,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../store/configureStore";
+import { OPEN_NOTIFICATIONS } from "../shared/utils/appEvents";
 import {
   fetchNotifications,
   fetchUnreadCount,
@@ -188,6 +190,16 @@ export default function NotificationPanel() {
     }
   }, [open, loadCount, loadNotifications]);
 
+  /*
+   * The account panel offers a Notifications row, and the bell lives here —
+   * so it asks by event rather than the layout owning this open state.
+   */
+  useEffect(() => {
+    const onAsk = () => setOpen(true);
+    window.addEventListener(OPEN_NOTIFICATIONS, onAsk);
+    return () => window.removeEventListener(OPEN_NOTIFICATIONS, onAsk);
+  }, []);
+
   // Escape to close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -247,8 +259,17 @@ export default function NotificationPanel() {
         )}
       </button>
 
-      {/* Sidebar Panel */}
-      <AnimatePresence>
+      {/*
+       * Portalled to <body> on purpose. `.app-header` sets `backdrop-filter`
+       * for its frosted look, and any backdrop-filter other than `none` makes
+       * that element the containing block for fixed-position descendants and
+       * its own stacking context. Rendered in place, the panel's `fixed`
+       * offsets would resolve against the 64px-tall header instead of the
+       * viewport, and its z-index would be trapped under the header's own — so
+       * it came out the wrong size and behind the page content.
+       */}
+      {createPortal(
+        <AnimatePresence>
         {open && (
           <>
             {/* Backdrop */}
@@ -257,7 +278,7 @@ export default function NotificationPanel() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setOpen(false)}
-              className="fixed inset-0 top-[64px] bg-black/10 z-40"
+              className="fixed inset-0 top-[64px] bg-black/10 z-[80]"
             />
 
             {/* Sidebar */}
@@ -266,7 +287,7 @@ export default function NotificationPanel() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="fixed top-[74px] right-2 bottom-2 w-[380px] max-w-[calc(100vw-1rem)] rounded-xl z-50 flex flex-col shadow-lg overflow-hidden"
+              className="fixed top-[74px] right-2 bottom-2 w-[380px] max-w-[calc(100vw-1rem)] rounded-xl z-[81] flex flex-col shadow-lg overflow-hidden"
               style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}
             >
               {/* Header */}
@@ -356,7 +377,9 @@ export default function NotificationPanel() {
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }

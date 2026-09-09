@@ -1,5 +1,6 @@
 export type ColumnHandlers = {
   onViewTasks: (id: string) => void;
+  onEditUser: (user: import("../../../shared/types/User").formUserData) => void;
   onDeleteUser: (id: string) => void;
 };
 

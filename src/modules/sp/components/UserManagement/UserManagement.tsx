@@ -15,6 +15,7 @@ import { TextField, InputAdornment } from "@mui/material";
 import { motion } from "framer-motion";
 import { FiGrid, FiLayers, FiUsers } from "react-icons/fi";
 import Dialoge from "../../../../presentation/Dialog";
+import EditUserModal from "../../../../shared/components/User/EditUserModal";
 import FilterPanel, {
   FilterTrigger,
   countActiveFilters,
@@ -57,6 +58,7 @@ const UserManagement: React.FC = () => {
   });
   const [filterOpen, setFilterOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [editUser, setEditUser] = useState<formUserData | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 400);
@@ -100,6 +102,7 @@ const UserManagement: React.FC = () => {
   const roles = useMemo(() => ["AM", "USER", "DEVLOPER"], []);
 
   const onViewTasks = (id: string) => navigate(`/sp/dashboard?viewUser=${id}`);
+  const onEditUser = (user: formUserData) => setEditUser(user);
   const onDeleteUser = (id: string) => setDeleteUserId(id);
 
   const handleConfirmDelete = async () => {
@@ -115,7 +118,7 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const columns = getUserColumns({ onViewTasks, onDeleteUser });
+  const columns = getUserColumns({ onViewTasks, onEditUser, onDeleteUser });
   const activeFilterCount = countActiveFilters(filters);
 
   const filterCategories: FilterCategory[] = [
@@ -165,6 +168,8 @@ const UserManagement: React.FC = () => {
           <TextField
             size="small"
             placeholder="Search users..."
+            name="userSearch"
+            autoComplete="off"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="um-search"
@@ -211,6 +216,14 @@ const UserManagement: React.FC = () => {
         categories={filterCategories}
         values={filters}
         onApply={setFilters}
+      />
+
+      <EditUserModal
+        open={!!editUser}
+        user={editUser}
+        projects={projects}
+        onClose={() => setEditUser(null)}
+        onSaved={loadUsers}
       />
 
       <Dialoge

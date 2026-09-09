@@ -7,17 +7,28 @@ import {
   IconButton,
   CircularProgress,
 } from "@mui/material";
-import GridViewIcon from "@mui/icons-material/GridView";
+import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
+import ViewKanbanOutlinedIcon from "@mui/icons-material/ViewKanbanOutlined";
+import TimelineIcon from "@mui/icons-material/Timeline";
 import CloseIcon from "@mui/icons-material/Close";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiGrid, FiLayers, FiUsers } from "react-icons/fi";
+import { FiActivity, FiGrid, FiLayers, FiUsers } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 
 import { useAppSelector } from "../../../store/configureStore";
-import { addTask, fetchTask } from "../../../core/actions/action";
+import {
+  addTask,
+  createTaskGroup,
+  deleteTaskGroup,
+  fetchTask,
+  fetchTaskGroups,
+  updateTaskGroup,
+  updateTaskLane,
+} from "../../../core/actions/action";
+import type { TaskListFilters } from "../../../core/services/userService";
 import {
   fetchAllExistProjects,
   fetchAllUsers,
@@ -26,11 +37,30 @@ import { useSnackbar } from "../../../contexts/SnackbarContext";
 import TableList from "../../../shared/components/Table/Table";
 import type { Column } from "../../../shared/components/Table/types";
 import type { formUserData } from "../../../shared/types/User";
-import type { taskList } from "../../user/types";
+import type { taskList, CreateTaskPayload } from "../../user/types";
 import TaskGanttChart from "./TaskGanttChart";
+import TaskBoardView from "./TaskBoardView";
+import TaskTimer from "./TaskTimer";
+import DueBadge from "./DueBadge";
+import { taskTiming } from "../../../shared/utils/taskTime";
+import TaskActionCell from "./TaskActionCell";
+import TaskDetailPanel from "./TaskDetailPanel";
+import SubtaskProgress from "./SubtaskProgress";
+import CreateTaskModal, { type CreateTaskFormData } from "./CreateTaskModal";
+import type { TaskGroup } from "../types";
+import {
+  findGroupForStatus,
+  groupNameToStatus,
+  STATUS_LANE_ORDER,
+} from "./boardConstants";
 import TaskDetailModal from "./TaskDetailModal";
 import SpinLoader from "../../../presentation/SpinLoader";
 import { parseServerTime } from "../../../shared/utils/serverTime";
+import {
+  TASK_STATUS_FILTER_OPTIONS,
+  dueState,
+  toLocalDate,
+} from "../../../shared/utils/taskStatus";
 import FilterPanel, {
   FilterTrigger,
   countActiveFilters,
@@ -47,6 +77,16 @@ const PROJECT_COLORS = [
   { bg: "#e0e7ff", text: "#4f46e5", dot: "#4f46e5" },
   { bg: "#ccfbf1", text: "#0d9488", dot: "#0d9488" },
   { bg: "#fce7f3", text: "#db2777", dot: "#db2777" },
+];
+
+/** One spring for the whole toggle so the pill, tap and icon pop move together. */
+const TAB_SPRING = { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.7 };
+
+/** Tasks view tabs: List and Board render the same task set, Gantt is the timeline. */
+const VIEW_TABS = [
+  { key: "list" as const,  label: "List View",   shortLabel: "List",  icon: FormatListBulletedIcon },
+  { key: "board" as const, label: "Board View",  shortLabel: "Board", icon: ViewKanbanOutlinedIcon },
+  { key: "gantt" as const, label: "Gantt Chart", shortLabel: "Gantt", icon: TimelineIcon },
 ];
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -74,6 +114,27 @@ const selectSx = {
   "& .MuiInputBase-input": { padding: "8px 14px", fontSize: 13, color: "var(--text-primary)" },
 };
 
+/**
+ * A select that shows its value but cannot be changed. MUI's disabled styling
+ * dims the text to near-unreadable, so the colour is restored: the point is
+ * "this is fixed", not "this is unavailable".
+ */
+const fixedSelectSx = {
+  ...selectSx,
+  "& .MuiOutlinedInput-root": {
+    ...selectSx["& .MuiOutlinedInput-root"],
+    backgroundColor: "var(--bg-hover)",
+    "&.Mui-disabled": {
+      "& fieldset": { borderColor: "var(--border-light)" },
+      "& .MuiSelect-select": {
+        WebkitTextFillColor: "var(--text-secondary)",
+        color: "var(--text-secondary)",
+      },
+    },
+  },
+  "& .MuiSvgIcon-root.Mui-disabled": { display: "none" },
+};
+
 const menuProps = {
   PaperProps: {
     sx: { borderRadius: 3, boxShadow: "0px 8px 30px rgba(0,0,0,0.08)" },
@@ -81,6 +142,9 @@ const menuProps = {
 };
 
 const ITEMS_PER_PAGE = 5;
+
+/** The Board is not paginated, so it asks for one large page of tasks. */
+const BOARD_TASK_LIMIT = 200;
 
 const getInitials = (name: string) =>
   name
@@ -100,7 +164,10 @@ const getStatusBadge = (status: string) => {
   if (s === "review")
     return { label: "REVIEW", color: "#d97706", bg: "#fef3c7", pct: 90 };
   if (s === "yet_to_start" || s === "pending")
-    return { label: "YET TO START", color: "#9333ea", bg: "#f5f3ff", pct: 0 };
+    return { label: "YET TO START", color: "#d97706", bg: "#fef3c7", pct: 0 };
+  // A custom board group stores its own slug as the status, so show that rather
+  // than flattening every unknown status to "TODO".
+  if (s) return { label: s.replace(/_/g, " ").toUpperCase(), color: "#6b7280", bg: "#f3f4f6", pct: 0 };
   return { label: "TODO", color: "#6b7280", bg: "#f3f4f6", pct: 0 };
 };
 
@@ -114,6 +181,32 @@ const avatarColors = [
   "#0d9488",
   "#4f46e5",
 ];
+
+/**
+ * The subtask tally shown next to a task's name, so it is obvious which rows are
+ * worth expanding. Renders nothing when a task has no children.
+ */
+
+/** Find a task by id, looking inside subtasks too. */
+const findTaskById = (list: taskList[], id: string | null): taskList | null => {
+  if (!id) return null;
+  for (const t of list) {
+    if (String(t.id) === id) return t;
+    const kid = findTaskById(t.subtasks ?? [], id);
+    if (kid) return kid;
+  }
+  return null;
+};
+
+/** Statuses arrive in a few spellings; compare them in one normalised form. */
+const normalizeStatus = (value?: string | null) =>
+  (value || "").toLowerCase().replace(/[\s-]+/g, "_");
+
+/** Pull the API's error message off an axios failure, falling back to `fallback`. */
+const apiMessage = (error: unknown, fallback: string): string => {
+  const res = (error as { response?: { data?: { message?: string } } })?.response;
+  return res?.data?.message || fallback;
+};
 
 const formatDateLabel = (date: Date) => {
   const today = new Date();
@@ -130,49 +223,145 @@ const formatDateLabel = (date: Date) => {
 
 interface MyTasksViewProps {
   viewUserId?: string;
+  /**
+   * The viewed person's name, when the caller already knows it.
+   *
+   * `getUserName` looks names up in `users`, which is only fetched for SP and
+   * AM — so a developer opening a teammate's page in their own room saw
+   * "Unknown's Tasks". The room page has the name in hand from the room's
+   * member list, so it passes it rather than the view widening its own
+   * permissions to go and find it.
+   */
+  viewUserName?: string;
   viewProject?: string;
   viewTab?: string;
+  /**
+   * A project the caller has already settled, so the create form shows it but
+   * cannot change it. Used by the workspace room pages, where the workspace
+   * owns exactly one project.
+   */
+  lockedProject?: string;
 }
 
-function LiveTimer({ startTime }: { startTime: string }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-  const diff = now - parseServerTime(startTime);
-  if (Number.isNaN(diff) || diff < 0) {
-    return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>--</span>;
+type GroupedTask = {
+  key: string;
+  description: string;
+  project: string | { id: string; name: string };
+  priority: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  created_at?: string | null;
+  /** Carried through so the Board can bucket the card by its group. */
+  group_id?: string | null;
+  /** The plan. `end_time` is the actual finish and gets overwritten. */
+  start_date?: string | null;
+  due_date?: string | null;
+  /** Accumulated tracked seconds, summed across the row's assignees. */
+  total_seconds?: number;
+  /** Child tasks, from the first task in the row. */
+  subtasks?: taskList[];
+  status?: string;
+  tasks: taskList[];
+  assignees: { name: string; status: string; userId: string | number | null | undefined }[];
+};
+
+/**
+ * Collapse tasks that are the same work assigned to several people into one row,
+ * so the List table and the Board cards agree on what "a task" is. USER/DEVLOPER
+ * only ever see their own tasks, so for them each task is its own row.
+ */
+function groupTasks(
+  list: taskList[],
+  isManagerView: boolean,
+  getUserName: (id: string | number | null | undefined) => string
+): GroupedTask[] {
+  if (!isManagerView) {
+    return list.map((t) => ({
+      key: String(t.id),
+      description: t.description,
+      project: t.project,
+      priority: t.priority,
+      start_time: t.start_time,
+      end_time: t.end_time,
+      created_at: t.created_at,
+      group_id: t.group_id,
+      start_date: t.start_date,
+      due_date: t.due_date,
+      total_seconds: t.total_seconds ?? 0,
+      subtasks: t.subtasks ?? [],
+      status: t.status,
+      tasks: [t],
+      assignees: [{
+        name: t.dailyLog?.assignedUser?.fullName || getUserName(t.assigned_to),
+        status: t.status || "",
+        userId: t.assigned_to,
+      }],
+    }));
   }
-  const totalSeconds = Math.floor(diff / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0) parts.push(`${minutes}m`);
-  parts.push(`${seconds}s`);
-  return (
-    <span
-      style={{
-        fontSize: 12,
-        fontWeight: 600,
-        color: "#2563eb",
-        backgroundColor: "#dbeafe",
-        padding: "3px 8px",
-        borderRadius: 6,
-        whiteSpace: "nowrap",
-        display: "inline-block",
-      }}
-    >
-      {parts.join(" ")} ⏱
-    </span>
-  );
+
+  const map = new Map<string, taskList[]>();
+  for (const t of list) {
+    const projName = typeof t.project === "object" && t.project !== null
+      ? (t.project as any).name : (t.project || "");
+    const projId = t.project_id || (typeof t.project === "object" && t.project !== null
+      ? (t.project as any).id : "");
+    const desc = (t.description || "").trim();
+    const proj = projId ? String(projId) : String(projName).trim();
+    const groupKey = `${desc}|||${proj}`;
+    if (!map.has(groupKey)) map.set(groupKey, []);
+    map.get(groupKey)!.push(t);
+  }
+
+  const rows: GroupedTask[] = [];
+  for (const [key, rowTasks] of map) {
+    const first = rowTasks[0];
+    const assignees = rowTasks.map((t) => ({
+      name: t.dailyLog?.assignedUser?.fullName || getUserName(t.assigned_to),
+      status: t.status || "",
+      userId: t.assigned_to,
+    }));
+    // Pick earliest start, latest end, earliest creation
+    let start: string | null = null;
+    let end: string | null = null;
+    let created: string | null = null;
+    let tracked = 0;
+    for (const t of rowTasks) {
+      if (t.start_time && (!start || t.start_time < start)) start = t.start_time;
+      if (t.end_time && (!end || t.end_time > end)) end = t.end_time;
+      if (t.created_at && (!created || t.created_at < created)) created = t.created_at;
+      tracked += t.total_seconds ?? 0;
+    }
+    rows.push({
+      key,
+      description: first.description,
+      project: first.project,
+      priority: first.priority,
+      start_time: start,
+      end_time: end,
+      created_at: created,
+      group_id: first.group_id,
+      // The plan is one task's, not per-assignee, so the first row carries it.
+      start_date: first.start_date,
+      due_date: first.due_date,
+      total_seconds: tracked,
+      // Subtasks belong to the task, not to an assignee, so the first row's set
+      // is the row's set.
+      subtasks: first.subtasks ?? [],
+      status: first.status,
+      tasks: rowTasks,
+      assignees,
+    });
+  }
+  return rows;
 }
 
-export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTasksViewProps) {
+export default function MyTasksView({
+  viewUserId,
+  viewUserName,
+  viewProject,
+  viewTab,
+  lockedProject,
+}: MyTasksViewProps) {
   const { showSnackbar } = useSnackbar();
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.user);
@@ -190,6 +379,13 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
 
   const [tasks, setTasks] = useState<taskList[]>([]);
   const [loading, setLoading] = useState(true);
+  // The Board fetches its own slice of /task-list: unpaginated, so every status
+  // column is filled instead of showing whichever 5 tasks the List page holds.
+  const [boardTasks, setBoardTasks] = useState<taskList[]>([]);
+  const [boardLoading, setBoardLoading] = useState(false);
+  const [boardHasMore, setBoardHasMore] = useState(false);
+  /** Board groups, straight from the API so a refresh shows the same lanes. */
+  const [boardGroups, setBoardGroups] = useState<TaskGroup[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<formUserData[]>([]);
   const [search, _setSearch] = useState("");
@@ -198,11 +394,23 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
   const [assigneeFilter, setAssigneeFilter] = useState(
     viewUserId || (role === "AM" ? String(userId) : "")
   );
-  const [viewMode, setViewMode] = useState<"all" | "gantt">(
-    viewTab === "gantt" ? "gantt" : "all"
+  // Comma-separated list of API statuses; "" = every status.
+  const [statusFilter, setStatusFilter] = useState("");
+  // "list" and "board" are two renderings of the same task set; "gantt" is its own view.
+  const [viewMode, setViewMode] = useState<"list" | "board" | "gantt">(
+    viewTab === "gantt" ? "gantt" : viewTab === "board" ? "board" : "list"
   );
   const [filterOpen, setFilterOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  /** Rows with a start/complete request in flight, keyed by row or task id. */
+  const [quickBusy, setQuickBusy] = useState<Record<string, boolean>>({});
+  /**
+   * The panel holds an id, not a snapshot: acting on a subtask reloads the list,
+   * and deriving the task from that fresh data is what makes the open panel
+   * update without being closed and reopened.
+   */
+  const [panelTaskId, setPanelTaskId] = useState<string | null>(null);
   const [assignToSelf, setAssignToSelf] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -212,11 +420,29 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
 
   const [form, setForm] = useState({
     taskName: "",
-    project: "",
-    assignees: [] as string[],
+    project: lockedProject ?? "",
+    // Whose tasks are being viewed, so a task raised here is for them.
+    assignees: (viewUserId ? [viewUserId] : []) as string[],
     priority: "HIGH",
+    startDate: "",
     dueDate: "",
   });
+
+  /**
+   * Opening the inline form puts the locked project and the viewed user back,
+   * so a form reused after a submit or a cancel still files against the
+   * workspace's project and for the person whose page this is.
+   */
+  const openCreateForm = () => {
+    // The control is hidden on a member's page, so the flag must not linger.
+    if (viewUserId) setAssignToSelf(false);
+    setForm((f) => ({
+      ...f,
+      ...(lockedProject ? { project: lockedProject } : {}),
+      ...(viewUserId && !f.assignees.length ? { assignees: [viewUserId] } : {}),
+    }));
+    setShowCreateForm(true);
+  };
 
   // Build project color map
   const projectColorMap: Record<string, (typeof PROJECT_COLORS)[0]> = {};
@@ -236,7 +462,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
 
   // SP can only assign to AM users, AM to USER/DEVELOPER
   // USER/DEVELOPER don't need assignee — they self-assign
-  const { assignableUsers, noMembersAssigned } = (() => {
+  const scopedAssignees = (() => {
     if (isUserOrDev) return { assignableUsers: [], noMembersAssigned: false };
 
     const baseUsers = role === "SP"
@@ -261,6 +487,32 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
     };
   })();
 
+  /**
+   * The person whose tasks are being viewed is always assignable here.
+   *
+   * The list above is the project's team intersected with the roles this user
+   * may assign to. A room member who is not on that project therefore dropped
+   * out of it — so the default could not be changed, and if the project had no
+   * assignable members at all the whole field was replaced by the "no members"
+   * warning and the submit button disabled. Adding them back makes the default
+   * a choice again.
+   */
+  const viewedUser = viewUserId
+    ? users.find((u) => String(u.id) === String(viewUserId))
+    : undefined;
+
+  const assignableUsers =
+    viewedUser &&
+    !scopedAssignees.assignableUsers.some(
+      (u) => String(u.id) === String(viewedUser.id)
+    )
+      ? [viewedUser, ...scopedAssignees.assignableUsers]
+      : scopedAssignees.assignableUsers;
+
+  // Only warn when there is genuinely nobody to assign to.
+  const noMembersAssigned =
+    scopedAssignees.noMembersAssigned && assignableUsers.length === 0;
+
   const loadInitialData = useCallback(async () => {
     try {
       const projRes = await fetchAllExistProjects();
@@ -284,17 +536,24 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
     if (viewProject) {
       setProjectFilter(viewProject);
       if (viewTab === "gantt") setViewMode("gantt");
+      else if (viewTab === "board") setViewMode("board");
     }
   }, [viewProject, viewTab]);
+
+  const isManagerRole = role === "SP" || role === "AM";
+
+  const activeFilters = useCallback((): TaskListFilters => {
+    const filters: TaskListFilters = {};
+    if (assigneeFilter) filters.assigned_to = assigneeFilter;
+    if (projectFilter) filters.project = projectFilter;
+    if (statusFilter) filters.status = statusFilter;
+    return filters;
+  }, [assigneeFilter, projectFilter, statusFilter]);
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const filters: { assigned_to?: string; project?: string } = {};
-      if (assigneeFilter) filters.assigned_to = assigneeFilter;
-      if (projectFilter) filters.project = projectFilter;
-
-      const taskRes = await fetchTask(selectedDate, String(userId), role, filters, { page, limit: ITEMS_PER_PAGE });
+      const taskRes = await fetchTask(selectedDate, String(userId), role, activeFilters(), { page, limit: ITEMS_PER_PAGE });
       setTasks(taskRes?.data || []);
       setTotalPages(taskRes?.totalPages || 1);
     } catch {
@@ -302,15 +561,115 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, userId, role, assigneeFilter, projectFilter, page]);
+  }, [selectedDate, userId, role, activeFilters, page]);
+
+  /** Board data: same /task-list endpoint, one big page so no column is empty by accident. */
+  const loadBoardTasks = useCallback(async () => {
+    setBoardLoading(true);
+    try {
+      const res = await fetchTask(selectedDate, String(userId), role, activeFilters(), { page: 1, limit: BOARD_TASK_LIMIT });
+      setBoardTasks(res?.data || []);
+      setBoardHasMore((res?.totalPages || 1) > 1);
+    } catch {
+      setBoardTasks([]);
+      setBoardHasMore(false);
+    } finally {
+      setBoardLoading(false);
+    }
+  }, [selectedDate, userId, role, activeFilters]);
 
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
 
+  // Only the visible view fetches — switching to Board issues its own request
+  // rather than reusing the List's paginated page. Kept as two effects so a List
+  // page change doesn't also re-trigger the Board's fetch.
   useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+    if (viewMode !== "board") loadTasks();
+  }, [viewMode, loadTasks]);
+
+  useEffect(() => {
+    if (viewMode === "board") loadBoardTasks();
+  }, [viewMode, loadBoardTasks]);
+
+  /**
+   * Board groups. Loaded alongside the board; a failure leaves the board on its
+   * status lanes rather than breaking it, which also covers the API not having
+   * the endpoint yet.
+   */
+  const loadBoardGroups = useCallback(async () => {
+    try {
+      // SP/AM can look at someone else's board; the API ignores this otherwise.
+      const res = await fetchTaskGroups(
+        isManagerRole && assigneeFilter ? assigneeFilter : undefined
+      );
+      const rows = Array.isArray(res?.data) ? res.data : [];
+      setBoardGroups(
+        rows
+          .map((g: Record<string, unknown>) => ({
+            id: String(g.id),
+            name: String(g.name ?? ""),
+            color: String(g.color ?? "#7c3aed"),
+            position: typeof g.position === "number" ? g.position : undefined,
+            // Sent only if the API has the column; otherwise the board derives
+            // the status link from the group's name.
+            status: typeof g.status === "string" ? g.status : undefined,
+          }))
+          .filter((g: TaskGroup) => g.id && g.name)
+          .sort(
+            (a: TaskGroup, b: TaskGroup) => (a.position ?? 0) - (b.position ?? 0)
+          )
+      );
+    } catch {
+      setBoardGroups([]);
+    }
+  }, [isManagerRole, assigneeFilter]);
+
+  // Loaded for every view, not just the Board: the Status filter is built from
+  // these groups and the filter panel is available in List view too.
+  useEffect(() => {
+    loadBoardGroups();
+  }, [loadBoardGroups]);
+
+  const handleGroupCreate = async (data: { name: string; color: string }) => {
+    try {
+      await createTaskGroup(data);
+      showSnackbar({ message: `Group "${data.name}" created`, severity: "success" });
+      await loadBoardGroups();
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to create group"), severity: "error" });
+      throw error;
+    }
+  };
+
+  const handleGroupRename = async (groupId: string, name: string) => {
+    // Captured before the reload so the message can name both sides of the change.
+    const previous = boardGroups.find((g) => g.id === groupId)?.name;
+    try {
+      await updateTaskGroup(groupId, { name });
+      showSnackbar({
+        message: previous
+          ? `Group "${previous}" renamed to "${name}"`
+          : `Group renamed to "${name}"`,
+        severity: "success",
+      });
+      await loadBoardGroups();
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to rename group"), severity: "error" });
+    }
+  };
+
+  const handleGroupDelete = async (groupId: string) => {
+    try {
+      await deleteTaskGroup(groupId);
+      showSnackbar({ message: "Group removed", severity: "success" });
+      // Tasks that were in the group fall back to their status lane.
+      await Promise.all([loadBoardGroups(), loadBoardTasks()]);
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to remove group"), severity: "error" });
+    }
+  };
 
   const getUserName = (id: string | number | null | undefined) => {
     if (!id) return "Unassigned";
@@ -326,9 +685,16 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
   })();
 
   // ─── Filter panel ───
+  /*
+   * `lockedProject` means the project is not the reader's to change — the room
+   * tasks page is a view of one workspace, and a workspace owns exactly one
+   * project. So it is left out of the tray's values and out of the "Filters
+   * (n)" count, which would otherwise show a filter with no way to clear it.
+   */
   const taskFilterValues: FilterValues = {
-    project: projectFilter,
+    ...(lockedProject ? {} : { project: projectFilter }),
     assignee: assigneeFilter,
+    status: statusFilter,
   };
 
   /**
@@ -361,26 +727,66 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
     projectFilterOptions.unshift({ value: projectFilter, label: projectFilter });
   }
 
+  /**
+   * Status options come from the API's task groups, so the filter offers exactly
+   * the lanes that exist — including custom ones like "production".
+   *
+   * The value sent as `status` is the group's own status: the canonical spelling
+   * for a workflow group, and the group's name for a custom one, which is what
+   * the backend writes onto the task.
+   */
+  const statusFilterOptions = (() => {
+    if (!boardGroups.length) return TASK_STATUS_FILTER_OPTIONS;
+
+    const ranked = [...boardGroups].sort((a, b) => {
+      const rank = (g: TaskGroup) => {
+        const i = STATUS_LANE_ORDER.indexOf(g.status || groupNameToStatus(g.name) || "");
+        return i === -1 ? STATUS_LANE_ORDER.length : i;
+      };
+      return rank(a) - rank(b) || (a.position ?? 0) - (b.position ?? 0);
+    });
+
+    const options = ranked.map((g) => ({
+      value: g.status || groupNameToStatus(g.name) || g.name,
+      label: g.name.trim(),
+    }));
+
+    // Keep the combined shortcut when both halves are on the board.
+    const values = new Set(options.map((o) => o.value));
+    if (values.has("in_progress") && values.has("yet_to_start")) {
+      options.unshift({
+        value: "in_progress,yet_to_start",
+        label: "Active (In Progress + Yet to Start)",
+      });
+    }
+    return options;
+  })();
+
   const taskFilterCategories: FilterCategory[] = [
     {
       key: "taskFilters",
       label: "Project & People",
       icon: <FiGrid size={16} />,
-      caption:
-        filterableUsers.length > 0
+      caption: lockedProject
+        ? `Filter ${lockedProject} tasks by assignee`
+        : filterableUsers.length > 0
           ? "Filter tasks by project and assignee"
           : "Filter tasks by project",
       fields: [
-        {
-          key: "project",
-          label: "Project",
-          placeholder: "All projects",
-          emptyText: scopedUserId
-            ? "No projects assigned"
-            : "No projects available",
-          icon: <FiLayers size={15} />,
-          options: projectFilterOptions,
-        },
+        ...(lockedProject
+          ? []
+          : [
+              {
+                key: "project",
+                label: "Project",
+                placeholder: "All projects",
+                emptyText: scopedUserId
+                  ? "No projects assigned"
+                  : "No projects available",
+                icon: <FiLayers size={15} />,
+                options: projectFilterOptions,
+              },
+            ]),
         ...(filterableUsers.length > 0
           ? [
               {
@@ -403,11 +809,33 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
           : []),
       ],
     },
+    {
+      key: "statusFilters",
+      label: "Status",
+      icon: <FiActivity size={16} />,
+      caption: "Filter tasks by status",
+      fields: [
+        {
+          key: "status",
+          label: "Status",
+          placeholder: "All statuses",
+          icon: <FiActivity size={15} />,
+          options: statusFilterOptions,
+        },
+      ],
+    },
   ];
 
   const applyTaskFilters = (values: FilterValues) => {
-    setProjectFilter(values.project ?? "");
+    /*
+     * The pinned project survives an apply. Without this, changing the status
+     * filter on a room member's page sent `project` back as "" — the field is
+     * not in the tray, so `values` has no key for it — and the page quietly
+     * widened to that member's tasks across every project.
+     */
+    setProjectFilter(lockedProject ?? values.project ?? "");
     setAssigneeFilter(values.assignee ?? "");
+    setStatusFilter(values.status ?? "");
     setPage(1);
   };
 
@@ -416,83 +844,20 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
     return (t.description || "").toLowerCase().includes(search.toLowerCase());
   });
 
-  // ─── Group tasks by description+project for AM/SP table view ───
-  type GroupedTask = {
-    key: string;
-    description: string;
-    project: string | { id: string; name: string };
-    priority: string;
-    start_time?: string | null;
-    end_time?: string | null;
-    status?: string;
-    tasks: taskList[];
-    assignees: { name: string; status: string; userId: string | number | null | undefined }[];
-  };
+  /** The task the detail panel is showing, taken from the current data. */
+  const panelTask = findTaskById(
+    viewMode === "board" ? boardTasks : tasks,
+    panelTaskId
+  );
 
-  const isManagerView = role === "SP" || role === "AM";
+  const isManagerView = isManagerRole;
+  const groupedFiltered = groupTasks(filtered, isManagerView, getUserName);
 
-  const groupedFiltered: GroupedTask[] = (() => {
-    if (!isManagerView) {
-      // USER/DEVLOPER: no grouping, wrap each task
-      return filtered.map((t) => ({
-        key: String(t.id),
-        description: t.description,
-        project: t.project,
-        priority: t.priority,
-        start_time: t.start_time,
-        end_time: t.end_time,
-        status: t.status,
-        tasks: [t],
-        assignees: [{
-          name: t.dailyLog?.assignedUser?.fullName || getUserName(t.assigned_to),
-          status: t.status || "",
-          userId: t.assigned_to,
-        }],
-      }));
-    }
-
-    const map = new Map<string, taskList[]>();
-    for (const t of filtered) {
-      const projName = typeof t.project === "object" && t.project !== null
-        ? (t.project as any).name : (t.project || "");
-      const projId = t.project_id || (typeof t.project === "object" && t.project !== null
-        ? (t.project as any).id : "");
-      const desc = (t.description || "").trim();
-      const proj = projId ? String(projId) : String(projName).trim();
-      const groupKey = `${desc}|||${proj}`;
-      if (!map.has(groupKey)) map.set(groupKey, []);
-      map.get(groupKey)!.push(t);
-    }
-
-    const rows: GroupedTask[] = [];
-    for (const [key, groupTasks] of map) {
-      const first = groupTasks[0];
-      const assignees = groupTasks.map((t) => ({
-        name: t.dailyLog?.assignedUser?.fullName || getUserName(t.assigned_to),
-        status: t.status || "",
-        userId: t.assigned_to,
-      }));
-      // Pick earliest start, latest end
-      let start: string | null = null;
-      let end: string | null = null;
-      for (const t of groupTasks) {
-        if (t.start_time && (!start || t.start_time < start)) start = t.start_time;
-        if (t.end_time && (!end || t.end_time > end)) end = t.end_time;
-      }
-      rows.push({
-        key,
-        description: first.description,
-        project: first.project,
-        priority: first.priority,
-        start_time: start,
-        end_time: end,
-        status: first.status,
-        tasks: groupTasks,
-        assignees,
-      });
-    }
-    return rows;
-  })();
+  // Board rows come from the board's own request, filtered by the same search box.
+  const boardFiltered = boardTasks.filter((t) =>
+    search ? (t.description || "").toLowerCase().includes(search.toLowerCase()) : true
+  );
+  const groupedBoard = groupTasks(boardFiltered, isManagerView, getUserName);
 
   // Columns for the shared TableList component
   const taskColumns: Column<GroupedTask>[] = [
@@ -658,8 +1023,10 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       key: "startTime",
       header: "Start Time",
       render: (row) => {
-        if (!row.start_time) return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
-        const d = new Date(parseServerTime(row.start_time));
+        // A task with subtasks starts when its first subtask does.
+        const startTime = taskTiming(row).startTime;
+        if (!startTime) return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
+        const d = new Date(parseServerTime(startTime));
         return (
           <div style={{ whiteSpace: "nowrap" }}>
             <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>
@@ -678,7 +1045,8 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       render: (row) => {
         const s = (row.status || "").toLowerCase().replace(/[\s_]+/g, "_");
         const isCompleted = s === "completed" || s === "done";
-        const timeToShow = row.end_time;
+        // And ends when the last one finishes — not before.
+        const timeToShow = taskTiming(row).endTime;
         if (!timeToShow) return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
         const d = new Date(parseServerTime(timeToShow));
         return (
@@ -694,49 +1062,54 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       },
     },
     {
-      key: "totalTime",
-      header: "Total Time",
+      key: "dueDate",
+      header: "Due Date",
       render: (row) => {
-        if (!row.start_time)
-          return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
-        const s = (row.status || "").toLowerCase().replace(/[\s_]+/g, "_");
-        const isCompleted = s === "completed" || s === "done";
-        const isInProgress = s === "in_progress";
-        if (!isCompleted && !isInProgress)
-          return <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>;
-        // Live ticking timer for in-progress tasks
-        if (isInProgress) return <LiveTimer startTime={row.start_time} />;
-        // Static time for completed tasks
-        const start = parseServerTime(row.start_time);
-        const end = parseServerTime(row.end_time || row.start_time);
-        const diff = end - start;
-        if (diff <= 0)
-          return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>0s</span>;
-        const totalSeconds = Math.floor(diff / 1000);
-        const days = Math.floor(totalSeconds / 86400);
-        const hours = Math.floor((totalSeconds % 86400) / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-        const parts: string[] = [];
-        if (days > 0) parts.push(`${days}d`);
-        if (hours > 0) parts.push(`${hours}h`);
-        if (minutes > 0) parts.push(`${minutes}m`);
-        if (parts.length === 0) parts.push(`${seconds}s`);
+        // The deadline, which is `due_date` — not `end_time`, which records when
+        // the work actually finished and is overwritten on completion.
+        if (!row.due_date) {
+          return (
+            <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>
+              --
+            </span>
+          );
+        }
+        // Due today or already missed: the badge, blinking, escalated for overdue.
+        const due = dueState(row.due_date, row.status);
+        if (due) return <DueBadge dueDate={row.due_date} state={due} />;
+
+        const d = toLocalDate(row.due_date);
+        if (!d) return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>--</span>;
         return (
           <span
             style={{
               fontSize: 12,
-              fontWeight: 600,
-              color: "#7c3aed",
-              backgroundColor: "#f5f3ff",
-              padding: "3px 8px",
-              borderRadius: 6,
+              fontWeight: 500,
+              color: "var(--text-primary)",
               whiteSpace: "nowrap",
-              display: "inline-block",
             }}
           >
-            {parts.join(" ")}
+            {d.toLocaleDateString("en-US", {
+              month: "short",
+              day: "2-digit",
+              year: "numeric",
+            })}
           </span>
+        );
+      },
+    },
+    {
+      key: "totalTime",
+      header: "Total Time",
+      render: (row) => {
+        const t = taskTiming(row);
+        return (
+          <TaskTimer
+            status={t.status}
+            startTime={t.runningSince}
+            endTime={t.endTime}
+            totalSeconds={t.totalSeconds}
+          />
         );
       },
     },
@@ -803,6 +1176,32 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       },
     },
     {
+      key: "action",
+      header: "Action",
+      render: (row) => {
+        // A task with subtasks has no Start of its own — its state follows its
+        // children. The bar shows how far along it is and opens the panel, which
+        // is where the children get started.
+        if ((row.subtasks?.length ?? 0) > 0) {
+          return (
+            <SubtaskProgress
+              subtasks={row.subtasks}
+              onOpen={() => setPanelTaskId(String(row.tasks[0]?.id ?? ""))}
+            />
+          );
+        }
+        return (
+          <TaskActionCell
+            status={row.status}
+            owns={ownsAllTasks(row)}
+            busy={!!quickBusy[row.key]}
+            onStart={() => void handleQuickStatus(row, "in_progress")}
+            onComplete={() => void handleQuickStatus(row, "completed")}
+          />
+        );
+      },
+    },
+    {
       key: "priority",
       header: "Priority",
       render: (row) => {
@@ -815,6 +1214,223 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       },
     },
   ];
+
+  // ─── Board drag & drop ───────────────────────────────────────────
+  // A card is only draggable under the same rules the detail modal enforces:
+  // you move your own tasks, and you can only have one task in progress.
+  const ownsAllTasks = (row: GroupedTask) =>
+    row.tasks.every(
+      (t) =>
+        String(t.dailyLog?.assignedUser?.id || t.assigned_to || "") === String(userId)
+    );
+
+  const dragBlockedReason = (row: GroupedTask): string | null => {
+    if (!ownsAllTasks(row)) return "Only the assignee can move this task";
+    return null;
+  };
+
+  const handleTaskMove = async (
+    row: GroupedTask,
+    target: { groupId?: string; statusKey?: string; label: string }
+  ) => {
+    if (!ownsAllTasks(row)) {
+      showSnackbar({ message: "Only the assignee can move this task", severity: "error" });
+      throw new Error("not-assignee");
+    }
+
+    // Two payload shapes, and that is all:
+    //   group lane  → { group_id }            the API derives the status
+    //   status lane → { status, group_id: null }
+    // The second only comes up if /task-groups gave us nothing and the board fell
+    // back to bare status lanes.
+    const payload = target.groupId
+      ? { groupId: target.groupId }
+      : { status: target.statusKey, groupId: null };
+
+    const alreadyThere = (t: taskList) =>
+      target.groupId
+        ? String(t.group_id || "") === target.groupId
+        : !t.group_id && normalizeStatus(t.status) === target.statusKey;
+    const toUpdate = row.tasks.filter((t) => !alreadyThere(t));
+
+    try {
+      await Promise.all(toUpdate.map((t) => updateTaskLane(String(t.id), payload)));
+      showSnackbar({ message: `Moved to ${target.label}`, severity: "success" });
+      await loadBoardTasks();
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to move task"), severity: "error" });
+      throw error;
+    }
+  };
+
+  /**
+   * Create from the Board's modal. Dates and times are combined into the single
+   * timestamps the API takes; the lane comes through as `group_id` so the card
+   * appears where it was asked for.
+   */
+  const handleModalCreate = async (data: CreateTaskFormData) => {
+    setSubmitting(true);
+    // Every new task starts in Yet to Start — that is where the board's only
+    // path begins (yet_to_start → in_progress → completed → a group), so the
+    // lane is resolved here rather than offered as a choice.
+    const startLane = findGroupForStatus(boardGroups, "yet_to_start");
+    try {
+      const assigneeIds =
+        isUserOrDev || !data.assignees.length ? [String(userId)] : data.assignees;
+
+      await Promise.all(
+        assigneeIds.map((assigneeId) =>
+          addTask({
+            description: data.taskName.trim(),
+            project: data.project,
+            project_id: formProjects.find((p) => p.name === data.project)?.id,
+            assigned_to: assigneeId,
+            created_by: userId,
+            priority: data.priority,
+            status: "yet_to_start",
+            group_id: startLane?.id,
+            // The plan goes in its own fields. It used to ride in `end_time`,
+            // which the API overwrites on completion — that destroyed the
+            // deadline the moment the task was finished.
+            start_date: data.startDate || undefined,
+            due_date: data.dueDate || undefined,
+            // Not stored yet — see docs/create-task-fields.md.
+            tags: data.tags.length ? data.tags : undefined,
+            subtasks: data.subtasks.length
+              ? data.subtasks.map((sub) => ({
+                  name: sub.name,
+                  priority: sub.priority,
+                  start_date: sub.startDate || undefined,
+                  due_date: sub.dueDate || undefined,
+                }))
+              : undefined,
+          })
+        )
+      );
+
+      showSnackbar({
+        message: `"${data.taskName.trim()}" created`,
+        severity: "success",
+      });
+      setCreateTaskOpen(false);
+      await loadBoardTasks();
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to create task"), severity: "error" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /**
+   * Open a child task in the same detail modal the parent uses.
+   *
+   * The API nests children without their `project` or `dailyLog` objects, but a
+   * subtask shares both with its parent — same `project_id`, same `daily_log_id`
+   * — so they are merged in, otherwise the modal would show "Unassigned" and no
+   * project.
+   */
+  const openSubtask = (row: GroupedTask, subtaskId: string) => {
+    const sub = (row.subtasks ?? []).find((x) => String(x.id) === String(subtaskId));
+    if (!sub) return;
+    const parent = row.tasks[0];
+    setSelectedTask({
+      ...sub,
+      project: sub.project ?? parent?.project,
+      dailyLog: sub.dailyLog ?? parent?.dailyLog,
+    });
+  };
+
+  /**
+   * Start or complete a task straight from the List table, without opening the
+   * detail modal first. Routed through the group that drives the target status,
+   * exactly like a board drop.
+   */
+  const handleQuickStatus = async (row: GroupedTask, next: "in_progress" | "completed") => {
+    const ids = row.tasks.map((t) => String(t.id));
+    setQuickBusy((b) => ({ ...b, [row.key]: true }));
+    try {
+      const lane = findGroupForStatus(boardGroups, next);
+      await Promise.all(
+        ids.map((id) =>
+          updateTaskLane(id, lane ? { groupId: lane.id } : { status: next, groupId: null })
+        )
+      );
+      showSnackbar({
+        message: next === "in_progress" ? "Task started" : "Task completed",
+        severity: "success",
+      });
+      await (viewMode === "board" ? loadBoardTasks() : loadTasks());
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to update task"), severity: "error" });
+    } finally {
+      setQuickBusy((b) => {
+        const nextBusy = { ...b };
+        delete nextBusy[row.key];
+        return nextBusy;
+      });
+    }
+  };
+
+  /**
+   * Start or complete one child task, and carry the consequence up to its parent.
+   *
+   * A parent with subtasks has no Start action of its own, so its state has to
+   * follow theirs: the first child to start moves it to In Progress, and the last
+   * child to finish completes it.
+   */
+  const handleSubtaskStatus = async (
+    parent: taskList | null,
+    subtaskId: string | undefined,
+    next: "in_progress" | "completed"
+  ) => {
+    if (!subtaskId) return;
+    const key = String(subtaskId);
+    setQuickBusy((b) => ({ ...b, [key]: true }));
+    try {
+      const lane = (status: "in_progress" | "completed") => {
+        const g = findGroupForStatus(boardGroups, status);
+        return g ? { groupId: g.id } : { status, groupId: null };
+      };
+
+      await updateTaskLane(key, lane(next));
+
+      // Roll the parent forward, if this move settles it.
+      let rolled: "in_progress" | "completed" | null = null;
+      const siblings = parent?.subtasks ?? [];
+      if (parent && siblings.length) {
+        const parentStatus = normalizeStatus(parent.status);
+        if (next === "completed") {
+          const allDone = siblings.every(
+            (sib) =>
+              String(sib.id) === key || normalizeStatus(sib.status) === "completed"
+          );
+          if (allDone && parentStatus !== "completed") rolled = "completed";
+        } else if (parentStatus === "yet_to_start" || parentStatus === "pending") {
+          rolled = "in_progress";
+        }
+      }
+      if (rolled && parent) await updateTaskLane(String(parent.id), lane(rolled));
+
+      showSnackbar({
+        message:
+          rolled === "completed"
+            ? "All subtasks done — task completed"
+            : next === "in_progress"
+              ? "Subtask started"
+              : "Subtask completed",
+        severity: "success",
+      });
+      await (viewMode === "board" ? loadBoardTasks() : loadTasks());
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to update subtask"), severity: "error" });
+    } finally {
+      setQuickBusy((b) => {
+        const rest = { ...b };
+        delete rest[key];
+        return rest;
+      });
+    }
+  };
 
   const handleCreateTask = async () => {
     if (!form.taskName.trim()) {
@@ -829,6 +1445,13 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       showSnackbar({ message: "Please assign at least one person", severity: "error" });
       return;
     }
+    if (form.startDate && form.dueDate && form.startDate > form.dueDate) {
+      showSnackbar({
+        message: "Start date must be on or before the due date",
+        severity: "error",
+      });
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -836,14 +1459,18 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       const assigneeIds = (isUserOrDev || assignToSelf) ? [String(userId)] : form.assignees;
 
       const promises = assigneeIds.map((assigneeId) => {
-        const payload: taskList = {
+        const payload: CreateTaskPayload = {
           description: form.taskName,
           project: form.project,
+          project_id: formProjects.find((p) => p.name === form.project)?.id,
           assigned_to: assigneeId,
           created_by: userId,
           priority: form.priority,
-          end_time: form.dueDate || undefined,
-          status: "pending",
+          // Plan dates, not the actual-work timestamps — see handleModalCreate.
+          start_date: form.startDate || undefined,
+          due_date: form.dueDate || undefined,
+          status: "yet_to_start",
+          group_id: findGroupForStatus(boardGroups, "yet_to_start")?.id,
         };
         return addTask(payload);
       });
@@ -855,10 +1482,20 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
           : `Task assigned to ${count} member${count > 1 ? "s" : ""} successfully`,
         severity: "success",
       });
-      setForm({ taskName: "", project: "", assignees: [], priority: "HIGH", dueDate: "" });
+      setForm({
+        taskName: "",
+        // Back to the locked project, not blank — the field is disabled, so a
+        // blank value here could not be corrected by the user.
+        project: lockedProject ?? "",
+        assignees: viewUserId ? [viewUserId] : [],
+        priority: "HIGH",
+        startDate: "",
+        dueDate: "",
+      });
       setAssignToSelf(false);
       setShowCreateForm(false);
-      loadTasks();
+      if (viewMode === "board") await loadBoardTasks();
+      else await loadTasks();
     } catch (error: any) {
       console.log(error)
       showSnackbar({
@@ -903,11 +1540,15 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div>
           <h2 className="fw-bold mb-1" style={{ fontSize: "clamp(1.15rem, 4vw, 1.65rem)" }}>
-            {viewUserId ? `${getUserName(viewUserId)}'s Tasks` : "My Tasks"}
+            {viewUserId
+              ? `${viewUserName || getUserName(viewUserId)}'s Tasks`
+              : "My Tasks"}
           </h2>
           <p className="text-muted mt-1 mb-0" style={{ fontSize: "clamp(0.8rem, 2.5vw, 0.95rem)" }}>
             {viewUserId
-              ? `Viewing tasks assigned to ${getUserName(viewUserId)}`
+              ? `Viewing tasks assigned to ${
+                  viewUserName || getUserName(viewUserId)
+                }`
               : "Manage and track your daily activities"}
           </p>
         </div>
@@ -920,7 +1561,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
           />
 
           {/* Create Task Button — only in All Tasks view, hidden when form is open */}
-          {viewMode === "all" && !showCreateForm && (
+          {viewMode !== "gantt" && !showCreateForm && (
             <button
               className="btn text-white d-flex align-items-center justify-content-center gap-1 flex-shrink-0"
               style={{
@@ -931,7 +1572,9 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                 padding: "8px 18px",
                 whiteSpace: "nowrap",
               }}
-              onClick={() => setShowCreateForm(true)}
+              onClick={() =>
+                viewMode === "board" ? setCreateTaskOpen(true) : openCreateForm()
+              }
             >
               {isCompact ? "+ Task" : "+ Create Task"}
             </button>
@@ -946,50 +1589,70 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
           <div
             style={{
               display: "flex",
-              borderRadius: 12,
+              gap: 2,
+              padding: 4,
+              borderRadius: 14,
               border: "1px solid var(--border-light)",
-              overflow: "hidden",
               backgroundColor: "var(--bg-hover)",
               flexShrink: 0,
             }}
           >
-            <button
-              onClick={() => setViewMode("all")}
-              className="flex items-center gap-1 sm:gap-1.5"
-              style={{
-                backgroundColor: viewMode === "all" ? "#7c3aed" : "transparent",
-                color: viewMode === "all" ? "#fff" : "var(--text-muted)",
-                borderRadius: 0,
-                fontSize: isCompact ? 11 : 12,
-                fontWeight: 600,
-                padding: isCompact ? "6px 8px" : "7px 12px",
-                whiteSpace: "nowrap",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-            >
-              <GridViewIcon sx={{ fontSize: isCompact ? 12 : 14 }} />
-              {isCompact ? "Tasks" : "All Tasks"}
-            </button>
-            <button
-              onClick={() => setViewMode("gantt")}
-              className="flex items-center gap-1 sm:gap-1.5"
-              style={{
-                backgroundColor: viewMode === "gantt" ? "#7c3aed" : "transparent",
-                color: viewMode === "gantt" ? "#fff" : "var(--text-muted)",
-                borderRadius: 0,
-                fontSize: isCompact ? 11 : 12,
-                fontWeight: 600,
-                padding: isCompact ? "6px 8px" : "7px 12px",
-                whiteSpace: "nowrap",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-            >
-              {isCompact ? "Gantt" : "Gantt chart"}
-            </button>
+            {VIEW_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const active = viewMode === tab.key;
+              return (
+                <motion.button
+                  key={tab.key}
+                  onClick={() => setViewMode(tab.key)}
+                  whileTap={{ scale: 0.94 }}
+                  transition={TAB_SPRING}
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: isCompact ? 4 : 6,
+                    backgroundColor: "transparent",
+                    color: active ? "#fff" : "var(--text-muted)",
+                    borderRadius: 10,
+                    fontSize: isCompact ? 11 : 12.5,
+                    fontWeight: 600,
+                    padding: isCompact ? "6px 9px" : "7px 14px",
+                    whiteSpace: "nowrap",
+                    border: "none",
+                    cursor: "pointer",
+                    WebkitTapHighlightColor: "transparent",
+                    transition: "color 0.2s",
+                  }}
+                >
+                  {/* The pill itself is one element shared across tabs, so framer
+                      slides it from the old tab to the new one on click. */}
+                  {active && (
+                    <motion.span
+                      layoutId="viewTabPill"
+                      transition={TAB_SPRING}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        borderRadius: 10,
+                        background: "linear-gradient(135deg, #7c3aed, #a855f7)",
+                        boxShadow: "0 2px 10px rgba(124, 58, 237, 0.35)",
+                        zIndex: 0,
+                      }}
+                    />
+                  )}
+                  <motion.span
+                    animate={{ scale: active ? 1.12 : 1 }}
+                    transition={TAB_SPRING}
+                    style={{ position: "relative", zIndex: 1, display: "inline-flex" }}
+                  >
+                    {Icon && <Icon sx={{ fontSize: isCompact ? 12 : 14 }} />}
+                  </motion.span>
+                  <span style={{ position: "relative", zIndex: 1 }}>
+                    {isCompact ? tab.shortLabel : tab.label}
+                  </span>
+                </motion.button>
+              );
+            })}
           </div>
 
           {/* Date Navigator — hidden when Gantt view is active */}
@@ -1066,15 +1729,21 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
 
       {/* Gantt Chart View */}
       {viewMode === "gantt" ? (
-        <TaskGanttChart
-          tasks={tasks}
-          users={users}
-          projects={projectFilter ? projects.filter(p => p.name === projectFilter) : projects}
-          projectColorMap={projectColorMap}
-          getUserName={getUserName}
-          loading={loading}
-          onTaskClick={(task) => setSelectedTask(task)}
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+        >
+          <TaskGanttChart
+            tasks={tasks}
+            users={users}
+            projects={projectFilter ? projects.filter(p => p.name === projectFilter) : projects}
+            projectColorMap={projectColorMap}
+            getUserName={getUserName}
+            loading={loading}
+            onTaskClick={(task) => setSelectedTask(task)}
+          />
+        </motion.div>
       ) : (
       /* Task Table + Create Form */
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-5">
@@ -1123,8 +1792,13 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                   <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
                     Project Selection
                   </label>
-                  <FormControl fullWidth size="small" sx={selectSx}>
+                  <FormControl
+                    fullWidth
+                    size="small"
+                    sx={lockedProject ? fixedSelectSx : selectSx}
+                  >
                     <Select
+                      disabled={!!lockedProject}
                       value={form.project}
                       onChange={(e) => setForm((f) => ({ ...f, project: e.target.value, assignees: [] }))}
                       displayEmpty
@@ -1135,9 +1809,17 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                       }
                       MenuProps={menuProps}
                     >
-                      {formProjects.map((p) => (
+                      {(lockedProject
+                        ? formProjects.filter((p) => p.name === lockedProject)
+                        : formProjects
+                      ).map((p) => (
                         <MenuItem key={p.id} value={p.name}>{p.name}</MenuItem>
                       ))}
+                      {/* Keeps the value renderable if the list has not arrived. */}
+                      {lockedProject &&
+                        !formProjects.some((p) => p.name === lockedProject) && (
+                          <MenuItem value={lockedProject}>{lockedProject}</MenuItem>
+                        )}
                     </Select>
                   </FormControl>
                 </div>
@@ -1149,7 +1831,13 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                     <span className="text-sm font-semibold" style={{ lineHeight: 1, color: "var(--text-secondary)" }}>
                       Assignee
                     </span>
-                    {role === "AM" && (
+                    {/*
+                     * Not offered while viewing someone else's tasks: the task
+                     * is for them, so assigning it to yourself here would
+                     * contradict the page. Hiding the box also hides the
+                     * "assigned to you" card, which only appears when it is on.
+                     */}
+                    {role === "AM" && !viewUserId && (
                       <div
                         className="d-flex align-items-center gap-2 cursor-pointer"
                         onClick={() => {
@@ -1226,7 +1914,7 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                             padding: 0,
                           }}
                         >
-                          Go to Domains & Projects &rarr;
+                          Go to Departments & Projects &rarr;
                         </button>
                       </div>
                     </div>
@@ -1358,20 +2046,43 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
                   </div>
                 </div>
 
-                {/* Due Date */}
-                <div className="mb-5">
-                  <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                    Due Date
-                  </label>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="date"
-                    value={form.dueDate}
-                    onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-                    sx={selectSx}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                  />
+                {/* Start Date + Due Date */}
+                <div className="mb-5 flex gap-3">
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                      Start Date
+                    </label>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="date"
+                      value={form.startDate}
+                      onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                      sx={selectSx}
+                      slotProps={{
+                        inputLabel: { shrink: true },
+                        // Can't plan a start after the due date.
+                        htmlInput: form.dueDate ? { max: form.dueDate } : undefined,
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                      Due Date
+                    </label>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="date"
+                      value={form.dueDate}
+                      onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
+                      sx={selectSx}
+                      slotProps={{
+                        inputLabel: { shrink: true },
+                        htmlInput: form.startDate ? { min: form.startDate } : undefined,
+                      }}
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2 sm:gap-3">
                   <button
@@ -1405,9 +2116,40 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
           )}
         </AnimatePresence>
 
-        {/* Task Table */}
+        {/* Task List / Board — both render the same grouped, paginated task set */}
         <div className="flex-1 min-w-0">
-          {loading ? (
+          <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={viewMode}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+          {viewMode === "board" ? (
+            <>
+              <TaskBoardView<GroupedTask>
+                tasks={groupedBoard}
+                projectColorMap={projectColorMap}
+                loading={boardLoading}
+                isCompact={isCompact}
+                emptyMessage={`No tasks found for ${formatDateLabel(selectedDate)}`}
+                onTaskClick={(row) => setSelectedTask(row.tasks[0])}
+                onSubtaskClick={openSubtask}
+                onTaskMove={handleTaskMove}
+                dragBlockedReason={dragBlockedReason}
+                groups={boardGroups}
+                onGroupCreate={handleGroupCreate}
+                onGroupRename={handleGroupRename}
+                onGroupDelete={handleGroupDelete}
+              />
+              {boardHasMore && !boardLoading && (
+                <p className="text-center mt-3 mb-0" style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                  Showing the first {BOARD_TASK_LIMIT} tasks for {formatDateLabel(selectedDate)}. Narrow the filters to see the rest.
+                </p>
+              )}
+            </>
+          ) : loading ? (
             <SpinLoader isLoading />
           ) : (
             <TableList<GroupedTask>
@@ -1415,9 +2157,10 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
               data={groupedFiltered}
               pagination={{ currentPage: page, totalPages, onPageChange: (p) => setPage(p) }}
               emptyMessage={`No tasks found for ${formatDateLabel(selectedDate)}`}
-              onRowClick={(row) => setSelectedTask(row.tasks[0])}
             />
           )}
+          </motion.div>
+          </AnimatePresence>
         </div>
       </div>
       )}
@@ -1427,22 +2170,48 @@ export default function MyTasksView({ viewUserId, viewProject, viewTab }: MyTask
         task={selectedTask}
         open={selectedTask !== null}
         onClose={() => setSelectedTask(null)}
-        onStatusUpdate={loadTasks}
+        onStatusUpdate={viewMode === "board" ? loadBoardTasks : loadTasks}
         canStartTask={
           selectedTask
             ? String(selectedTask.dailyLog?.assignedUser?.id || selectedTask.assigned_to || "") === String(userId)
             : false
         }
-        hasInProgressTask={
-          tasks.some((t) => {
-            if (!selectedTask || String(t.id) === String(selectedTask.id)) return false;
-            const s = (t.status || "").toLowerCase().replace(/[\s_]+/g, "_");
-            const assignedId = String(t.dailyLog?.assignedUser?.id || t.assigned_to || "");
-            return s === "in_progress" && assignedId === String(userId);
-          })
-        }
         projectColorMap={projectColorMap}
+        groups={boardGroups}
         showSnackbar={showSnackbar}
+      />
+
+      <TaskDetailPanel
+        task={panelTask}
+        open={panelTaskId !== null}
+        onClose={() => setPanelTaskId(null)}
+        owns={
+          panelTask
+            ? String(
+                panelTask.dailyLog?.assignedUser?.id || panelTask.assigned_to || ""
+              ) === String(userId)
+            : false
+        }
+        busy={quickBusy}
+        onStart={(id) => void handleSubtaskStatus(panelTask, id, "in_progress")}
+        onComplete={(id) => void handleSubtaskStatus(panelTask, id, "completed")}
+        projectColorMap={projectColorMap}
+      />
+
+      <CreateTaskModal
+        open={createTaskOpen}
+        onClose={() => setCreateTaskOpen(false)}
+        projects={formProjects}
+        assignableUsers={assignableUsers}
+        startLane={findGroupForStatus(boardGroups, "yet_to_start")}
+        fixedProject={lockedProject}
+        defaultAssignee={
+          viewUserId ? { id: viewUserId, name: getUserName(viewUserId) } : undefined
+        }
+        isUserOrDev={isUserOrDev}
+        currentUserName={user?.fullName}
+        submitting={submitting}
+        onSubmit={handleModalCreate}
       />
 
       {/* Filter Tasks panel */}

@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { UserData } from "../types";
+import type { EditProjectPayload, EditUserPayload, UserData } from "../types";
 import { API_URL } from "../../config/apiEndpoints";
 import { handleAuthError, handleResponse } from "./interceptors";
 
@@ -58,7 +58,12 @@ export const spserviceMethood = {
       "Content-Type": "application/json",
     },
   })},
-  editUser:(url:string,data:UserData)=>{return apiservice.patch(url,data,{
+  getUserDetails:(url:string)=>{return apiservice.get(url,{
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })},
+  editUser:(url:string,data:UserData|EditUserPayload)=>{return apiservice.patch(url,data,{
     headers: {
      "Content-Type": "application/json",
     },
@@ -74,6 +79,11 @@ export const spserviceMethood = {
     },
   })},
   addProject:(url:string,data:{[key:string]:string|number})=>{return apiservice.post(url,data,{
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })},
+  updateProject:(url:string,data:EditProjectPayload)=>{return apiservice.patch(url,data,{
     headers: {
       "Content-Type": "application/json",
     },

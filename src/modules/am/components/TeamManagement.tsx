@@ -4,11 +4,14 @@ import { TextField, InputAdornment } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 
 import TableList from "../../../shared/components/Table/Table";
-import { fetchUsers, Deletetuser } from "../../../core/actions/spAction";
+import { fetchUsers, Deletetuser, fetchAllExistProjects } from "../../../core/actions/spAction";
 import { getUserColumns } from "../../sp/components/UserManagement/tableColoumn";
 import Dialoge from "../../../presentation/Dialog";
+import EditUserModal from "../../../shared/components/User/EditUserModal";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
 import type { formUserData } from "../../../shared/types/User";
+import type { project } from "../../../shared/types/Project";
+import { useAppSelector } from "../../../store/configureStore";
 
 
 const ITEMS_PER_PAGE = 10;
@@ -38,13 +41,16 @@ const searchSx = {
 const TeamManagement: React.FC = () => {
   const navigate = useNavigate();
   const { showSnackbar } = useSnackbar();
+  const { user } = useAppSelector((state) => state.user);
 
   const [users, setUsers] = useState<formUserData[]>([]);
+  const [projects, setProjects] = useState<project[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [editUser, setEditUser] = useState<formUserData | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 400);
@@ -74,7 +80,27 @@ const TeamManagement: React.FC = () => {
     loadUsers();
   }, [loadUsers]);
 
+
+  const loadProjects = useCallback(async () => {
+    try {
+      const res = await fetchAllExistProjects();
+      const own = (res?.data || []).filter((p: any) =>
+        (p.teamAssigned || []).some(
+          (member: any) => String(member.id) === String(user?.id),
+        ),
+      );
+      setProjects(own);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
   const onViewTasks = (id: string) => navigate(`/am/dashboard?viewUser=${id}`);
+  const onEditUser = (row: formUserData) => setEditUser(row);
   const onDeleteUser = (id: string) => setDeleteUserId(id);
 
   const handleConfirmDelete = async () => {
@@ -90,7 +116,7 @@ const TeamManagement: React.FC = () => {
     }
   };
 
-  const columns = getUserColumns({ onViewTasks, onDeleteUser });
+  const columns = getUserColumns({ onViewTasks, onEditUser, onDeleteUser });
 
   return (
     <div className="min-h-screen px-3 py-4 sm:px-6 md:px-8" style={{ backgroundColor: "var(--bg-page)" }}>
@@ -109,6 +135,8 @@ const TeamManagement: React.FC = () => {
             <TextField
               size="small"
               placeholder="Search by name or email..."
+              name="teamSearch"
+              autoComplete="off"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               sx={{ width: 240, ...searchSx }}
@@ -148,6 +176,14 @@ const TeamManagement: React.FC = () => {
             onPageChange: setPage,
           }}
           emptyMessage="No team members found"
+        />
+
+        <EditUserModal
+          open={!!editUser}
+          user={editUser}
+          projects={projects}
+          onClose={() => setEditUser(null)}
+          onSaved={loadUsers}
         />
 
         <Dialoge

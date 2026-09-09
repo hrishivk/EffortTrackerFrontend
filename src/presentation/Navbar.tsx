@@ -185,7 +185,7 @@ const Navbar: React.FC = () => {
         <div className="flex items-center space-x-2">
           <img src={logo} alt="logo" className="object-contain h-8" />
           <span className="font-bold text-lg sm:text-xl">
-            RhythmRx Effort Tracker
+            KREW
           </span>
         </div>
 

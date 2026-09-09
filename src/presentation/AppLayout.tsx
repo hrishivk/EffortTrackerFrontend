@@ -1,16 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
-import {
-  FiMenu,
-  FiSun,
-  FiMoon,
-  FiChevronDown,
-  FiUser,
-  FiLogOut,
-} from "react-icons/fi";
+import { useLocation } from "react-router-dom";
+import { FiMenu, FiSun, FiMoon, FiChevronDown } from "react-icons/fi";
 import { useDispatch } from "react-redux";
-import { AnimatePresence, motion } from "framer-motion";
 import Sidebar from "./Sidebar";
+import AccountPanel from "./AccountPanel";
 import NotificationPanel from "./NotificationPanel";
 import { useAppSelector, type AppDispatch } from "../store/configureStore";
 import { reset } from "../store/authSlice";
@@ -26,13 +19,6 @@ const DASHBOARD_PATHS: Record<string, string> = {
   AM: "/am/dashboard",
   USER: "/user/dashboard",
   DEVLOPER: "/user/dashboard",
-};
-
-const ROLE_LABELS: Record<string, string> = {
-  SP: "Super Admin",
-  AM: "Account Manager",
-  USER: "Team Member",
-  DEVLOPER: "Developer",
 };
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
@@ -83,12 +69,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   // Sidebar occupies the full viewport height, so the header and main content
   // are both inset by its current width.
-  const contentInset = sidebarCollapsed
-    ? "md:left-[76px]"
-    : "md:left-[240px] xl:left-[260px]";
+  // The header spans the full viewport and the sidebar card sits below it, so
+  // only the main content is offset — by the card's width plus both 12px
+  // gutters. Keep these in step with --sb-gap in _sidebar.scss.
   const mainInset = sidebarCollapsed
-    ? "md:ml-[76px]"
-    : "md:ml-[240px] xl:ml-[260px]";
+    ? "md:ml-[86px]"
+    : "md:ml-[264px] xl:ml-[272px]";
 
   return (
     <div style={{ backgroundColor: "var(--bg-page)", minHeight: "100vh" }}>
@@ -100,10 +86,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       />
 
       {/* ─── Header ─── */}
-      <header
-        className={`fixed top-0 left-0 right-0 z-30 h-[64px] transition-all duration-300 ${contentInset}`}
-        style={{ backgroundColor: "var(--bg-card)" }}
-      >
+      <header className="app-header fixed top-0 left-0 right-0 z-30 h-[64px]">
         <div className="flex h-full items-center gap-3 px-4 sm:px-6">
           <button
             onClick={() => setSidebarOpen((prev) => !prev)}
@@ -158,62 +141,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 />
               </button>
 
-              <AnimatePresence>
-                {menuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 w-[200px] overflow-hidden rounded-xl z-50"
-                    style={{
-                      backgroundColor: "var(--bg-card)",
-                      border: "1px solid var(--border-light)",
-                      boxShadow: "0 8px 24px rgba(16, 24, 40, 0.14)",
-                    }}
-                  >
-                    <div
-                      className="px-3.5 py-2.5"
-                      style={{ borderBottom: "1px solid var(--border-light)" }}
-                    >
-                      <p
-                        className="truncate text-[13px] font-semibold"
-                        style={{ color: "var(--text-primary)", margin: "0rem" }}
-                      >
-                        {displayName}
-                      </p>
-                      <p
-                        className="truncate text-[11px]"
-                        style={{ color: "var(--text-faint)", margin: "0rem" }}
-                      >
-                        {ROLE_LABELS[user?.role ?? ""] ?? "Member"}
-                      </p>
-                    </div>
-
-                    <Link
-                      to={profilePath}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] font-medium"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      <FiUser size={15} style={{ color: "var(--text-faint)" }} />
-                      My Profile
-                    </Link>
-
-                    <button
-                      onClick={handleLogout}
-                      className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[13px] font-medium"
-                      style={{
-                        color: "#dc2626",
-                        borderTop: "1px solid var(--border-light)",
-                      }}
-                    >
-                      <FiLogOut size={15} />
-                      Sign Out
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <AccountPanel
+                open={menuOpen}
+                onClose={() => setMenuOpen(false)}
+                onLogout={handleLogout}
+                profilePath={profilePath}
+              />
             </div>
           </div>
         </div>

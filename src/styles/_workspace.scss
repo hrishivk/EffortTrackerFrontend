@@ -1,0 +1,3538 @@
+// Create Workspace — a full-page wizard.
+//
+// A header, a horizontal stepper strip, the step body, and a footer carrying
+// the progress bar. Laid out here because it is a full-height column whose
+// middle row is the only thing that scrolls.
+
+.cws {
+  display: flex;
+  flex-direction: column;
+  // Fills the content area: viewport, less the header, less the page gutters.
+  height: calc(100vh - 64px - 28px);
+  min-height: 560px;
+  margin: 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+
+  @media (max-width: 860px) {
+    height: auto;
+    margin: 10px;
+  }
+}
+
+// ─── Header ─────────────────────────────────────────────────────
+.cws__head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  flex-shrink: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.cws__title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__caption {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.cws__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  // Pinned to the right edge whatever the title wraps to.
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+// ─── Stepper ────────────────────────────────────────────────────
+// One row across the full width, each step joined to the next by a short rule.
+.cws__steps {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  gap: 4px;
+  margin: 0;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-light);
+  list-style: none;
+  overflow-x: auto;
+
+  @media (max-width: 900px) {
+    padding: 10px 12px;
+  }
+}
+
+.cws__step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  // Every step claims the same slice, so the rules between them line up.
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+// The rule joining one step to the next.
+.cws__step-link {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 1.5px;
+  background-color: var(--border-light);
+
+  @media (max-width: 900px) {
+    width: 12px;
+  }
+}
+
+// A step's own link is the one leading away from it, so only a finished step
+// tints it — the current step's link ahead stays grey.
+.cws__step--past .cws__step-link {
+  background-color: rgba(124, 58, 237, 0.35);
+}
+
+.cws__step-btn {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 11px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:not(:disabled):hover {
+    background-color: var(--bg-hover);
+  }
+}
+
+.cws__step-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.cws__step-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cws__step-caption {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--text-faint);
+
+  @media (max-width: 1100px) {
+    display: none;
+  }
+}
+
+// Not reached yet.
+.cws__step--next {
+  .cws__step-dot {
+    background-color: var(--bg-hover);
+    color: var(--text-faint);
+  }
+  .cws__step-label {
+    color: var(--text-muted);
+  }
+}
+
+// Current — the whole row is highlighted.
+.cws__step--on .cws__step-btn {
+  background-color: rgba(124, 58, 237, 0.09);
+
+  .cws__step-dot {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+  }
+  .cws__step-label {
+    color: #7c3aed;
+  }
+}
+
+// Done — clickable, to go back and change something.
+.cws__step--past {
+  .cws__step-dot {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+  }
+  .cws__step-label {
+    color: var(--text-primary);
+  }
+}
+
+// ─── Step content ───────────────────────────────────────────────
+.cws__main {
+  // The header, stepper and footer are fixed; this row takes the rest.
+  flex: 1;
+  min-height: 0;
+  padding: 22px 24px 26px;
+  overflow-y: auto;
+
+  @media (max-width: 640px) {
+    padding: 16px;
+  }
+}
+
+.cws__section-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 20px;
+}
+
+.cws__tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+
+  &--sm {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+
+  // Every project reads in the one brand violet, not a colour each.
+  &--project {
+    background-color: rgba(124, 58, 237, 0.1);
+    color: #7c3aed;
+  }
+
+  // The page's own icon, beside the title.
+  &--brand {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.16), rgba(168, 85, 247, 0.16));
+    color: #7c3aed;
+  }
+}
+
+.cws__section-title {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__section-caption {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+// ─── Fields ─────────────────────────────────────────────────────
+// The details step is a form beside a live summary, so the step uses the whole
+// width instead of leaving the right half empty.
+.cws__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 296px;
+  gap: 22px;
+  align-items: start;
+
+  @media (max-width: 1040px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.cws__form {
+  min-width: 0;
+}
+
+// The four details sit on one row: code, access, creator, status. Explicit
+// columns rather than auto-fit, because the row order is the point — auto-fit
+// would reflow them into 3 + 1 as the width changed.
+.cws__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 16px;
+  margin-top: 16px;
+  align-items: start;
+
+  // Two per row before the cells get too narrow for their contents.
+  @media (max-width: 1180px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 620px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// ─── A prerequisite the user has to go and do ───────────────────
+// Shown when step 2 has nothing to offer, in place of a bare "none found".
+.cws__setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 26px;
+  border: 1px dashed rgba(124, 58, 237, 0.3);
+  border-radius: 16px;
+  background-color: rgba(124, 58, 237, 0.04);
+  text-align: center;
+}
+
+.cws__setup-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
+
+.cws__setup-title {
+  margin: 14px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__setup-caption {
+  margin: 5px 0 0;
+  max-width: 460px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+// Left-aligned inside a centred block: the steps are read in order, and
+// centred list text is hard to follow.
+.cws__setup-steps {
+  margin: 18px 0 0;
+  padding-left: 20px;
+  max-width: 480px;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+
+  li + li {
+    margin-top: 8px;
+  }
+
+  li::marker {
+    color: #7c3aed;
+    font-weight: 700;
+  }
+
+  strong {
+    color: var(--text-primary);
+  }
+}
+
+.cws__setup-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 20px;
+
+  // These two are links, not buttons, so the default underline has to go and
+  // the colour has to be stated — otherwise they render as dark underlined
+  // text rather than as actions.
+  a {
+    height: 36px;
+    padding: 0 16px;
+    font-size: 12.5px;
+    text-decoration: none;
+    color: #fff;
+  }
+
+  // The secondary action: filled, but a step back from the gradient.
+  .cws__ghost {
+    border-color: transparent;
+    background-color: #8b5cf6;
+
+    &:hover {
+      background-color: #7c3aed;
+    }
+  }
+}
+
+// ─── Two chips as a choice ──────────────────────────────────────
+// Used for Access. Both options sit on one row and the picked one fills, so
+// the current state reads without opening anything.
+.cws__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.cws__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  // Tight enough for both chips to sit side by side in a quarter-width cell.
+  padding: 9px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s,
+    box-shadow 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.4);
+    color: var(--text-primary);
+  }
+
+  &--on {
+    border-color: transparent;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3);
+
+    &:hover {
+      border-color: transparent;
+      color: #fff;
+    }
+  }
+}
+
+// A line under a field explaining what it is for, or why it is needed.
+.cws__note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-faint);
+
+  &--warn {
+    color: #b45309;
+  }
+}
+
+.cws__req {
+  margin-left: 2px;
+  color: #dc2626;
+}
+
+.cws__label {
+  margin: 16px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}
+
+.cws__input {
+  width: 100%;
+  height: 44px;
+  padding: 0 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+
+  &:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  }
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+
+  // The creator is whoever is signed in, so it shows rather than invites input.
+  &--locked {
+    color: var(--text-muted);
+    cursor: default;
+  }
+}
+
+.cws__textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: 11px 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+
+  &:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  }
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+}
+
+// ─── Live summary column ────────────────────────────────────────
+// A preview of the workspace as it is described: a violet banner carrying the
+// identity, the details as icon rows beneath, and a meter for what is left.
+.cws__side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cws__side-card {
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+}
+
+.cws__side-banner {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+}
+
+.cws__side-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 11px;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cws__side-ident {
+  flex: 1;
+  min-width: 0;
+}
+
+.cws__side-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.cws__side-caption {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.cws__side-chip {
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 7px;
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cws__facts {
+  margin: 0;
+  padding: 6px 15px;
+}
+
+// Icon, label, then the value against the right edge.
+.cws__fact {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 0;
+
+  & + & {
+    border-top: 1px solid var(--border-light);
+  }
+
+  // Still blank — visible, but clearly not filled in.
+  &--empty .cws__fact-value {
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+
+  &--empty .cws__fact-icon {
+    background-color: var(--bg-hover);
+    color: var(--text-faint);
+  }
+}
+
+.cws__fact-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background-color: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+}
+
+.cws__fact-label {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.cws__fact-value {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+// ─── Completeness meter ─────────────────────────────────────────
+.cws__meter {
+  padding: 11px 15px 13px;
+  border-top: 1px solid var(--border-light);
+  background-color: var(--bg-surface);
+}
+
+.cws__meter-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.cws__meter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.cws__meter-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7c3aed;
+}
+
+.cws__meter-track {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background-color: var(--border-light);
+  overflow: hidden;
+}
+
+.cws__meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #7c3aed, #a855f7);
+  transition: width 0.25s ease;
+}
+
+// ─── What happens next ──────────────────────────────────────────
+.cws__side-next {
+  padding: 14px 15px;
+  border: 1px dashed rgba(124, 58, 237, 0.3);
+  border-radius: 14px;
+  background-color: rgba(124, 58, 237, 0.05);
+}
+
+.cws__side-next-title {
+  margin: 0 0 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #7c3aed;
+}
+
+.cws__side-steps {
+  margin: 0;
+  padding-left: 17px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+
+  li::marker {
+    color: #7c3aed;
+    font-weight: 700;
+  }
+}
+
+// ─── Project cards ──────────────────────────────────────────────
+// A workspace covers one project, so these behave as a radio group: the picked
+// card is outlined and the rest stay quiet.
+.cws__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.cws__card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-card);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.35);
+  }
+
+  &--on {
+    border-color: #7c3aed;
+    background-color: rgba(124, 58, 237, 0.06);
+    box-shadow: 0 0 0 1px #7c3aed;
+  }
+}
+
+.cws__card-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cws__card-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--text-faint);
+}
+
+.cws__card--on {
+  .cws__card-name {
+    color: #7c3aed;
+  }
+
+  .cws__card-mark {
+    background-color: #7c3aed;
+    color: #fff;
+  }
+}
+
+// ─── The picked project and the rooms inside it ─────────────────
+.cws__proj {
+  margin-bottom: 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  overflow: hidden;
+}
+
+.cws__proj-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+}
+
+.cws__proj-name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+// "3 Rooms" beside the name.
+.cws__proj-pill {
+  flex-shrink: 0;
+  // Takes the slack so the controls sit at the right edge.
+  margin-right: auto;
+  padding: 3px 9px;
+  border-radius: 7px;
+  background-color: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cws__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+.cws__proj-body {
+  padding: 0 14px 14px;
+}
+
+// A project with nothing in it yet — the whole panel adds the first room.
+.cws__proj-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  padding: 26px 16px;
+  border: 1px dashed var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.4);
+  }
+}
+
+.cws__proj-empty-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__proj-empty-caption {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+// ─── Rooms ──────────────────────────────────────────────────────
+// Room tiles sit side by side and wrap, with the add tile taking the slack on
+// the last line the way the reference does.
+.cws__rooms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cws__room {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 1 1 232px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 11px;
+  background-color: var(--bg-surface);
+
+  &--new {
+    border-color: rgba(124, 58, 237, 0.4);
+    background-color: var(--bg-card);
+  }
+}
+
+.cws__room-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__room-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.cws__room-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+}
+
+.cws__room-ok {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(124, 58, 237, 0.2);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.cws__room-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+  }
+}
+
+.cws__room-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 1 1 232px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px dashed var(--border-light);
+  border-radius: 11px;
+  background: none;
+  color: #7c3aed;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.45);
+    background-color: rgba(124, 58, 237, 0.05);
+  }
+}
+
+// ─── Assign users ───────────────────────────────────────────────
+// The unassigned pool on the left, the project's rooms on the right, and a
+// strip underneath that takes people back out. Everything is drag-and-drop,
+// with a click path alongside so the step works without a mouse drag.
+.cws__assign {
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+
+  @media (max-width: 980px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// The pool is a single + until it is opened; the faces then pop in, staggered,
+// and are dragged straight into a room.
+.cws__pool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-height: 480px;
+  padding: 18px 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  overflow-y: auto;
+}
+
+.cws__pool-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  width: 54px;
+  height: 54px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32);
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.42);
+  }
+
+  &:disabled {
+    background: var(--bg-hover);
+    color: var(--text-faint);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  // Open: the + turns into a close.
+  &--on {
+    transform: rotate(135deg);
+  }
+}
+
+.cws__pool-hint {
+  margin: 11px 0 0;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+// ─── The faces waiting to be placed ─────────────────────────────
+.cws__faces {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(66px, 1fr));
+  gap: 12px 6px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.cws__face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 4px 2px;
+  border-radius: 10px;
+  cursor: grab;
+  // `backwards` keeps each face hidden until its own delay is up.
+  animation: cws-pop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+
+  &:hover {
+    background-color: var(--bg-hover);
+  }
+
+  &:hover .cws__face-avatar {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 14px rgba(124, 58, 237, 0.35);
+  }
+
+  &--dragging {
+    opacity: 0.4;
+  }
+}
+
+@keyframes cws-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.35) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cws__face-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  // Anchors the shared badge in its corner.
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border: 2px solid var(--bg-card);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.22);
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+
+// A corner badge saying the face is a shared user, not one of the project's
+// own team — otherwise there is no way to tell why they are in the pool.
+.cws__face-shared {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--bg-card);
+  border-radius: 50%;
+  background-color: #0d9488;
+  color: #fff;
+}
+
+.cws__shared-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background-color: rgba(13, 148, 136, 0.14);
+  color: #0f766e;
+  font-size: 9px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+
+.cws__face-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.cws__person-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__person-role {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.cws__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #7c3aed;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+
+  &--sm {
+    width: 24px;
+    height: 24px;
+    font-size: 9px;
+  }
+}
+
+// ─── The project panel and its room cards ───────────────────────
+.cws__board {
+  min-width: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  overflow: hidden;
+}
+
+.cws__board-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.cws__board-title {
+  margin: 0;
+  // Takes the slack so the pill and menu sit at the right edge.
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+// Cards side by side, wrapping onto the next line.
+.cws__room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+// Every room reads in the one brand violet, not a colour each.
+.cws__rcard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1.5px solid rgba(124, 58, 237, 0.28);
+  border-radius: 13px;
+  background-color: var(--bg-card);
+  overflow: hidden;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+
+  // The room being dragged over firms up and lifts out of the row.
+  &--over {
+    border-color: #7c3aed;
+    background-color: rgba(124, 58, 237, 0.07);
+    box-shadow: 0 6px 18px rgba(124, 58, 237, 0.14);
+  }
+}
+
+.cws__rcard-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 0;
+}
+
+.cws__rcard-name {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+// The count, then the word — two pills, as in the reference.
+.cws__rcard-pills {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px 0;
+}
+
+.cws__rcard-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 7px;
+  background-color: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.cws__rcard-word {
+  padding: 4px 9px;
+  border-radius: 7px;
+  background-color: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.cws__rcard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1;
+  padding: 11px 12px;
+}
+
+.cws__member {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background-color: var(--bg-surface);
+  cursor: grab;
+
+  &:hover .cws__member-x {
+    opacity: 1;
+  }
+
+  &--dragging {
+    opacity: 0.4;
+  }
+}
+
+.cws__member-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  // Shown on hover, so a full room is not a wall of icons.
+  opacity: 0.55;
+  transition: opacity 0.15s;
+
+  &:hover {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+    opacity: 1;
+  }
+}
+
+.cws__rcard-empty {
+  margin: 0;
+  padding: 14px 4px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.cws__rcard-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px;
+  border: none;
+  border-top: 1px solid var(--border-light);
+  background-color: var(--bg-surface);
+  color: #7c3aed;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(124, 58, 237, 0.08);
+  }
+
+  &:disabled {
+    color: var(--text-faint);
+    cursor: not-allowed;
+  }
+}
+
+// ─── Unassign strip ─────────────────────────────────────────────
+.cws__unassign {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  margin-top: 16px;
+  padding: 18px;
+  border: 1.5px dashed var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-surface);
+  transition: border-color 0.15s, background-color 0.15s;
+
+  &--over {
+    border-color: #dc2626;
+    background-color: rgba(220, 38, 38, 0.05);
+  }
+}
+
+.cws__unassign-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background-color: var(--bg-hover);
+  color: var(--text-faint);
+}
+
+.cws__unassign--over .cws__unassign-icon {
+  background-color: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+}
+
+.cws__unassign-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__unassign-caption {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+// ─── Review ─────────────────────────────────────────────────────
+// A violet hero carrying the identity and the counts, three cards breaking the
+// workspace down, and a sign-off strip.
+.cws__rv-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+// ─── Hero ───────────────────────────────────────────────────────
+.cws__hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 20px 22px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #6d28d9 0%, #7c3aed 45%, #a855f7 100%);
+  // Catches the light across the right of the panel, as in the reference.
+  box-shadow: inset -80px 0 120px rgba(255, 255, 255, 0.07);
+}
+
+.cws__hero-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 66px;
+  height: 66px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 15px;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.cws__hero-ident {
+  flex: 1;
+  min-width: 190px;
+}
+
+.cws__hero-name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 21px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.cws__hero-key {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cws__hero-chip {
+  padding: 3px 10px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cws__hero-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+// The counts, ruled off from the identity.
+.cws__hero-stats {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  flex-shrink: 0;
+  padding-left: 30px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+
+  @media (max-width: 760px) {
+    gap: 24px;
+    padding-left: 0;
+    border-left: none;
+  }
+}
+
+.cws__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+}
+
+.cws__stat-n {
+  margin-top: 4px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.cws__stat-label {
+  margin-top: 2px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+// ─── The three breakdown cards ──────────────────────────────────
+.cws__rv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+.cws__rv-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  overflow: hidden;
+}
+
+.cws__rv-card-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 15px 0;
+}
+
+.cws__rv-card-title {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7c3aed;
+}
+
+.cws__rv-card-body {
+  flex: 1;
+  padding: 14px 15px;
+}
+
+.cws__rv-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 15px;
+  border-top: 1px solid var(--border-light);
+  background-color: var(--bg-surface);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+
+  strong {
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+}
+
+// ─── Project & rooms card ───────────────────────────────────────
+.cws__rv-project {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-bottom: 12px;
+}
+
+.cws__rv-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #7c3aed;
+}
+
+.cws__rv-project-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+// Rooms hang off a line drawn down from the project, so the nesting reads.
+.cws__rv-rooms {
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+  border-left: 1.5px dashed var(--border-light);
+}
+
+.cws__rv-room {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  padding: 7px 0 7px 14px;
+
+  // The stub joining the room to the line.
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 10px;
+    height: 1.5px;
+    background-color: var(--border-light);
+  }
+}
+
+.cws__rv-room-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__rv-room-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+// ─── Assigned users card ────────────────────────────────────────
+.cws__rv-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+
+.cws__rv-user-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__rv-user-role {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+// ─── Summary card ───────────────────────────────────────────────
+.cws__rv-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 0;
+  color: var(--text-faint);
+
+  & + & {
+    border-top: 1px solid var(--border-light);
+  }
+}
+
+.cws__rv-row-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cws__rv-row-value {
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+// ─── Sign-off ───────────────────────────────────────────────────
+.cws__signoff {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 17px 19px;
+  border: 1.5px dashed rgba(124, 58, 237, 0.3);
+  border-radius: 14px;
+  background-color: rgba(124, 58, 237, 0.05);
+}
+
+.cws__signoff-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
+
+.cws__signoff-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7c3aed;
+}
+
+.cws__signoff-caption {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cws__signoff-note {
+  margin: 12px 0 0;
+  padding: 12px 15px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+// ─── Footer ─────────────────────────────────────────────────────
+.cws__foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border-light);
+
+  @media (max-width: 700px) {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+}
+
+.cws__progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 auto;
+
+  @media (max-width: 700px) {
+    order: 3;
+    width: 100%;
+    margin: 0;
+  }
+}
+
+.cws__progress-label {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.cws__progress-bar {
+  display: flex;
+  gap: 5px;
+}
+
+.cws__progress-seg {
+  width: 56px;
+  height: 5px;
+  border-radius: 999px;
+  background-color: var(--border-light);
+  transition: background-color 0.25s;
+
+  &--on {
+    background: linear-gradient(90deg, #7c3aed, #a855f7);
+  }
+
+  @media (max-width: 700px) {
+    width: auto;
+    flex: 1;
+  }
+}
+
+.cws__foot-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+
+// ─── Buttons ────────────────────────────────────────────────────
+.cws__primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 44px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+.cws__ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.cws__empty {
+  margin: 0;
+  padding: 18px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+// ─── Done ───────────────────────────────────────────────────────
+.cws__finished {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.cws__finished-title {
+  margin: 12px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__finished-caption {
+  margin: 8px auto 0;
+  max-width: 46ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-faint);
+}
+
+.cws__finished-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+// ─── Workspaces list page ───────────────────────────────────────
+// The workspaces used to be rows in the sidebar, which left no room to say
+// anything about them. Cards on a page do.
+// The centred states every workspace page shares: loading, not found, nothing
+// here yet. Named `wsl__` from the workspaces list that first used them, and
+// kept when it was deleted because these three are what the detail, room and
+// member-tasks pages all render.
+.wsl__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 320px;
+  padding: 30px;
+  border: 1px dashed var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+  text-align: center;
+}
+
+.wsl__empty-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsl__empty-caption {
+  margin: 0;
+  max-width: 380px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+// ─── Entering a room, and its tasks ─────────────────────────────
+// Replaces the review card's plain footer: the whole strip is the link in.
+.cws__rv-card-enter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 15px;
+  border-top: 1px solid var(--border-light);
+  background-color: var(--bg-surface);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s, background-color 0.15s;
+
+  &:hover {
+    background-color: rgba(124, 58, 237, 0.08);
+    color: #7c3aed;
+  }
+}
+
+
+// ─── Workspace detail page ──────────────────────────────────────
+.wsd {
+  padding: 18px 22px 28px;
+
+  @media (max-width: 640px) {
+    padding: 14px;
+  }
+}
+
+.wsd__head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 16px;
+}
+
+.wsd__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__caption {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+// ─── Hero ───────────────────────────────────────────────────────
+.wsd__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 24px 20px;
+  border-radius: 16px;
+  background: linear-gradient(115deg, #6d28d9 0%, #7c3aed 48%, #a855f7 100%);
+  box-shadow: inset -90px 0 130px rgba(255, 255, 255, 0.07);
+}
+
+// The identity row: badge, name and the counts.
+.wsd__hero-main {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.wsd__hero-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 68px;
+  height: 68px;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
+  border-radius: 16px;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.wsd__hero-ident {
+  flex: 1;
+  min-width: 190px;
+}
+
+.wsd__hero-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+
+// Solid white on the violet band, with the status in the dot rather than in
+// the fill — a coloured pill would fight the gradient behind it.
+.wsd__hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background-color: #fff;
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
+}
+
+.wsd__hero-chip-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-faint);
+}
+
+.wsd__hero-chip--active .wsd__hero-chip-dot {
+  background-color: #16a34a;
+}
+
+.wsd__hero-chip--planning .wsd__hero-chip-dot {
+  background-color: #d97706;
+}
+
+.wsd__hero-chip--on_hold .wsd__hero-chip-dot {
+  background-color: #64748b;
+}
+
+// ─── The lock screen on a private workspace ─────────────────────
+.wsd__lock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-height: 380px;
+  justify-content: center;
+  padding: 40px 26px;
+  border: 1px dashed rgba(124, 58, 237, 0.3);
+  border-radius: 16px;
+  background-color: rgba(124, 58, 237, 0.04);
+  text-align: center;
+}
+
+.wsd__lock-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
+
+.wsd__lock-title {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__lock-caption {
+  margin: 0;
+  max-width: 380px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+.wsd__lock-form {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 8px 0 4px;
+
+  .cws__input {
+    width: 200px;
+    // The code is short, uppercase and read back character by character.
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+}
+
+// ─── Status, as a life-cycle rail on the hero ───────────────────
+// Planned, opened, sometimes paused — a sequence, so it reads as a track. It
+// sits on the violet band, so the rule and the unvisited dots are white and
+// only the current stage takes a real colour.
+.wsd__rail {
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+// The label and the explanation are carried by the stages themselves here —
+// on the hero there is no room for a heading as well.
+.wsd__rail-label,
+.wsd__rail-note {
+  display: none;
+}
+
+.wsd__rail-track {
+  display: flex;
+  align-items: flex-start;
+  // Centred and held to a readable width rather than spanning the whole band.
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.wsd__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  position: relative;
+  /*
+   * Equal thirds, the last one included. Letting the last stage shrink to fit
+   * did two things wrong: the other two split the leftover width so On Hold
+   * sat next to Active instead of at the end, and Active's rule — which
+   * reaches half its own width past its right edge — then overshot beyond the
+   * narrow last stage, leaving a line hanging off the end of the track.
+   *
+   * With equal thirds the dots land at 1/6, 1/2 and 5/6, and each rule ends
+   * exactly on the next dot.
+   */
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+// The rule from this stage's dot across to the next one's.
+.wsd__stage-line {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  right: -50%;
+  height: 2px;
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
+.wsd__stage-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  background-color: transparent;
+  color: #fff;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.2s,
+    width 0.15s, height 0.15s;
+}
+
+.wsd__stage-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.wsd__stage:hover:not(:disabled):not(.wsd__stage--on) {
+  .wsd__stage-dot {
+    border-color: #fff;
+    background-color: rgba(255, 255, 255, 0.25);
+  }
+
+  .wsd__stage-name {
+    color: #fff;
+  }
+}
+
+// Stages already passed read as done, but quietly.
+.wsd__stage--past .wsd__stage-dot {
+  border-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+// The stage the workspace is at: filled in its own colour, ringed so it lifts
+// off the band, and a little larger than the rest.
+.wsd__stage--on {
+  .wsd__stage-name {
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .wsd__stage-dot {
+    width: 22px;
+    height: 22px;
+    border-color: #fff;
+  }
+
+  &.wsd__stage--planning .wsd__stage-dot {
+    background-color: #d97706;
+    box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.35);
+  }
+
+  &.wsd__stage--active .wsd__stage-dot {
+    background-color: #16a34a;
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.35);
+  }
+
+  &.wsd__stage--on_hold .wsd__stage-dot {
+    background-color: #64748b;
+    box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.4);
+  }
+}
+
+// The current stage's dot is bigger, so its rule starts a touch further out.
+.wsd__stage--on .wsd__stage-line {
+  top: 10px;
+}
+
+.wsd__hero-key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.wsd__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.28);
+  }
+}
+
+.wsd__hero-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+// Counts, each ruled off from the next as in the reference.
+.wsd__stats {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+
+  @media (max-width: 760px) {
+    width: 100%;
+  }
+}
+
+.wsd__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  padding: 0 22px;
+  color: #fff;
+
+  & + & {
+    border-left: 1px solid rgba(255, 255, 255, 0.25);
+  }
+
+  @media (max-width: 760px) {
+    flex: 1;
+    min-width: 0;
+    padding: 0 10px;
+  }
+}
+
+.wsd__stat-n {
+  margin-top: 5px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.wsd__stat-label {
+  margin-top: 2px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+// ─── Description strip ──────────────────────────────────────────
+.wsd__note {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 13px;
+  background-color: var(--bg-card);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+// ─── Rooms section ──────────────────────────────────────────────
+.wsd__room {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  // Keeps a card readable when a partial last row would otherwise stretch it.
+  max-width: 420px;
+  /*
+   * Centred in its branch. The branch's connector stub is drawn at its
+   * mid-point, so a card narrower than its branch — which only happens on a
+   * partial last row — has to be centred too, or the line comes down beside
+   * the card instead of into it.
+   */
+  margin-inline: auto;
+  padding: 16px 16px 0;
+  border: 1px solid var(--border-light);
+  border-radius: 15px;
+  background-color: var(--bg-card);
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.32);
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+  }
+}
+
+.wsd__room-name {
+  margin: 14px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__room-stats {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 14px 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.wsd__room-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-faint);
+
+  strong {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  span {
+    font-size: 10.5px;
+    color: var(--text-faint);
+  }
+}
+
+.wsd__room-label {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.wsd__room-members {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wsd__room-member {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.wsd__room-member-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wsd__room-member-role {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.wsd__room-more {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.wsd__room-enter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 16px -16px 0;
+  padding: 13px;
+  border-top: 1px solid var(--border-light);
+  color: #7c3aed;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 0 0 15px 15px;
+
+  &:hover {
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+}
+
+// ─── Room structure ─────────────────────────────────────────────
+// An org chart from the workspace down to its rooms. The connectors are
+// borders, not SVG: the horizontal bus is the top edge of each branch, so the
+// segments meet with no gap however wide the branches end up.
+.wsd__struct {
+  margin: 22px 0 14px;
+  padding: 20px 22px 26px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+}
+
+.wsd__struct-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+// The round + that opens the add-room dialog.
+.wsd__add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.34);
+  transition: transform 0.18s, box-shadow 0.2s;
+
+  &:hover:not(:disabled) {
+    transform: scale(1.06);
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.44);
+  }
+
+  &:disabled {
+    background: var(--bg-hover);
+    color: var(--text-faint);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+}
+
+// ─── Add-room dialog ────────────────────────────────────────────
+.wsd__modal {
+  padding: 20px 22px 18px;
+}
+
+.wsd__modal-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 18px;
+}
+
+.wsd__modal-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__modal-caption {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.wsd__modal-count {
+  font-weight: 500;
+  color: var(--text-faint);
+}
+
+// Scrolls rather than growing the dialog past the viewport.
+.wsd__pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 244px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+}
+
+.wsd__pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+  }
+
+  &--on {
+    border-color: rgba(124, 58, 237, 0.35);
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+}
+
+.wsd__pick-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wsd__pick-role {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+// Empty until picked, so the row keeps its shape either way.
+.wsd__pick-tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 50%;
+  color: #fff;
+}
+
+.wsd__pick-row--on .wsd__pick-tick {
+  border-color: #7c3aed;
+  background-color: #7c3aed;
+}
+
+.wsd__modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+// The card's tile and its two actions share the top line.
+.wsd__room-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wsd__room-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+// Quiet until the card is hovered, so four cards are not a wall of icons —
+// but always visible to keyboard focus, which has no hover to rely on.
+.wsd__room-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(124, 58, 237, 0.12);
+    color: #7c3aed;
+  }
+
+  &--danger:hover:not(:disabled) {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
+.wsd__room:hover .wsd__room-act {
+  opacity: 1;
+}
+
+// Touch has no hover, so the actions stay visible there.
+@media (hover: none) {
+  .wsd__room-act {
+    opacity: 1;
+  }
+}
+
+
+.wsd__struct-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__struct-caption {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.wsd__tree {
+  /*
+   * No `min-content` floor. It used to be here to stop the row wrapping, but
+   * with seven rooms it forced the chart — and with it the whole page — past
+   * the viewport, so the document itself scrolled sideways and the last card
+   * was cut off. The rows are chunked in the component instead.
+   */
+  padding-top: 22px;
+}
+
+.wsd__tree-top {
+  display: flex;
+  justify-content: center;
+}
+
+.wsd__tree-root {
+  position: relative;
+  min-width: 152px;
+  padding: 26px 22px 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-surface);
+  text-align: center;
+}
+
+.wsd__tree-root-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  // The ring lifts the badge off the card behind it.
+  border: 4px solid var(--bg-card);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.wsd__tree-root-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__tree-root-kind {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+// The drop from the root down to the bus.
+.wsd__tree-stem {
+  display: block;
+  width: 0;
+  height: 24px;
+  margin: 0 auto;
+  border-left: 1.5px dashed rgba(124, 58, 237, 0.4);
+}
+
+.wsd__tree-row {
+  display: flex;
+  align-items: stretch;
+  // Room for the hover shadow on the outermost cards.
+  padding-bottom: 4px;
+
+  // Below this the four cards would be too narrow to read, so the row wraps.
+  // The connectors go slightly out of true when it does, which is a better
+  // outcome than cards squeezed to nothing.
+  @media (max-width: 900px) {
+    flex-wrap: wrap;
+  }
+}
+
+.wsd__tree-branch {
+  position: relative;
+  // Shares the row equally with its siblings and never pushes past it — the
+  // card inside can shrink, the row cannot overflow.
+  flex: 1 1 0;
+  min-width: 0;
+  // No gap between branches — the padding is inside, so the bus is continuous.
+  padding: 26px 8px 0;
+
+  @media (max-width: 900px) {
+    flex: 1 1 240px;
+    min-width: 240px;
+  }
+
+  // The branch's share of the horizontal bus.
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    border-top: 1.5px dashed rgba(124, 58, 237, 0.4);
+  }
+
+  // The drop from the bus into the card.
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 0;
+    height: 26px;
+    border-left: 1.5px dashed rgba(124, 58, 237, 0.4);
+  }
+
+  // The outer halves of the bus are trimmed, so it starts and ends on a stub.
+  &:first-child::before {
+    left: 50%;
+  }
+
+  &:last-child::before {
+    right: 50%;
+  }
+
+  // A lone room needs no bus at all — the stem already reaches it.
+  &:only-child::before {
+    display: none;
+  }
+}
+
+// Hosts MyTasksView inside the workspace. It brings its own card chrome, so
+// this only supplies the gap under the page header.
+.wsd__tasks {
+  margin-top: 18px;
+}
+
+// ─── Room: members on a ring ────────────────────────────────────
+// The room's people orbit the total. Node positions come from the component,
+// which computes them from the member count, so any number spaces evenly.
+
+.rmo__band {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: linear-gradient(115deg, #6d28d9 0%, #7c3aed 50%, #a855f7 100%);
+}
+
+.rmo__band-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
+  border-radius: 13px;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.rmo__band-name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 19px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.rmo__band-sub {
+  margin: 3px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.rmo__band-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  padding-left: 24px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.rmo__band-n {
+  margin-top: 4px;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.rmo__band-label {
+  margin-top: 1px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+// ─── Section head ───────────────────────────────────────────────
+.rmo__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 24px 0 4px;
+}
+
+.rmo__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rmo__caption {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+// ─── The ring ───────────────────────────────────────────────────
+.rmo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 226px;
+  gap: 18px;
+  align-items: start;
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+  // The faint dot field behind the whole thing.
+  background-image: radial-gradient(
+    circle,
+    rgba(124, 58, 237, 0.14) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.rmo__stage {
+  position: relative;
+  /*
+   * Must stay square. Node positions are percentages of this box, so any
+   * width/height difference turns the ring into an ellipse and lifts the
+   * avatars off it. `min-height` and `max-height` both did exactly that —
+   * they beat `aspect-ratio` and gave a 620x520 box — so the size is set on
+   * one axis only and the ratio does the rest.
+   */
+  width: min(100%, 560px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+
+.rmo__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  // 52% wide is a radius of 26%, which is where the nodes are placed.
+  width: 52%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 1.5px dashed rgba(124, 58, 237, 0.32);
+  border-radius: 50%;
+}
+
+// Two soft glows behind the core.
+.rmo__halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+
+  &--outer {
+    width: 34%;
+    aspect-ratio: 1;
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+
+  &--inner {
+    width: 25%;
+    aspect-ratio: 1;
+    background-color: rgba(124, 58, 237, 0.13);
+  }
+}
+
+.rmo__core {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 29%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(124, 58, 237, 0.32);
+}
+
+.rmo__core-n {
+  margin-top: 2px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.rmo__core-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+// A marker on the ring between one member and the next.
+.rmo__dot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background-color: #7c3aed;
+}
+
+// ─── A member on the ring ───────────────────────────────────────
+.rmo__node {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  // The computed point is the avatar's centre, whichever side the card is on.
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: transform 0.15s;
+
+  // Lifts on hover without leaving the ring — the translate has to be kept.
+  &:hover {
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+
+  &:hover .rmo__label {
+    border-color: rgba(124, 58, 237, 0.4);
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.16);
+  }
+
+  // A member other than yourself: shown in full, but it goes nowhere, so it
+  // drops the pointer and the hover lift that promise a click.
+  &--static {
+    cursor: default;
+
+    &:hover {
+      transform: translate(-50%, -50%);
+    }
+
+    // Back to the resting values, not to nothing.
+    &:hover .rmo__label {
+      border-color: var(--border-light);
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
+    }
+  }
+
+  // Facing right: avatar first, card trailing.
+  &--right .rmo__label {
+    margin-left: -14px;
+    padding-left: 22px;
+  }
+
+  // Facing left: the card leads, so the order flips.
+  &--left {
+    flex-direction: row-reverse;
+
+    .rmo__label {
+      margin-right: -14px;
+      padding-right: 22px;
+    }
+  }
+}
+
+.rmo__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border: 3px solid var(--bg-card);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+}
+
+// Removes a member. Sits on the avatar, inside the link to their tasks, so it
+// only appears on hover and stops the navigation it is nested in.
+.rmo__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--bg-card);
+  border-radius: 50%;
+  background-color: #dc2626;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: pointer;
+}
+
+.rmo__node:hover .rmo__remove,
+.rmo__remove:focus-visible {
+  opacity: 1;
+}
+
+// ─── The candidate fan ──────────────────────────────────────────
+// Candidates arc across the bottom of the same box, outside the ring. The
+// component computes the positions; this only styles what lands there.
+
+// The round + that reveals the candidates. Pinned to the corner of the box:
+// clear of both rings, and not attached to the centre circle, which would read
+// as "add to the count".
+.rmo__add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: 2%;
+  top: 2%;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.34);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.44);
+  }
+
+  &:disabled {
+    background: var(--bg-hover);
+    color: var(--text-faint);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  // Open: the + turns into a close.
+  &--on {
+    transform: rotate(135deg);
+  }
+}
+
+// The circle the candidates sit on, so the outer ring reads as deliberate.
+.rmo__fan-arc {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  // 86% wide is a radius of 43%, which is FAN_R in RoomDetail.
+  width: 86%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 1.5px dashed rgba(124, 58, 237, 0.22);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+// Sits just under the centre, between the two rings.
+.rmo__fan-tip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, 34px);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background-color: rgba(124, 58, 237, 0.1);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #7c3aed;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.rmo__fan-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: absolute;
+  width: 74px;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  // `backwards` keeps each one hidden until its own delay is up.
+  animation: cws-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+
+  &:hover .rmo__fan-avatar {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+  }
+
+  &--dragging {
+    opacity: 0.4;
+  }
+}
+
+.rmo__fan-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border: 2.5px solid var(--bg-card);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 3px 12px rgba(124, 58, 237, 0.28);
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+
+// An amber dot: this person is already in another room, so adding moves them.
+.rmo__fan-moved {
+  position: absolute;
+  right: -1px;
+  top: -1px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--bg-card);
+  border-radius: 50%;
+  background-color: #d97706;
+}
+
+.rmo__fan-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+// The outer ring now uses the bottom too, so the overflow chip sits in a
+// corner rather than under it.
+.rmo__fan-more {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background-color: var(--bg-hover);
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/*
+ * While the fan is open the ring shows avatars only. The name cards reach
+ * outward far enough to cross the fan's arc, which made a candidate look like
+ * it was already inside the circle — the whole point of the arc being outside
+ * is that it reads as "not in the room yet".
+ */
+.rmo__stage--fanned .rmo__label {
+  display: none;
+}
+
+// The ring lights up while somebody is held over it.
+.rmo__stage--over .rmo__ring {
+  border-color: #7c3aed;
+}
+
+.rmo__stage--over .rmo__core {
+  box-shadow: 0 0 0 8px rgba(124, 58, 237, 0.12),
+    0 10px 30px rgba(124, 58, 237, 0.32);
+}
+
+.rmo__label {
+  padding: 9px 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 11px;
+  background-color: var(--bg-card);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
+}
+
+.rmo__label-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rmo__label-role {
+  display: block;
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+// ─── Legend ─────────────────────────────────────────────────────
+.rmo__legend {
+  padding: 4px 0;
+  border: 1px solid var(--border-light);
+  border-radius: 13px;
+  background-color: var(--bg-card);
+}
+
+.rmo__legend-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 15px;
+
+  & + & {
+    border-top: 1px solid var(--border-light);
+  }
+
+  &--total {
+    font-weight: 700;
+  }
+}
+
+.rmo__legend-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #7c3aed;
+}
+
+.rmo__legend-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rmo__legend-n {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.rmo__legend-empty {
+  margin: 0;
+  padding: 11px 15px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.rmo__legend-more {
+  margin: 0;
+  padding: 10px 15px;
+  border-top: 1px solid var(--border-light);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+// ─── Delete the workspace ───────────────────────────────────────
+// On the violet hero band, so it cannot be a solid red button — it would pull
+// harder than anything else on the page. An outline that only fills on hover
+// keeps it findable without making it the obvious next click.
+.wsd__danger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px auto 0;
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.9);
+    border-color: rgba(220, 38, 38, 0.9);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

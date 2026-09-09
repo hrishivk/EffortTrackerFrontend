@@ -1,5 +1,31 @@
 
 
+
+export interface EditUserPayload {
+  id: string;
+  fullName?: string;
+  email?: string;
+  role?: string;
+  projects?: string;
+  password?: string;
+  manager_id?: string | number | null;
+  is_shared?: boolean;
+  contactNumber?: string;
+  jobTitle?: string;
+  employeeId?: string;
+  dateOfBirth?: string;
+  bloodGroup?: string;
+  joiningDate?: string;
+}
+
+export interface EditProjectPayload {
+  name?: string;
+  domain_id?: string | number;
+  client_department?: string;
+  project_category?: string;
+  end_date?: string;
+}
+
 export interface UserData {
   id?:string;
   fullName: string;
@@ -8,6 +34,5 @@ export interface UserData {
   role: string;
   projects: string;
   manager_id?: string | number | null;
-  /** snake_case to match the API — see manager_id above. Omit to leave unchanged. */
   is_shared?: boolean;
 }

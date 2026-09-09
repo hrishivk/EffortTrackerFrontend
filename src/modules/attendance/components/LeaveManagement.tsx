@@ -15,7 +15,6 @@ import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { useAppSelector } from "../../../store/configureStore";
-// import AttendanceSummary from "./AttendanceSummary";
 import HolidayList from "./HolidayList";
 import LeaveRequest from "./LeaveRequest";
 import MyLeaves from "./MyLeaves";
@@ -100,7 +99,6 @@ const LeaveManagement = () => {
         { key: "balance", label: "Holiday List" },
       ]
     : [
-        // { key: "management", label: "Leave Management" },
         { key: "myLeaves", label: "My Leaves" },
         // { key: "summary", label: "Attendance Summary" },
         { key: "balance", label: "Holiday List" },
@@ -238,7 +236,7 @@ const LeaveManagement = () => {
                   </button>
                 </div>
 
-                {/* Apply Leave button — same as + Create Task button */}
+            
                 <button
                   className="btn text-white d-flex align-items-center gap-1"
                   style={{
@@ -338,7 +336,7 @@ const LeaveManagement = () => {
               ))}
             </div>
 
-            {/* Upcoming Leaves & Holidays */}
+     
             <div
               className="rounded-2xl"
               style={{
@@ -420,8 +418,6 @@ const LeaveManagement = () => {
                 )}
               </AnimatePresence>
             </div>
-
-            {/* Past Leaves & Holidays */}
             <div
               className="rounded-2xl"
               style={{
@@ -509,7 +505,7 @@ const LeaveManagement = () => {
         {/* Footer */}
         <div className="text-center py-4">
           <p className="text-xs" style={{ color: "var(--text-faint)" }}>
-            &copy; 2025 RhythmRx Project Management. All rights reserved.
+            &copy; 2025 KREW. All rights reserved.
           </p>
         </div>
       </div>

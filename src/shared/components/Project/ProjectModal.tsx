@@ -98,7 +98,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
             Add project
           </div>
           <div className="mb-3 px-20 text-lg">
-            <CFormLabel htmlFor="domain">Domain</CFormLabel>
+            <CFormLabel htmlFor="domain">Department</CFormLabel>
             <select
               id="domain"
               name="domain"
@@ -110,7 +110,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
                 padding: "14px",
               }}
             >
-              <option value="">Select Domain</option>
+              <option value="">Select Department</option>
               {domain.map((item, index) => (
                 <option key={index} value={item.id}>
                   {item.name}

@@ -2,7 +2,7 @@ import { spserviceMethood } from "../services/spService";
 import { amServiceMethood } from "../services/amService";
 import { userServiceMethood } from "../services/userService";
 import { store } from "../../store/configureStore";
-import type { UserData } from "../types";
+import type { EditProjectPayload, EditUserPayload, UserData } from "../types";
 
 const isAmRole = () =>
   store.getState()?.user?.user?.role?.toUpperCase() === "AM";
@@ -27,11 +27,13 @@ export const deleteDomain = async (id: string) => {
     throw error;
   }
 };
-export const fetchExistDomains=async()=>{
+
+export const fetchExistDomains=async(isShared?: boolean)=>{
   try {
+    const url = isShared ? "/list-domains?isShared=true" : "/list-domains"
     const repsonse = isAmRole()
-      ? await amServiceMethood.listAllDomain("/list-domains")
-      : await spserviceMethood.listAllDomain("/list-domains")
+      ? await amServiceMethood.listAllDomain(url)
+      : await spserviceMethood.listAllDomain(url)
     return repsonse.data
   } catch (error) {
      console.log(error)
@@ -62,6 +64,17 @@ export const fetchUser=async()=>{
     return response.data
   } catch (error) {
    throw error
+  }
+}
+
+export const fetchUserDetails=async(id:string)=>{
+  try {
+    const response = await spserviceMethood.getUserDetails(
+      `/user-details?id=${encodeURIComponent(id)}`
+    )
+    return response.data.data as import("../../shared/types/User").UserDetails
+  } catch (error) {
+    throw error
   }
 }
 export const fetchAllUsers=async()=>{
@@ -122,7 +135,16 @@ export const addProject=async(data:{[key:string]:string|number})=>{
     
   }
 }
-export const edituser=async(data:UserData)=>{
+
+export const updateProject=async(projectId:string|number,data:EditProjectPayload)=>{
+  try {
+    const response=await spserviceMethood.updateProject(`/project?id=${encodeURIComponent(String(projectId))}`,data)
+    return response.data
+  } catch (error) {
+    throw error
+  }
+}
+export const edituser=async(data:UserData|EditUserPayload)=>{
   try {
     const response=await spserviceMethood.editUser("/edit-user",data)
     return response.data

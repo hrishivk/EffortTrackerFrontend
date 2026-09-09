@@ -1,0 +1,328 @@
+// Task detail panel — the modal opened from a task's subtask badge.
+//
+// Two columns: the task's own facts on the left, its subtasks and history on the
+// right. Layout lives here because it collapses on narrow screens.
+
+.tdp {
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+}
+
+// ─── Header ─────────────────────────────────────────────────────
+.tdp__head {
+  flex-shrink: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.tdp__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tdp__dot {
+  flex-shrink: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.tdp__title {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tdp__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.tdp__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+// ─── Body ───────────────────────────────────────────────────────
+.tdp__body {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
+
+  @media (max-width: 860px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// ─── Left: the facts ────────────────────────────────────────────
+.tdp__facts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+}
+
+.tdp__fact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 9px;
+}
+
+.tdp__fact-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background-color: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+}
+
+.tdp__fact-label {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.tdp__fact-value {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 1px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tdp__section-label {
+  margin: 18px 0 5px;
+  font-size: 11px
+  ;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.tdp__description {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+// The nudge card at the bottom of the left column.
+.tdp__promo {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid rgba(124, 58, 237, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(124, 58, 237, 0.09), rgba(168, 85, 247, 0.04));
+
+  p {
+    margin: 0;
+  }
+}
+
+// ─── Right: subtasks and history ────────────────────────────────
+.tdp__panel {
+  padding: 14px 16px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-card);
+}
+
+.tdp__panel-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.tdp__panel-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+// ─── Subtask tree ───────────────────────────────────────────────
+.tdp__tree {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    padding: 0 8px 8px;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: var(--text-faint);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 9px 8px;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 12px;
+    color: var(--text-primary);
+    vertical-align: middle;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  // The indent rail on a nested row.
+  .tdp__child td:first-child {
+    padding-left: 30px;
+    position: relative;
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: 15px;
+      top: 0;
+      bottom: 50%;
+      border-left: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      width: 9px;
+      border-bottom-left-radius: 4px;
+    }
+  }
+}
+
+.tdp__tree-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.tdp__twisty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+.tdp__cell-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+// ─── Activity ───────────────────────────────────────────────────
+.tdp__activity {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tdp__event {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.tdp__event-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #fff;
+}
+
+// ─── Footer ─────────────────────────────────────────────────────
+.tdp__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 14px 24px 18px;
+  border-top: 1px solid var(--border-light);
+}
+
+.tdp__primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 22px;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

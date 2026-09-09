@@ -30,7 +30,7 @@ import { useDispatch } from "react-redux";
 import { motion } from "framer-motion";
 import SpinLoader from "../../../presentation/SpinLoader";
 
-import type { taskList } from "../types";
+import type { taskList, CreateTaskPayload } from "../types";
 import { TextField } from "@mui/material";
 import { fetchExistProjects } from "../../../core/actions/spAction";
 import type { project } from "../../../shared/types/Project";
@@ -54,7 +54,7 @@ const TaskList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
   const [openDialog, setOpenDialog] = useState(false);
-  const [taskData, setTaskData] = useState<taskList>({
+  const [taskData, setTaskData] = useState<CreateTaskPayload>({
     created_by: user?.id,
     assigned_to:paramId ||user?.id,
     project: "",
@@ -680,7 +680,7 @@ const TaskList: React.FC = () => {
             </div>
           )}
           <p className="text-center text-[#825294] text-xs sm:text-lg !mt-12">
-            ©2025 RhythmRx Effort Tracker. All rights reserved.
+            ©2025 KREW. All rights reserved.
           </p>
         </div>
       </div>

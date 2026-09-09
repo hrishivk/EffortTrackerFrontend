@@ -124,10 +124,10 @@ const CreateDomain = () => {
     if (!deleteId) return;
     try {
       await deleteDomain(String(deleteId));
-      showSnackbar({ message: "Domain deleted successfully", severity: "success" });
+      showSnackbar({ message: "Department deleted successfully", severity: "success" });
       await listAllDomains();
     } catch (error: any) {
-      const msg = error?.response?.data?.message || "Failed to delete domain.";
+      const msg = error?.response?.data?.message || "Failed to delete department.";
       showSnackbar({ message: msg, severity: "error" });
     } finally {
       setDeleteId(null);
@@ -156,12 +156,12 @@ const CreateDomain = () => {
       }
       await addDomain(payload);
       showSnackbar({
-        message: "Domain Created Successfully",
+        message: "Department Created Successfully",
         severity: "success",
       });
       navigate(`/${currentRole}/domain-project`);
     } catch (error: any) {
-      const msg = error?.response?.data?.message || "Failed to create domain.";
+      const msg = error?.response?.data?.message || "Failed to create department.";
       showSnackbar({ message: msg, severity: "error" });
     }
   };
@@ -181,22 +181,22 @@ const CreateDomain = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold mb-1" style={{ fontSize: "1.65rem" }}>
-            Create New Domain
+            Create New Department
           </h2>
           <p className="text-muted mb-0" style={{ fontSize: "0.95rem" }}>
-            Define a new domain to organize and categorize your projects.
+            Define a new department to organize and categorize your projects.
           </p>
         </div>
       </div>
       <div className="rounded-3 p-4 mb-4" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}>
         <div className="d-flex align-items-center gap-2 mb-4">
           <span style={{ fontSize: 18 }}>🏷️</span>
-          <h5 className="fw-bold mb-0">Domain Information</h5>
+          <h5 className="fw-bold mb-0">Department Information</h5>
         </div>
 
         <div className="mb-3">
           <label className="form-label fw-semibold" style={{ fontSize: 13 }}>
-            Domain Name <span style={{ color: "#ef4444" }}>*</span>
+            Department Name <span style={{ color: "#ef4444" }}>*</span>
           </label>
           <TextField
             fullWidth
@@ -227,7 +227,7 @@ const CreateDomain = () => {
               className="form-control border-0"
               rows={4}
               name="description"
-              placeholder="Describe the purpose and scope of this domain..."
+              placeholder="Describe the purpose and scope of this department..."
               value={formData.description}
               onChange={handleChange}
               style={{
@@ -287,7 +287,7 @@ const CreateDomain = () => {
               </Select>
             </FormControl>
             <p className="mb-0 mt-1" style={{ fontSize: 11, color: "var(--text-muted)" }}>
-              Selected AMs will see this domain in their workspace.
+              Selected AMs will see this department in their workspace.
             </p>
           </div>
         )}
@@ -296,7 +296,7 @@ const CreateDomain = () => {
         <div className="rounded-3 p-4 mb-4" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}>
           <div className="d-flex align-items-center gap-2 mb-3">
             <span style={{ fontSize: 18, color: "#7c3aed" }}>📂</span>
-            <h5 className="fw-bold mb-0">Existing Domains</h5>
+            <h5 className="fw-bold mb-0">Existing Departments</h5>
             <span
               className="ms-auto"
               style={{ fontSize: 13, color: "#7c3aed", fontWeight: 500 }}
@@ -353,7 +353,7 @@ const CreateDomain = () => {
                   onClick={() => setDeleteId(item.id)}
                   className="btn btn-sm p-1"
                   style={{ color: "#dc3545", flexShrink: 0 }}
-                  title="Delete domain"
+                  title="Delete department"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -364,7 +364,7 @@ const CreateDomain = () => {
       )}
       <div className="d-flex justify-content-between align-items-center">
         <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          &#8505; Domains help organize projects into logical categories.
+          &#8505; Departments help organize projects into logical categories.
         </span>
         <div className="d-flex gap-3">
           <button
@@ -392,7 +392,7 @@ const CreateDomain = () => {
               padding: "6px 16px",
             }}
           >
-            Create Domain &rarr;
+            Create Department &rarr;
           </button>
         </div>
       </div>

@@ -42,6 +42,17 @@ export const pdAvatarColors = [
   "#d97706", "#db2777", "#0d9488", "#4f46e5",
 ];
 
+/** Project Category options, shared by Create Project and the Edit Project modal. */
+export const PROJECT_CATEGORIES = [
+  "Engineering",
+  "Design",
+  "Marketing",
+  "Finance",
+  "HR",
+  "Operations",
+  "Electronics",
+];
+
 export const PROJECT_STATUS_OPTIONS = [
   { value: "active", label: "Active", desc: "Project is in progress", color: "#059669", bg: "#ecfdf5" },
   { value: "on_hold", label: "On Hold", desc: "Temporarily paused, awaiting input", color: "#ea580c", bg: "#fff7ed" },

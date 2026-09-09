@@ -14,7 +14,7 @@ export const getDomainColumns = (
 ): Column<Domain>[] => [
   {
     key: "name",
-    header: "Domain Name",
+    header: "Department Name",
     render: (row) => (
       <div className="d-flex align-items-center gap-2">
         <div
@@ -78,7 +78,7 @@ export const getDomainColumns = (
         }}
         className="btn btn-sm p-1"
         style={{ color: "#dc3545" }}
-        title="Delete domain"
+        title="Delete department"
       >
         <Trash2 size={16} />
       </button>

@@ -1,0 +1,439 @@
+// Create New Task modal.
+//
+// Structure lives here rather than in inline styles because the layout is a set
+// of grids that has to collapse on narrow screens, which inline styles cannot do.
+
+.ctm {
+  padding: 26px 28px 22px;
+
+  @media (max-width: 640px) {
+    padding: 18px 16px 16px;
+  }
+}
+
+// ─── Header ─────────────────────────────────────────────────────
+.ctm__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.ctm__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.ctm__title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.ctm__subtitle {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.ctm__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+  }
+}
+
+// ─── Two panels ─────────────────────────────────────────────────
+// The task's own fields on the left, its collections — tags and subtasks — on
+// the right, so the subtask rows have room for a priority and two dates without
+// wrapping. Stacks below 900px.
+.ctm__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 24px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+
+.ctm__aside {
+  padding-left: 24px;
+  border-left: 1px solid var(--border-light);
+
+  @media (max-width: 900px) {
+    padding-left: 0;
+    padding-top: 18px;
+    border-left: none;
+    border-top: 1px solid var(--border-light);
+  }
+}
+
+// ─── Rows ───────────────────────────────────────────────────────
+.ctm__row {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+
+  &--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  &--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  &--1 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (max-width: 900px) {
+    &--3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 620px) {
+    &--2,
+    &--3 {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+// ─── Field ──────────────────────────────────────────────────────
+.ctm__label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+
+  .ctm__req {
+    margin-left: 2px;
+    color: #dc2626;
+  }
+}
+
+.ctm__label-count {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.ctm__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-surface);
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:focus-within {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  }
+
+  &--invalid {
+    border-color: #dc2626;
+  }
+
+  // The leading glyph
+  > svg {
+    flex-shrink: 0;
+    color: var(--text-faint);
+    font-size: 17px;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+
+    &::placeholder {
+      color: var(--text-faint);
+    }
+  }
+}
+
+// ─── Tags ───────────────────────────────────────────────────────
+.ctm__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.ctm__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+
+  button {
+    display: inline-flex;
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    opacity: 0.65;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+// ─── Footer ─────────────────────────────────────────────────────
+.ctm__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 18px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-light);
+
+  @media (max-width: 620px) {
+    flex-wrap: wrap;
+  }
+}
+
+.ctm__actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+
+  @media (max-width: 620px) {
+    width: 100%;
+
+    button {
+      flex: 1;
+    }
+  }
+}
+
+.ctm__cancel {
+  padding: 10px 24px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+  }
+}
+
+.ctm__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 26px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32);
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+// ─── Inline add, inside a field ─────────────────────────────────
+.ctm__inline-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 7px;
+  background-color: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(124, 58, 237, 0.18);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+// A short note under a field, e.g. how to keep adding subtasks.
+.ctm__hint {
+  margin: 7px 0 0;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+// ─── Subtasks ───────────────────────────────────────────────────
+// Listed under the parent, numbered, with the whole row indented so the nesting
+// is visible without drawing tree lines.
+.ctm__subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 9px 0 0;
+  padding: 0 0 0 14px;
+  list-style: none;
+  border-left: 2px solid var(--border-light);
+}
+
+.ctm__subtask {
+  padding: 7px 9px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  background-color: var(--bg-surface);
+}
+
+// Line one: handle, number, name, remove.
+.ctm__subtask-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  > button {
+    display: inline-flex;
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--text-faint);
+    cursor: pointer;
+
+    &:hover {
+      color: #dc2626;
+    }
+  }
+}
+
+// Line two: priority and the two dates, indented under the name.
+.ctm__subtask-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  margin: 7px 0 0 22px;
+
+  @media (max-width: 520px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// A compact field for a subtask's dates — the same look, two thirds the height.
+.ctm__mini {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background-color: var(--bg-card);
+
+  &:focus-within {
+    border-color: #7c3aed;
+  }
+
+  > svg {
+    flex-shrink: 0;
+    font-size: 13px;
+    color: var(--text-faint);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 11.5px;
+
+    &::placeholder {
+      color: var(--text-faint);
+    }
+  }
+}
+
+.ctm__subtask-index {
+  flex-shrink: 0;
+  min-width: 16px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.ctm__subtask-name {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+
+  &:focus {
+    // Enough to show it is editable, without boxing every row.
+    border-bottom: 1px solid #7c3aed;
+  }
+}

@@ -1,0 +1,430 @@
+@use "variables" as *;
+
+/* ───────────────────────────────
+   Edit Project modal (Domains & Projects)
+   ─────────────────────────────── */
+
+.ep-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(17, 24, 39, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.ep-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 71;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: none;
+
+  @include respond-below($bp-sm) {
+    padding: 10px;
+  }
+}
+
+.ep-panel {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 880px;
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border-radius: 18px;
+  background: $bg-white;
+  border: 1px solid $border-light;
+  box-shadow: 0 28px 70px rgba(17, 24, 39, 0.2);
+
+  @include respond-below($bp-sm) {
+    max-height: calc(100vh - 20px);
+    border-radius: 14px;
+  }
+}
+
+/* ── Header ── */
+.ep-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid $border-light;
+
+  @include respond-below($bp-sm) {
+    padding: 18px 16px 16px;
+  }
+}
+
+.ep-head-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ep-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: $purple-light;
+  color: $purple-primary;
+}
+
+.ep-head-text {
+  h3 {
+    margin: 0 0 3px;
+    font-size: 20px;
+    font-weight: 700;
+    color: $text-dark;
+  }
+
+  p {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: $text-secondary;
+  }
+}
+
+.ep-close {
+  display: flex;
+  flex-shrink: 0;
+  padding: 5px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: $text-muted;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:hover {
+    background: $bg-light;
+    color: $text-dark;
+  }
+}
+
+/* ── Body ── */
+.ep-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  flex: 1;
+
+  @include respond-below($bp-sm) {
+    padding: 18px 16px;
+  }
+}
+
+/* Only the roster can be pending now; the rest of the form is synchronous. */
+.ep-team-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 150px;
+
+  span {
+    font-size: 12px;
+    font-weight: 600;
+    color: $text-muted;
+  }
+}
+
+/* Details on the left, the team panel on the right. */
+.ep-cols {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 28px;
+
+  @include respond-below($bp-lg) {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+.ep-field {
+  margin-bottom: 20px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.ep-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 18px;
+  margin-bottom: 20px;
+
+  @include respond-below($bp-sm) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ep-label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: $text-dark;
+}
+
+.ep-req {
+  margin-left: 3px;
+  color: #ef4444;
+}
+
+.ep-count {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+  color: $text-muted;
+}
+
+.ep-hint {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: $text-muted;
+}
+
+.ep-error {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+/* ───────────────────────────────
+   Team Assigned panel
+   One searchable roster: assigned rows are highlighted and toggle off, the
+   rest toggle on. No second dialog, no floating picker.
+   ─────────────────────────────── */
+
+.ep-team {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px;
+  border: 1px solid $border-light;
+  border-radius: 14px;
+  background: $bg-light;
+}
+
+.ep-team-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+
+  h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: $text-dark;
+  }
+}
+
+.ep-team-count {
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: $purple-primary;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ep-team-sub {
+  margin: 0 0 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: $text-muted;
+}
+
+.ep-team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 328px;
+  overflow-y: auto;
+  padding-right: 2px;
+
+  @include respond-below($bp-lg) {
+    max-height: 260px;
+  }
+}
+
+.ep-member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid $border-light;
+  border-radius: 10px;
+  background: $bg-white;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+
+  &:hover {
+    border-color: $purple-primary;
+  }
+
+  &.is-assigned {
+    border-color: rgba(124, 58, 237, 0.35);
+    background: $purple-light;
+  }
+}
+
+.ep-member-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: $border-light;
+  color: $text-secondary;
+  font-size: 11px;
+  font-weight: 700;
+
+  .ep-member.is-assigned & {
+    background: $purple-primary;
+    color: #fff;
+  }
+}
+
+.ep-member-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.ep-member-name {
+  display: block;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: $text-dark;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ep-member-role {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: $text-muted;
+}
+
+/* Reads as a state chip, not a button, so the whole row stays the hit target. */
+.ep-member-state {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: $border-light;
+  color: $text-secondary;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+
+  .ep-member.is-assigned & {
+    background: $purple-primary;
+    color: #fff;
+  }
+}
+
+.ep-team-empty {
+  padding: 26px 12px;
+  border: 1px dashed $border-light;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  color: $text-muted;
+}
+
+/* ── Footer ── */
+.ep-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 28px 20px;
+  border-top: 1px solid $border-light;
+
+  @include respond-below($bp-sm) {
+    padding: 14px 16px 16px;
+  }
+}
+
+.ep-foot-note {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: $text-muted;
+}
+
+.ep-foot-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.ep-btn-cancel {
+  padding: 9px 20px;
+  border: 1px solid $border-light;
+  border-radius: 9px;
+  background: $bg-white;
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-secondary;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background: $bg-light;
+  }
+}
+
+.ep-btn-save {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border: none;
+  border-radius: 9px;
+  background: $purple-primary;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s, opacity 0.15s;
+
+  &:hover:not(:disabled) {
+    background: #6d28d9;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

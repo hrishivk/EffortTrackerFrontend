@@ -30,9 +30,35 @@ import { selectSx, menuProps, TASK_PROJECT_COLORS, pdAvatarColors } from "./cons
 import { pdGetInitials, pdFormatDate, pdGetTaskStatus, pdGetDaysLeft, pdGetProjectStatusBadge } from "./utils";
 import type { ProjectDetailsViewProps } from "../../types";
 import type { formUserData } from "../../../../shared/types/User";
-import type { taskList } from "../../../user/types";
+import type { taskList, CreateTaskPayload } from "../../../user/types";
 
 const TASKS_PER_PAGE = 5;
+
+/**
+ * The page numbers to actually draw, for a strip about 220px wide.
+ *
+ * Rendering one button per page worked while a project had a handful of them
+ * and broke at 58: the row pushed past the panel, squeezing "Page 1 of 58"
+ * into three wrapped lines. This keeps the ends — where you jump to — and a
+ * window around where you are, with `"…"` standing in for the rest.
+ */
+const pageWindow = (current: number, total: number): (number | "…")[] => {
+  // Seven or fewer still fit, and gaps in a short list only cost a click.
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+  // The window is three wide and never runs off either end, so the strip is
+  // the same length on page 1 as it is in the middle — no reflow while paging.
+  const from = Math.min(Math.max(current - 1, 2), total - 3);
+  const middle = [from, from + 1, from + 2];
+
+  return [
+    1,
+    ...(middle[0] > 2 ? (["…"] as const) : []),
+    ...middle,
+    ...(middle[2] < total - 1 ? (["…"] as const) : []),
+    total,
+  ];
+};
 
 const ProjectDetailsView = ({ project, allProjects, onBack }: ProjectDetailsViewProps) => {
   const { showSnackbar } = useSnackbar();
@@ -171,11 +197,6 @@ const ProjectDetailsView = ({ project, allProjects, onBack }: ProjectDetailsView
   const manager = members.find((m) => (m as any).role?.toUpperCase() === "AM") || members[0];
   const statusBadge = pdGetProjectStatusBadge(project.status || "active");
 
-  const hasInProgressTask = tasks.some((t) => {
-    const s = (t.status || "").toLowerCase().replace(/[\s_]+/g, "_");
-    return s === "in_progress" && String(t.assigned_to) === String(userId);
-  });
-
   const isUserOrDev = role === "USER" || role === "DEVLOPER";
 
   const assignableUsers = (() => {
@@ -205,7 +226,7 @@ const ProjectDetailsView = ({ project, allProjects, onBack }: ProjectDetailsView
     try {
       const assigneeIds = (isUserOrDev || assignToSelf) ? [String(userId)] : taskForm.assignees;
       const promises = assigneeIds.map((assigneeId) => {
-        const payload: taskList = {
+        const payload: CreateTaskPayload = {
           description: taskForm.taskName,
           project: project.name,
           assigned_to: assigneeId,
@@ -419,9 +440,16 @@ const ProjectDetailsView = ({ project, allProjects, onBack }: ProjectDetailsView
             {taskTotalPages > 1 && (
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
+                // Wrap rather than squeeze: in the narrowest panel the count
+                // drops onto its own line above the controls, which is legible
+                // — the label crushed to three lines was not.
+                flexWrap: "wrap", gap: 8,
                 padding: "12px 0", borderTop: "1px solid #f3f4f6", marginTop: 4,
               }}>
-                <span style={{ fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>
+                <span style={{
+                  fontSize: 12, color: "#9ca3af", fontWeight: 500,
+                  whiteSpace: "nowrap", flexShrink: 0,
+                }}>
                   Page {taskPage} of {taskTotalPages}
                 </span>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -430,29 +458,43 @@ const ProjectDetailsView = ({ project, allProjects, onBack }: ProjectDetailsView
                     disabled={taskPage <= 1}
                     style={{
                       width: 28, height: 28, borderRadius: 8, border: "1px solid #e5e7eb",
+                      flexShrink: 0,
                       background: taskPage <= 1 ? "#f9fafb" : "#fff", cursor: taskPage <= 1 ? "default" : "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       opacity: taskPage <= 1 ? 0.4 : 1,
                     }}>
                     <ChevronLeftIcon sx={{ fontSize: 16, color: "#6b7280" }} />
                   </button>
-                  {Array.from({ length: taskTotalPages }, (_, i) => i + 1).map((pg) => (
-                    <button key={pg} onClick={() => setTaskPage(pg)}
-                      style={{
-                        width: 28, height: 28, borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        border: pg === taskPage ? "1.5px solid #7c3aed" : "1px solid #e5e7eb",
-                        background: pg === taskPage ? "#f5f3ff" : "#fff",
-                        color: pg === taskPage ? "#7c3aed" : "#6b7280",
-                        cursor: "pointer",
+                  {pageWindow(taskPage, taskTotalPages).map((pg, i) =>
+                    pg === "…" ? (
+                      // Not a button: the gap it stands for has no single
+                      // destination, and the arrows already walk through it.
+                      <span key={`gap-${i}`} style={{
+                        width: 16, textAlign: "center", fontSize: 12,
+                        color: "#9ca3af", userSelect: "none",
                       }}>
-                      {pg}
-                    </button>
-                  ))}
+                        &#8230;
+                      </span>
+                    ) : (
+                      <button key={pg} onClick={() => setTaskPage(pg)}
+                        style={{
+                          width: 28, height: 28, borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          flexShrink: 0,
+                          border: pg === taskPage ? "1.5px solid #7c3aed" : "1px solid #e5e7eb",
+                          background: pg === taskPage ? "#f5f3ff" : "#fff",
+                          color: pg === taskPage ? "#7c3aed" : "#6b7280",
+                          cursor: "pointer",
+                        }}>
+                        {pg}
+                      </button>
+                    )
+                  )}
                   <button
                     onClick={() => setTaskPage((p) => Math.min(taskTotalPages, p + 1))}
                     disabled={taskPage >= taskTotalPages}
                     style={{
                       width: 28, height: 28, borderRadius: 8, border: "1px solid #e5e7eb",
+                      flexShrink: 0,
                       background: taskPage >= taskTotalPages ? "#f9fafb" : "#fff", cursor: taskPage >= taskTotalPages ? "default" : "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       opacity: taskPage >= taskTotalPages ? 0.4 : 1,
@@ -623,7 +665,7 @@ const ProjectDetailsView = ({ project, allProjects, onBack }: ProjectDetailsView
       <TaskDetailModal task={selectedTask} open={selectedTask !== null}
         onClose={() => setSelectedTask(null)} onStatusUpdate={loadDetails}
         canStartTask={role === "USER" || role === "DEVLOPER"}
-        hasInProgressTask={hasInProgressTask} projectColorMap={projectColorMap}
+        projectColorMap={projectColorMap}
         showSnackbar={showSnackbar} />
     </div>
   );

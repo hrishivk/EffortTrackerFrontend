@@ -13,10 +13,11 @@ import BusinessIcon from "@mui/icons-material/Business";
 import { Eye, EyeOff } from "lucide-react";
 
 import { adduser } from "../../../../core/actions/action";
-import { fetchAllExistProjects } from "../../../../core/actions/spAction";
+import { fetchAllExistProjects, fetchExistDomains } from "../../../../core/actions/spAction";
 import { useSnackbar } from "../../../../contexts/SnackbarContext";
 import { uservalidationSchema } from "../../../../utils/validation/Validation";
 import type { project } from "../../../../shared/types/Project";
+import type { Domain } from "../../../../shared/types/Domain";
 import { useAppSelector } from "../../../../store/configureStore";
 
 const inputSx = {
@@ -94,13 +95,19 @@ const CreateUser = () => {
     sendWelcomeEmail: true,
     requirePasswordChange: true,
     is_shared: false,
+    domains: [] as string[],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [projectList, setProjectList] = useState<project[]>([]);
+  const [domainList, setDomainList] = useState<Domain[]>([]);
   const todayStr = new Date().toISOString().split("T")[0];
   const [projectSearch, setProjectSearch] = useState("");
+
+  // Sharing is scoped by domain and offered to managers only.
+  const canShare = isAM;
+  const isSharing = canShare && form.is_shared;
 
   const roleOptions = roleOptionsFor(form.is_shared);
 
@@ -134,6 +141,30 @@ const CreateUser = () => {
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  const loadDomains = useCallback(async () => {
+    if (!isSharing) return;
+    try {
+      // isShared=true so the API can widen the list past our own domains.
+      const response = await fetchExistDomains(true);
+      setDomainList(response?.data || []);
+    } catch (error) {
+      console.log(error);
+    }
+  }, [isSharing]);
+
+  useEffect(() => {
+    loadDomains();
+  }, [loadDomains]);
+
+  const toggleDomain = (id: string) => {
+    setForm((prev) => ({
+      ...prev,
+      domains: prev.domains.includes(id)
+        ? prev.domains.filter((d) => d !== id)
+        : [...prev.domains, id],
+    }));
+  };
 
   const validateField = (field: string, nextForm: typeof form) => {
     const payload: Record<string, any> = {
@@ -177,6 +208,10 @@ const CreateUser = () => {
     setForm((prev) => ({
       ...prev,
       is_shared: shared,
+      // A shared user gets domains instead of projects; managers in those
+      // domains assign the projects afterwards.
+      projects: shared ? [] : prev.projects,
+      domains: shared ? prev.domains : [],
       // Force USER when shared; on unshare keep the role only if still offered.
       role: shared
         ? "USER"
@@ -228,11 +263,17 @@ const CreateUser = () => {
       sendWelcomeEmail: form.sendWelcomeEmail,
       requirePasswordChange: form.requirePasswordChange,
       // snake_case to match the API, alongside manager_id
-      is_shared: form.is_shared,
+      is_shared: isSharing,
     };
 
-    // Send projects as comma-separated string or empty string
-    payload.projects = form.projects.length > 0 ? form.projects.join(",") : "";
+    if (isSharing) {
+      // Shared users are scoped by domain; projects come later.
+      payload.domain_ids = form.domains;
+      payload.projects = "";
+    } else {
+      // Send projects as comma-separated string or empty string
+      payload.projects = form.projects.length > 0 ? form.projects.join(",") : "";
+    }
 
     const result = uservalidationSchema.safeParse(payload);
     if (!result.success) {
@@ -244,6 +285,14 @@ const CreateUser = () => {
       setErrors(fieldErrors);
       const firstError = result.error.errors[0]?.message;
       showSnackbar({ message: firstError || "Validation failed", severity: "error" });
+      return;
+    }
+
+    if (isSharing && form.domains.length === 0) {
+      showSnackbar({
+        message: "Pick at least one department — a shared user with no department is visible to nobody.",
+        severity: "error",
+      });
       return;
     }
 
@@ -457,6 +506,44 @@ const CreateUser = () => {
           <h5 className="fw-bold mb-0" style={{ fontSize: 15 }}>Organizational Details</h5>
         </div>
 
+        {/* Shared access — above Role because turning it on pins the role to USER */}
+        {canShare && (
+          <div
+            className="d-flex align-items-center justify-content-between p-3 mb-3 rounded-3"
+            style={{
+              backgroundColor: form.is_shared ? "#f5f3ff" : "var(--bg-surface)",
+              border: form.is_shared ? "1px solid #ddd6fe" : "1px solid var(--border-light)",
+            }}
+          >
+            <div className="d-flex align-items-center gap-2">
+              <span style={{ fontSize: 16, color: "#7c3aed" }}>&#128101;</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                  Shared across managers
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  For staff who work across departments (testers, QA, designers). Choose the
+                  departments below — every manager in those departments will see this user.
+                </div>
+                {/* /edit-user is super-admin only, so an AM cannot undo this later. */}
+                {form.is_shared && (
+                  <div style={{ fontSize: 11, fontWeight: 500, color: "#d97706", marginTop: 4 }}>
+                    Only a super admin can change this later.
+                  </div>
+                )}
+              </div>
+            </div>
+            <Switch
+              checked={form.is_shared}
+              onChange={(e) => handleSharedToggle(e.target.checked)}
+              sx={{
+                "& .MuiSwitch-switchBase.Mui-checked": { color: "#7c3aed" },
+                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#7c3aed" },
+              }}
+            />
+          </div>
+        )}
+
         {/* Role + Department */}
         <div className="row mb-3">
           <div className="col-md-6">
@@ -554,6 +641,8 @@ const CreateUser = () => {
                 fullWidth
                 size="small"
                 type={showPassword ? "text" : "password"}
+                name="newUserPassword"
+                autoComplete="new-password"
                 placeholder="Enter password"
                 value={form.password}
                 onChange={(e) => handleChange("password", e.target.value)}
@@ -588,7 +677,9 @@ const CreateUser = () => {
         {/* ─── Team Assignment (Optional) ─────────────────────── */}
         <div className="d-flex align-items-center gap-2 mb-1 mt-4">
           <GroupsIcon sx={{ fontSize: 18, color: "#7c3aed" }} />
-          <h5 className="fw-bold mb-0" style={{ fontSize: 15 }}>Team Assignment</h5>
+          <h5 className="fw-bold mb-0" style={{ fontSize: 15 }}>
+            {isSharing ? "Department Access" : "Team Assignment"}
+          </h5>
           <span
             style={{
               fontSize: 11,
@@ -599,14 +690,105 @@ const CreateUser = () => {
               borderRadius: 4,
             }}
           >
-            Optional
+            {isSharing ? "Required" : "Optional"}
           </span>
         </div>
         <p className="mb-3" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          You can assign projects now or do it later from the project page.
+          {isSharing
+            ? "Every manager assigned to these departments will see this user. They assign the projects afterwards."
+            : "You can assign projects now or do it later from the project page."}
         </p>
 
-        {projectList.length > 0 ? (
+        {isSharing ? (
+          domainList.length > 0 ? (
+            <div className="mb-4">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  {form.domains.length > 0
+                    ? `${form.domains.length} of ${domainList.length} selected`
+                    : `${domainList.length} domain${domainList.length === 1 ? "" : "s"} available`}
+                </span>
+                {form.domains.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, domains: [] }))}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "#7c3aed",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Clear selection
+                  </button>
+                )}
+              </div>
+
+              <div
+                className="row g-2"
+                style={{
+                  maxHeight: 260,
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                  margin: 0,
+                  paddingRight: 4,
+                }}
+              >
+                {domainList.map((domain) => {
+                  const isSelected = form.domains.includes(String(domain.id));
+                  return (
+                    <div key={domain.id} className="col-md-6">
+                      <div
+                        onClick={() => toggleDomain(String(domain.id))}
+                        className="d-flex align-items-center gap-3 p-3 rounded-3"
+                        style={{
+                          border: isSelected
+                            ? "2px solid #7c3aed"
+                            : "1px solid var(--border-light)",
+                          backgroundColor: isSelected ? "#f5f3ff" : "var(--bg-card)",
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          readOnly
+                          style={{
+                            width: 16,
+                            height: 16,
+                            accentColor: "#7c3aed",
+                            cursor: "pointer",
+                          }}
+                        />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                            {domain.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                            {domain.description || "Department"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div
+              className="d-flex align-items-center justify-content-center p-4 mb-4 rounded-3"
+              style={{ backgroundColor: "var(--bg-surface)", border: "1px dashed var(--border-light)" }}
+            >
+              <p className="mb-0" style={{ fontSize: 13, color: "var(--text-faint)" }}>
+                No departments available. Create a department first.
+              </p>
+            </div>
+          )
+        ) : projectList.length > 0 ? (
           <div className="mb-4">
             {/* Search only earns its place once the list outgrows the viewport */}
             {projectList.length > 6 && (
@@ -765,40 +947,6 @@ const CreateUser = () => {
             />
           </div>
 
-          <div
-            className="d-flex align-items-center justify-content-between p-3 rounded-3"
-            style={{
-              backgroundColor: form.is_shared ? "#f5f3ff" : "var(--bg-surface)",
-              border: form.is_shared ? "1px solid #ddd6fe" : "1px solid transparent",
-            }}
-          >
-            <div className="d-flex align-items-center gap-2">
-              <span style={{ fontSize: 16, color: "#7c3aed" }}>&#128101;</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                  Shared across all managers
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                  For staff who work across every project (testers, QA, designers).
-                  Every manager will see this user in their list.
-                </div>
-                {/* /edit-user is super-admin only, so an AM cannot undo this later. */}
-                {isAM && form.is_shared && (
-                  <div style={{ fontSize: 11, fontWeight: 500, color: "#d97706", marginTop: 4 }}>
-                    Only a super admin can turn this off later.
-                  </div>
-                )}
-              </div>
-            </div>
-            <Switch
-              checked={form.is_shared}
-              onChange={(e) => handleSharedToggle(e.target.checked)}
-              sx={{
-                "& .MuiSwitch-switchBase.Mui-checked": { color: "#7c3aed" },
-                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#7c3aed" },
-              }}
-            />
-          </div>
         </div>
       </div>
 

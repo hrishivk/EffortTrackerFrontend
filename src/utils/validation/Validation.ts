@@ -62,12 +62,12 @@ export const ProjectValidationSchema=z.object({
   name:z.string().min(1,"Project name is required"),
   category:z.string().min(1,"Category is required"),
   description:z.string().min(10,"Description is required"),
-  domainId:z.string().min(1,"Domain is required"),
+  domainId:z.string().min(1,"Department is required"),
   startDate:z.string().min(1,"Start date is required"),
   endDate:z.string().min(1,"End date is required"),
 })
 export const DomainValidationSchema=z.object({
-  name:z.string().min(1,"Domain name is required").regex(/^[A-Za-z\s]+$/, "Domain name must contain only letters "),
+  name:z.string().min(1,"Department name is required").regex(/^[A-Za-z\s]+$/, "Department name must contain only letters "),
   description:z.string().min(10,"Desctiption is required")
 })
 export const leaveRequestValidationSchema = z.object({
@@ -108,6 +108,63 @@ export const taskWithDateValidationSchema = z.object({
     }),
 });
 
+/**
+ * Editing an existing user. Only what the Edit User modal exposes: no password
+ * (that is its own tab) and no create-only profile fields, so an old record
+ * missing them can still be saved.
+ */
+export const editUserValidationSchema = z.object({
+  fullName: z
+    .string()
+    .min(1, "Full name is required")
+    .regex(/^[A-Za-z\s]+$/, "Full name must contain only letters"),
+  email: z.string().min(1, "Email is required").email("Invalid email address"),
+  role: z.enum(["USER", "SP", "AM", "DEVLOPER"], {
+    required_error: "Role is required",
+    invalid_type_error: "Invalid role selected",
+  }),
+  contactNumber: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d{10}$/.test(val), {
+      message: "Phone number must be exactly 10 digits",
+    })
+    .refine((val) => !val || !/^(\d){9}$/.test(val), {
+      message: "Phone number cannot have all same digits",
+    }),
+  jobTitle: z.string().optional(),
+  employeeId: z.string().optional(),
+  bloodGroup: z.string().optional(),
+  dateOfBirth: z
+    .string()
+    .optional()
+    .refine((val) => !val || new Date(val) <= new Date(), {
+      message: "Date of birth cannot be in the future",
+    }),
+  joiningDate: z
+    .string()
+    .optional()
+    .refine((val) => !val || new Date(val) <= new Date(), {
+      message: "Joining date cannot be in the future",
+    }),
+});
+
+/** New password for a user, set by their manager. Mirrors the login rules. */
+export const userPasswordValidationSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters long")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number")
+      .regex(/[@$!%*?&]/, "Password must contain at least one special character"),
+    confirmPassword: z.string().min(1, "Confirm the new password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
 export type taskWithDateValidationSchema=z.infer<typeof taskWithDateValidationSchema>
 export type taskValidationSchema=z.infer<typeof taskValidationSchema>
 export type ProjectValidationSchema=z.infer<typeof ProjectValidationSchema>
@@ -115,3 +172,5 @@ export type DomainValidationSchema=z.infer<typeof DomainValidationSchema>
 export type loginValidationSchema=z.infer<typeof loginValidationSchema>
 export type uservalidationSchema=z.infer<typeof uservalidationSchema>
 export type baseValidationSchema=z.infer<typeof baseValidationSchema>
+export type editUserValidationSchema=z.infer<typeof editUserValidationSchema>
+export type userPasswordValidationSchema=z.infer<typeof userPasswordValidationSchema>

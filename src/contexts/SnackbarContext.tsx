@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
@@ -18,17 +18,34 @@ export const SnackbarProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [message, setMessage] = useState('');
   const [severity, setSeverity] = useState<SnackbarSeverity>('info');
 
- const showSnackbar = ({ message, severity }: { message: string; severity: SnackbarSeverity }) => {
-  setMessage(message);
-  setSeverity(severity);
-  setOpen(true);
-};
-  const handleClose = () => {
+  /**
+   * Memoised, and so is the context value.
+   *
+   * Both were rebuilt on every provider render, and the provider re-renders
+   * each time the snackbar opens or closes. Any consumer with `showSnackbar`
+   * in a dependency array therefore had its callbacks and effects invalidated
+   * twice per message — once on show, once when `autoHideDuration` closed it.
+   * On the workspace page that re-ran the page's own load effect, so a rename
+   * flashed the whole page, and flashed it again a second and a half later
+   * when the toast auto-hid.
+   */
+  const showSnackbar = useCallback(
+    ({ message, severity }: { message: string; severity: SnackbarSeverity }) => {
+      setMessage(message);
+      setSeverity(severity);
+      setOpen(true);
+    },
+    []
+  );
+
+  const handleClose = useCallback(() => {
     setOpen(false);
-  };
+  }, []);
+
+  const value = useMemo(() => ({ showSnackbar }), [showSnackbar]);
 
   return (
-    <SnackbarContext.Provider value={{ showSnackbar }}>
+    <SnackbarContext.Provider value={value}>
       {children}
       <Snackbar
         open={open}

@@ -125,6 +125,107 @@ const TeamAvatars = ({ members }: { members: { name: string; id?: string | numbe
   );
 };
 
+/** The ⋮ menu in Actions. Edit Project lives here; Manage Members stays inline. */
+const RowActions = ({
+  onEdit,
+  onChangeStatus,
+}: {
+  onEdit?: () => void;
+  onChangeStatus?: () => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const item = {
+    display: "block",
+    width: "100%",
+    padding: "7px 14px",
+    border: "none",
+    background: "transparent",
+    textAlign: "left" as const,
+    fontSize: 13,
+    fontWeight: 500,
+    color: "var(--text-primary)",
+    cursor: "pointer",
+    whiteSpace: "nowrap" as const,
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        aria-label="More actions"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "4px 6px",
+          border: "none",
+          borderRadius: 6,
+          background: open ? "var(--bg-hover)" : "transparent",
+          color: "var(--text-muted)",
+          fontSize: 16,
+          lineHeight: 1,
+          cursor: "pointer",
+        }}
+      >
+        &#8942;
+      </button>
+      {open && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute",
+            top: "100%",
+            right: 0,
+            marginTop: 6,
+            minWidth: 160,
+            padding: "6px 0",
+            borderRadius: 10,
+            border: "1px solid var(--border-light)",
+            backgroundColor: "var(--bg-card)",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+            zIndex: 50,
+          }}
+        >
+          <button
+            type="button"
+            style={item}
+            onClick={() => {
+              setOpen(false);
+              onEdit?.();
+            }}
+          >
+            Edit Project
+          </button>
+          <button
+            type="button"
+            style={item}
+            onClick={() => {
+              setOpen(false);
+              onChangeStatus?.();
+            }}
+          >
+            Change Status
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const statusStyles: Record<string, { bg: string; text: string; label: string }> = {
   ACTIVE: { bg: "#ecfdf5", text: "#059669", label: "Active" },
   "ON HOLD": { bg: "#fff7ed", text: "#ea580c", label: "On Hold" },
@@ -139,6 +240,7 @@ const normalizeStatus = (s: string) =>
 export const getProjectColumns = (
   onManageMembers?: (rowId: number) => void,
   onStatusChange?: (rowId: number, currentStatus: string) => void,
+  onEditProject?: (rowId: number) => void,
 ): Column<ProjectRow>[] => [
   {
     key: "name",
@@ -247,22 +349,31 @@ export const getProjectColumns = (
     key: "actions",
     header: "Actions",
     render: (row) => (
-      <button
-        className="btn btn-sm text-white"
-        style={{
-          backgroundColor: "#7c3aed",
-          borderRadius: 6,
-          fontSize: 12,
-          fontWeight: 500,
-          padding: "4px 12px",
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onManageMembers?.(row.id);
-        }}
-      >
-        Manage Members
-      </button>
+      <div className="d-flex align-items-center gap-1">
+        <button
+          className="btn btn-sm"
+          style={{
+            backgroundColor: "transparent",
+            border: "1px solid #ddd6fe",
+            color: "#7c3aed",
+            borderRadius: 6,
+            fontSize: 12,
+            fontWeight: 500,
+            padding: "4px 12px",
+            whiteSpace: "nowrap",
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onManageMembers?.(row.id);
+          }}
+        >
+          Manage Members
+        </button>
+        <RowActions
+          onEdit={() => onEditProject?.(row.id)}
+          onChangeStatus={() => onStatusChange?.(row.id, row.status)}
+        />
+      </div>
     ),
   },
 ];

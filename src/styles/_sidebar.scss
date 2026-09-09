@@ -1,0 +1,633 @@
+// Sidebar — collapsed icon rail and expanded panel.
+//
+// Hover and focus states live here rather than inline: they need real pseudo
+// classes, and the sidebar has enough of them that inline handlers would be
+// noise.
+
+// Declared on :root, not on .sb — the panel is an ancestor of .sb, and custom
+// properties only inherit downward. Scoping them to .sb left `--sb-gap`
+// undefined on .sb-panel, which broke its height calc and collapsed the card to
+// its content height.
+:root {
+  --sb-accent: #7c3aed;
+  --sb-accent-soft: rgba(124, 58, 237, 0.1);
+  /* Inset around the floating panel. AppLayout offsets content by width + 2x this. */
+  --sb-gap: 12px;
+}
+
+// The panel floats as its own card with an even gutter on all three open sides.
+// It runs the full height of the viewport and sits *above* the header in the
+// stack: the header is transparent, so there is no white bar to cover, and
+// keeping the panel on top means its brand row stays clickable underneath the
+// header's full-width strip.
+.sb-panel {
+  position: fixed;
+  top: var(--sb-gap);
+  left: var(--sb-gap);
+  height: calc(100vh - (var(--sb-gap) * 2));
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.07);
+  overflow: visible;
+  transition: width 0.3s;
+}
+
+// ─── Nav item ───────────────────────────────────────────────────
+.sb-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 9px;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:hover:not(.sb-item--active) {
+    background-color: var(--bg-hover);
+
+    .sb-item__icon,
+    .sb-item__label {
+      color: var(--text-primary);
+    }
+  }
+
+  &__icon {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-faint);
+    transition: color 0.15s;
+  }
+
+  &__label {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    transition: color 0.15s;
+  }
+
+  // Expanded: a soft lavender pill with accent text.
+  &--active {
+    .sb-item__icon,
+    .sb-item__label {
+      color: var(--sb-accent);
+    }
+
+    .sb-item__label {
+      font-weight: 600;
+    }
+  }
+
+  // Expanded active rows also get a bar on the panel's inner edge, which is what
+  // marks the current section at a glance without reading the label.
+  &--active:not(&--active-rail)::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -12px;
+    z-index: 2;
+    width: 3px;
+    height: 18px;
+    transform: translateY(-50%);
+    border-radius: 0 3px 3px 0;
+    background-color: var(--sb-accent);
+  }
+
+  // Collapsed: a solid accent square, so it still reads at 62px wide.
+  &--active-rail {
+    .sb-item__icon {
+      color: #fff;
+    }
+  }
+}
+
+// ─── Section caption ────────────────────────────────────────────
+.sb-caption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0 10px;
+  margin-bottom: 6px;
+  border: none;
+  background: none;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    color: var(--text-muted);
+  }
+
+  &__chevron {
+    display: inline-flex;
+    margin-left: auto;
+    transition: transform 0.2s;
+  }
+
+  &--closed &__chevron {
+    transform: rotate(-90deg);
+  }
+}
+
+// ─── Floating expand handle on the rail's edge ──────────────────
+.sb-handle {
+  position: absolute;
+  top: 50%;
+  right: -11px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  transform: translateY(-50%);
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  background-color: var(--bg-card);
+  color: var(--sb-accent);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+  transition: background-color 0.15s, transform 0.15s;
+
+  &:hover {
+    background-color: var(--sb-accent-soft);
+  }
+}
+
+// ─── Scroll area ────────────────────────────────────────────────
+.sb-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.6);
+  }
+}
+
+// ─── Account card, pinned above the collapse row ────────────────
+.sb-user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border: 1px solid var(--border-light);
+  border-radius: 11px;
+  background-color: var(--bg-surface);
+  text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.35);
+    background-color: var(--sb-accent-soft);
+  }
+
+  &__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ad21db, #7c3aed);
+  }
+
+  &__name {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__role {
+    margin: 0;
+    font-size: 10.5px;
+    color: var(--text-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // Rail width: the avatar alone, centred.
+  &--rail {
+    justify-content: center;
+    padding: 6px 0;
+    border: none;
+    background: none;
+  }
+}
+
+// ─── Header ─────────────────────────────────────────────────────
+// Reads as transparent by sitting at the page colour, but kept slightly opaque
+// with a blur behind it: the main content scrolls underneath a fixed header, and
+// a fully transparent bar would let that text slide visibly behind the icons.
+.app-header {
+  background-color: rgba(246, 247, 251, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .app-header {
+  background-color: rgba(15, 15, 17, 0.72);
+}
+
+// ─── Workspace tree ─────────────────────────────────────────────
+// One workspace expands at a time to reveal its sections, and Rooms unfolds
+// again into the rooms themselves. The branches hang off a guide line so the
+// nesting reads without indentation alone carrying it.
+.sb-tree {
+  padding: 0 6px;
+}
+
+.sb-tree__node {
+  margin-bottom: 2px;
+}
+
+.sb-tree__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 6px;
+  border-radius: 9px;
+  // The whole row expands the branch, so it has to look pressable.
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+  }
+
+  &--open {
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+}
+
+.sb-tree__caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.sb-tree__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sb-tree__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--sb-accent);
+  }
+}
+
+// A workspace that cannot be opened: still listed, but not a link.
+.sb-tree__name--shut {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--text-faint);
+  cursor: default;
+
+  &:hover {
+    color: var(--text-muted);
+  }
+}
+
+.sb-tree__row--open .sb-tree__name {
+  color: var(--sb-accent);
+}
+
+// Sits beside the status pill on a private workspace.
+.sb-tree__lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: var(--sb-accent);
+}
+
+.sb-tree__pill {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background-color: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 8.5px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &--active {
+    background-color: rgba(34, 197, 94, 0.14);
+    color: #15803d;
+  }
+
+  &--planning {
+    background-color: rgba(245, 158, 11, 0.14);
+    color: #b45309;
+  }
+
+  &--on_hold {
+    background-color: rgba(100, 116, 139, 0.16);
+    color: #475569;
+  }
+}
+
+// ─── The branches under a workspace ─────────────────────────────
+.sb-tree__kids {
+  position: relative;
+  margin: 2px 0 4px 15px;
+  padding-left: 12px;
+
+  // The guide line every branch ticks off.
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 2px;
+    bottom: 10px;
+    width: 1px;
+    background-color: var(--border-light);
+  }
+}
+
+.sb-tree__leaf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+
+  // Above the sliding pill.
+  svg,
+  span:not(.sb-tree__glow) {
+    position: relative;
+    z-index: 1;
+  }
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+
+  // The tick joining this branch to the guide line.
+  &::before {
+    content: "";
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    width: 10px;
+    height: 1px;
+    background-color: var(--border-light);
+  }
+
+  svg {
+    flex-shrink: 0;
+    color: var(--text-faint);
+  }
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  &--active {
+    color: var(--sb-accent);
+    font-weight: 600;
+
+    svg {
+      color: var(--sb-accent);
+    }
+  }
+
+  &--branch {
+    justify-content: flex-start;
+  }
+
+  // Stands in for the whole branch while the workspace is still locked.
+  &--shut {
+    color: var(--sb-accent);
+    font-weight: 600;
+
+    svg {
+      color: var(--sb-accent);
+    }
+
+    &:hover {
+      background-color: rgba(124, 58, 237, 0.1);
+      color: var(--sb-accent);
+    }
+  }
+}
+
+.sb-tree__leaf-caret {
+  display: inline-flex;
+  margin-left: auto;
+  color: var(--text-faint);
+  transition: transform 0.18s ease;
+
+  &--open {
+    transform: rotate(180deg);
+  }
+}
+
+// ─── The rooms under Rooms ──────────────────────────────────────
+.sb-tree__rooms {
+  position: relative;
+  margin: 1px 0 2px 10px;
+  padding-left: 12px;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 9px;
+    width: 1px;
+    background-color: var(--border-light);
+  }
+}
+
+.sb-tree__room {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+
+  // Above the sliding pill.
+  span:not(.sb-tree__glow) {
+    position: relative;
+    z-index: 1;
+  }
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  text-decoration: none;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    width: 10px;
+    height: 1px;
+    background-color: var(--border-light);
+  }
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  &--active {
+    color: var(--sb-accent);
+    font-weight: 600;
+
+    .sb-tree__dot {
+      background-color: var(--sb-accent);
+    }
+  }
+}
+
+// The sliding highlight itself. Sits behind the row's own content, which is
+// why the icon, dot and text are all lifted above it.
+.sb-tree__glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background-color: rgba(124, 58, 237, 0.12);
+}
+
+.sb-tree__dot {
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--text-faint);
+}
+
+.sb-tree__none {
+  margin: 0;
+  padding: 7px 10px;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+// ─── Workspace heading ──────────────────────────────────────────
+// A section caption whose only action is the + that opens the set-up flow.
+.sb-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  margin-top: 14px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  user-select: none;
+
+}
+
+.sb-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-faint);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:hover {
+    background-color: rgba(124, 58, 237, 0.12);
+    color: var(--sb-accent);
+  }
+
+  // At rail width the caption goes and only the + remains.
+  &--rail {
+    width: 30px;
+    height: 30px;
+    margin: 10px auto 0;
+    border: 1px dashed rgba(124, 58, 237, 0.4);
+    color: var(--sb-accent);
+  }
+}

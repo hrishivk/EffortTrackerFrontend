@@ -62,9 +62,32 @@ const UserDashboard = () => {
     { key: "myTasks" as const, label: role === "SP" ? "Tasks" : "My Tasks" },
     { key: "profile" as const, label: "Profile" },
   ];
-  const tabs = role === "SP" && !spHasViewParam
-    ? allTabs.filter((tab) => tab.key !== "myTasks")
-    : allTabs;
+
+  /*
+   * A team member's tasks live in their room inside the workspace now, so the
+   * dashboard no longer carries a My Tasks tab for them — reaching the work
+   * through the workspace is the point of putting it there.
+   *
+   * SP keeps the tab only while looking at someone specific, which is what it
+   * was already doing; AM keeps it outright.
+   */
+  const showTasksTab =
+    role === "SP"
+      ? Boolean(spHasViewParam)
+      : role !== "USER" && role !== "DEVLOPER";
+
+  const tabs = showTasksTab
+    ? allTabs
+    : allTabs.filter((tab) => tab.key !== "myTasks");
+
+  /*
+   * A tab that is not on the bar cannot be the active one. The URL can still
+   * ask for it — `?tab=myTasks`, a bookmark, an older link from elsewhere in
+   * the app — so it falls back to Overview rather than rendering a view with
+   * nothing highlighted above it.
+   */
+  const currentTab =
+    activeTab === "myTasks" && !showTasksTab ? "overview" : activeTab;
 
   const listData = useCallback(async () => {
     try {
@@ -105,7 +128,7 @@ const UserDashboard = () => {
 
         <div className="relative flex gap-6 mt-2 border-b" style={{ borderColor: "var(--border-light)" }}>
           {tabs.map((tab) => {
-            const isActive = activeTab === tab.key;
+            const isActive = currentTab === tab.key;
 
             return (
               <button
@@ -147,7 +170,7 @@ const UserDashboard = () => {
           })}
         </div>
 
-        {activeTab === "profile" ? (
+        {currentTab === "profile" ? (
           <ProfileView
             onLogout={async () => {
               const response = await authLogout(id as string);
@@ -157,7 +180,7 @@ const UserDashboard = () => {
               }
             }}
           />
-        ) : activeTab === "myTasks" ? (
+        ) : currentTab === "myTasks" ? (
           <MyTasksView viewUserId={viewUserId} viewProject={viewProject} viewTab={viewTab} />
         ) : (
           <>

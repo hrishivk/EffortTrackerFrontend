@@ -24,7 +24,7 @@ import { fetchAllUsers, fetchAllExistProjects } from "../../../../core/actions/s
 import { useSnackbar } from "../../../../contexts/SnackbarContext";
 import SpinLoader from "../../../../presentation/SpinLoader";
 import type { formUserData } from "../../../../shared/types/User";
-import type { taskList } from "../../../user/types";
+import type { CreateTaskPayload } from "../../../user/types";
 import { parseServerTime } from "../../../../shared/utils/serverTime";
 
 const selectSx = {
@@ -157,7 +157,7 @@ const CreateTask = () => {
     setSubmitting(true);
     try {
       const deadline = form.deadline || projectEndDate || undefined;
-      const payload: taskList = {
+      const payload: CreateTaskPayload = {
         description: form.taskName,
         project: form.project,
         assigned_to: form.assignEmployee,

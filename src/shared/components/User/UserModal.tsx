@@ -172,6 +172,7 @@ const handleChange = (
                 id="password"
                 type={showPassword ? "text" : "password"}
                 name="password"
+                autoComplete="new-password"
                 placeholder="Enter password"
                 onChange={handleChange}
                 style={{ backgroundColor: "#f2ebf5", padding: "14px" }}

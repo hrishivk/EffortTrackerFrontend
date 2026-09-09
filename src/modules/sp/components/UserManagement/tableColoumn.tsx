@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { Column } from "../../../../shared/components/Table/types";
 import type { formUserData } from "../../../../shared/types/User";
 import type { ColumnHandlers } from "../../types";
@@ -22,6 +22,7 @@ const getInitials = (name: string) =>
 
 export const getUserColumns = ({
   onViewTasks,
+  onEditUser,
   onDeleteUser,
 }: ColumnHandlers): Column<formUserData>[] => [
   {
@@ -135,15 +136,24 @@ export const getUserColumns = ({
   {
     key: "actions",
     header: "",
-    width: 50,
+    width: 90,
     render: (u) => (
-      <button
-        className="btn btn-sm um-delete-btn"
-        onClick={() => onDeleteUser(u.id!)}
-        title="Delete user"
-      >
-        <Trash2 size={14} />
-      </button>
+      <div className="eu-row-actions">
+        <button
+          className="btn btn-sm eu-edit-btn"
+          onClick={() => onEditUser(u)}
+          title="Edit user"
+        >
+          <Pencil size={14} />
+        </button>
+        <button
+          className="btn btn-sm um-delete-btn"
+          onClick={() => onDeleteUser(u.id!)}
+          title="Delete user"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
     ),
   },
 ];

@@ -18,12 +18,11 @@ interface AttendanceRow {
   totalHrs: string;
 }
 
-const SHIFT_MINUTES = 9 * 60; // 9-hour working day
+const SHIFT_MINUTES = 9 * 60; 
 
 const DAY_SHORT = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
-// Sundays + 1st/3rd/5th Saturdays of the month are weekend offs.
-// 2nd & 4th Saturdays remain working days.
+
 function isWeekendDay(d: Date): boolean {
   const day = d.getDay();
   if (day === 0) return true;
@@ -34,7 +33,7 @@ function isWeekendDay(d: Date): boolean {
   return false;
 }
 
-/** Convert "HH:MM" to percentage of 9-hour shift (capped at 100) */
+
 function hrsToPercent(hrs: string): number {
   const [h, m] = hrs.split(":").map(Number);
   const mins = h * 60 + m;
@@ -50,7 +49,6 @@ type RawRow = {
   totalHrs: string;
 };
 
-// Feb 2026 week: Sun 8 (weekend), Sat 14 = 2nd Sat (working)
 const rawRows: RawRow[] = [
   { date: new Date(2026, 1, 8),  totalHrs: "00:00" },
   { date: new Date(2026, 1, 9),  lateBy: "00:03", punchIn: "10:03 AM", punchOut: "07:04 PM", totalHrs: "09:01" },
@@ -75,8 +73,6 @@ const dummyRows: AttendanceRow[] = rawRows.map((r) => {
     totalHrs: weekend ? "00:00" : r.totalHrs,
   };
 });
-// Payable: 7, Present: 5 (Mon-Fri), On Duty: 0, Paid Leave: 0, Weekend: 1 (Sun), Working Sat: 1 (today in progress)
-
 const weekendCount = dummyRows.filter((r) => r.isWeekend).length;
 const presentCount = dummyRows.filter((r) => !r.isWeekend && r.punchIn).length;
 const payableCount = dummyRows.length - weekendCount;
@@ -377,7 +373,6 @@ export default function AttendanceSummary() {
           );
         })}
 
-        {/* Summary stats */}
         <div
           className="grid px-6 py-4"
           style={{

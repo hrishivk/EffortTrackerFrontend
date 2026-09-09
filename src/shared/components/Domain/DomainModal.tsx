@@ -58,7 +58,7 @@ const DomainModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
       try {
         await addDomain(formData);
         showSnackbar({
-          message: "Domain Created Successfully",
+          message: "Department Created Successfully",
           severity: "success",
         });
         await listAllDomains();
@@ -66,7 +66,7 @@ const DomainModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
       } catch (error:any) {
         console.log(error)
          showSnackbar({
-          message: "Domain with this name already exists.",
+          message: "Department with this name already exists.",
           severity: "error",
          });
       }
@@ -83,10 +83,10 @@ const DomainModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
       <CModalBody>
         <CForm>
           <div className="w-full ml-20 mt-2 mb-8 text-3xl font-bold">
-            Create Domain
+            Create Department
           </div>
           <div className="mb-3 px-20 text-lg">
-            <CFormLabel htmlFor="projectName">Domain Name</CFormLabel>
+            <CFormLabel htmlFor="projectName">Department Name</CFormLabel>
             <CFormInput
               id="projectName"
               name="name"
@@ -109,7 +109,7 @@ const DomainModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
           {domain.length > 0 && (
   <>
     <div className="mb-3 px-20 text-lg">
-      <h4 className="text-lg font-semibold mb-3">Existing Domain</h4>
+      <h4 className="text-lg font-semibold mb-3">Existing Department</h4>
     </div>
 
     <div className="mt-6 px-10 mr-8">
@@ -147,7 +147,7 @@ const DomainModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
           onClick={handleClick}
           style={{ borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
         >
-          Add Domain
+          Add Department
         </button>
       </CModalFooter>
     </CModal>

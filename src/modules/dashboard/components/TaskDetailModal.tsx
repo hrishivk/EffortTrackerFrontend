@@ -4,7 +4,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import type { taskList } from "../../user/types";
-import { updateTaskStatus } from "../../../core/actions/action";
+import { updateTaskLane } from "../../../core/actions/action";
+import type { TaskGroup } from "../types";
+import { findGroupForStatus } from "./boardConstants";
 import { parseServerTime } from "../../../shared/utils/serverTime";
 
 const PROJECT_COLORS = [
@@ -64,8 +66,12 @@ interface TaskDetailModalProps {
   onClose: () => void;
   onStatusUpdate: () => void;
   canStartTask: boolean;
-  hasInProgressTask?: boolean;
   projectColorMap: Record<string, { bg: string; text: string }>;
+  /**
+   * Board groups, so a status change made here moves the task into the same lane
+   * a drag would have. Without them this falls back to sending `status` alone.
+   */
+  groups?: TaskGroup[];
   showSnackbar: (opts: { message: string; severity: "success" | "error" }) => void;
 }
 
@@ -75,8 +81,8 @@ export default function TaskDetailModal({
   onClose,
   onStatusUpdate,
   canStartTask,
-  hasInProgressTask = false,
   projectColorMap,
+  groups = [],
   showSnackbar,
 }: TaskDetailModalProps) {
   const [updating, setUpdating] = useState(false);
@@ -106,7 +112,6 @@ export default function TaskDetailModal({
   let actionLabel = "";
   let actionIcon: React.ReactNode = null;
   let nextStatus = "";
-  const blockedByInProgress = isYetToStart && hasInProgressTask;
 
   if (canStartTask) {
     if (isYetToStart) {
@@ -124,7 +129,13 @@ export default function TaskDetailModal({
     if (!nextStatus || !task.id) return;
     setUpdating(true);
     try {
-      await updateTaskStatus(String(task.id), nextStatus);
+      // Same two payload shapes as a board drop: the group when there is one
+      // (the API derives the status from it), otherwise the bare status.
+      const target = findGroupForStatus(groups, nextStatus);
+      await updateTaskLane(
+        String(task.id),
+        target ? { groupId: target.id } : { status: nextStatus, groupId: null }
+      );
       showSnackbar({
         message: nextStatus === "in_progress"
           ? "Task started successfully"
@@ -398,24 +409,6 @@ export default function TaskDetailModal({
 
       {/* Fixed Footer */}
       <div style={{ padding: "16px 32px 24px", flexShrink: 0, borderTop: "1px solid var(--border-light)" }}>
-        {/* Blocked warning */}
-        {blockedByInProgress && canStartTask && (
-          <div
-            className="d-flex align-items-center gap-2 mb-3"
-            style={{
-              padding: "10px 14px",
-              borderRadius: 12,
-              backgroundColor: "#fef3c7",
-              border: "1px solid #fcd34d",
-            }}
-          >
-            <span style={{ fontSize: 16, lineHeight: 1 }}>&#9888;</span>
-            <span style={{ fontSize: 12, color: "#92400e", fontWeight: 500 }}>
-              You have a task in progress. Complete it first before starting a new one.
-            </span>
-          </div>
-        )}
-
         <div className="d-flex justify-content-end gap-3">
           <button
             onClick={onClose}
@@ -436,22 +429,21 @@ export default function TaskDetailModal({
           {actionLabel && (
             <button
               onClick={handleStatusUpdate}
-              disabled={updating || blockedByInProgress}
+              disabled={updating}
               className="d-flex align-items-center gap-2"
               style={{
                 padding: "10px 24px",
                 borderRadius: 12,
                 border: "none",
-                background: blockedByInProgress
-                  ? "#d1d5db"
-                  : nextStatus === "completed"
+                background:
+                  nextStatus === "completed"
                     ? "linear-gradient(135deg, #16a34a, #22c55e)"
                     : "linear-gradient(135deg, #7c3aed, #a855f7)",
                 color: "#fff",
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: updating || blockedByInProgress ? "not-allowed" : "pointer",
-                opacity: updating || blockedByInProgress ? 0.7 : 1,
+                cursor: updating ? "not-allowed" : "pointer",
+                opacity: updating ? 0.7 : 1,
               }}
             >
               {updating ? (

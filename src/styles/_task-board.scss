@@ -1,0 +1,133 @@
+// Board and List — the deadline badge.
+//
+// Shaped like the status badge beside it: same 8px radius, weight and padding
+// rhythm, so it reads as part of the same family rather than a stray pill. The
+// colour carries the urgency; nothing animates.
+.task-due-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, #f05252, #dc2626);
+  box-shadow: 0 1px 2px rgba(153, 27, 27, 0.3);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+// Overdue is the escalation: a deeper red, and it says so in words. A missed
+// deadline is the one to act on first, so it should not look identical to
+// something merely due later today.
+.task-due-badge--overdue {
+  background: linear-gradient(135deg, #b91c1c, #7f1d1d);
+  box-shadow: 0 1px 3px rgba(88, 12, 12, 0.4);
+}
+
+// A lane's card list scrolls once it outgrows the lane. The bar is deliberately
+// thin and only gains colour on hover, so a board with four lanes does not read
+// as four grey stripes.
+.board-lane-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  // Firefox
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+
+  &::-webkit-scrollbar {
+    width: 7px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.45);
+    border-radius: 999px;
+    // Inset the thumb so it floats rather than touching the cards.
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(124, 58, 237, 0.55);
+  }
+
+  &::-webkit-scrollbar-thumb:active {
+    background-color: rgba(124, 58, 237, 0.8);
+  }
+}
+
+// ─── Running indicator ──────────────────────────────────────────
+// A task whose clock is actually ticking gets a pulsing dot — the signal a
+// recording light or a live badge uses. It inherits `currentColor`, so it takes
+// the colour of whatever chip it sits in.
+//
+// Only the dot moves. The label beside it stays still, which keeps it readable
+// in a table of twenty rows.
+@keyframes task-running-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.task-running-dot {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: currentColor;
+
+  // The expanding halo, behind the solid dot so the dot stays crisp.
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background-color: currentColor;
+    animation: task-running-pulse 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-running-dot::after {
+    animation: none;
+  }
+}
+
+// The finish control tucked inside the Running chip. Neutral until hovered, so
+// the chip still reads as a state rather than a button, then turns green to say
+// what it does.
+.task-running-done {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-left: 1px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background-color: rgba(37, 99, 235, 0.16);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:hover:not(:disabled) {
+    background-color: #16a34a;
+    color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

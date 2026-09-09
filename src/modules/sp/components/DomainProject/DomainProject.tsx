@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -20,6 +20,8 @@ import {
   fetchProjectStats,
   fetchExistDomains,
   deleteDomain,
+  fetchUsers,
+  fetchAllUsers,
 } from "../../../../core/actions/spAction";
 import { getProjectColumns } from "./domainProjectColumns";
 import { getDomainColumns } from "./domainColumns";
@@ -31,9 +33,11 @@ import Dialoge from "../../../../presentation/Dialog";
 import StatCard from "./StatCard";
 import ProjectDetailsView from "./ProjectDetailsView";
 import ProjectExpandedRow from "./ProjectExpandedRow";
+import EditProjectModal from "./EditProjectModal";
 import { allTabs, PROJECT_STATUS_OPTIONS } from "./constants";
 import type { DomainTab, ProjectRow, PhaseItem, CriticalUpdate } from "../../types";
 import type { Domain } from "../../../../shared/types/Domain";
+import type { formUserData } from "../../../../shared/types/User";
 
 const DomainProject = () => {
   const navigate = useNavigate();
@@ -65,6 +69,12 @@ const DomainProject = () => {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [deleteDomainId, setDeleteDomainId] = useState<number | null>(null);
   const [listView, setListView] = useState<"projects" | "domains">("projects");
+  const [editProject, setEditProject] = useState<any | null>(null);
+  // The assignable roster is the same for every project on this screen, so it is
+  // fetched once on first need and reused. Opening a second row costs no request.
+  const [projectUsers, setProjectUsers] = useState<formUserData[]>([]);
+  const [projectUsersLoading, setProjectUsersLoading] = useState(false);
+  const projectUsersLoaded = useRef(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -96,7 +106,7 @@ const DomainProject = () => {
     if (!deleteDomainId) return;
     try {
       await deleteDomain(String(deleteDomainId));
-      showSnackbar({ message: "Domain deleted successfully", severity: "success" });
+      showSnackbar({ message: "Department deleted successfully", severity: "success" });
       // Domain delete cascades to its projects, so refresh domains, projects, and stats
       await Promise.all([
         fetchDomains(),
@@ -106,12 +116,36 @@ const DomainProject = () => {
           .catch(() => {}),
       ]);
     } catch (error: any) {
-      const msg = error?.response?.data?.message || "Failed to delete domain.";
+      const msg = error?.response?.data?.message || "Failed to delete department.";
       showSnackbar({ message: msg, severity: "error" });
     } finally {
       setDeleteDomainId(null);
     }
   };
+
+  /** SP staffs projects with managers; an AM staffs its own team onto them. */
+  const loadProjectUsers = useCallback(async () => {
+    if (projectUsersLoaded.current) return;
+    setProjectUsersLoading(true);
+    try {
+      if (isAM) {
+        const res = await fetchAllUsers();
+        const all: formUserData[] = res.data || [];
+        setProjectUsers(all.filter((u) => u.role === "USER" || u.role === "DEVLOPER"));
+      } else {
+        const res = await fetchUsers({ role: "AM" });
+        setProjectUsers(res.users || []);
+      }
+      projectUsersLoaded.current = true;
+    } catch {
+      showSnackbar({ message: "Failed to load the team list", severity: "error" });
+      setProjectUsers([]);
+    } finally {
+      setProjectUsersLoading(false);
+    }
+    // showSnackbar is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAM]);
 
   const fetchData = useCallback(async (page?: number) => {
     try {
@@ -244,14 +278,14 @@ const DomainProject = () => {
               ? activeTab === "overview"
                 ? "Executive Project List"
                 : "All Completed Projects Timeline"
-              : "Domains & Projects"}
+              : "Departments & Projects"}
           </h2>
            <p className="mt-2 mb-0" style={{ fontSize: "0.90rem", color: "var(--text-muted)" }}>
             {isAM
               ? activeTab === "overview"
                 ? "High-level overview of all active initiatives and project health."
                 : "Historical view of delivered initiatives and retrospective data."
-              : "Manage all domains and their associated projects"}
+              : "Manage all departments and their associated projects"}
           </p>
         </div>
 
@@ -266,7 +300,7 @@ const DomainProject = () => {
                     style={{ backgroundColor: "#7c3aed", borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
                     onClick={() => navigate(`/${currentRole}/create-domain`)}
                   >
-                    + Create Domain
+                    + Create Department
                   </button>
                   <button
                     className="btn text-white"
@@ -284,7 +318,7 @@ const DomainProject = () => {
                     style={{ backgroundColor: "#4f46e5", borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
                     onClick={() => navigate(`/${currentRole}/create-domain`)}
                   >
-                    + Add Domain
+                    + Add Department
                   </button>
                   <button
                     className="btn text-white"
@@ -435,7 +469,7 @@ const DomainProject = () => {
             }}
           >
             <FolderTree size={14} />
-            Domains
+            Departments
           </button>
         </div>
       )}
@@ -444,6 +478,14 @@ const DomainProject = () => {
         const handleManageMembers = (projectId: number) => {
           const idx = projects.findIndex((p) => p.id === projectId);
           setExpandedIndex(expandedIndex === idx ? null : idx);
+        };
+        const handleEditProject = (projectId: number) => {
+          // The modal needs domain_id, end_date and progress, none of which
+          // survive the mapping into ProjectRow.
+          const raw = rawProjects.find((p: any) => String(p.id) === String(projectId));
+          if (!raw) return;
+          setEditProject(raw);
+          loadProjectUsers();
         };
         const handleStatusClick = (projectId: number, currentStatus: string) => {
           const proj = projects.find((p) => p.id === projectId);
@@ -456,7 +498,7 @@ const DomainProject = () => {
         };
         return (
           <TableList
-            columns={getProjectColumns(handleManageMembers, handleStatusClick)}
+            columns={getProjectColumns(handleManageMembers, handleStatusClick, handleEditProject)}
             data={projects}
             pagination={{
               currentPage,
@@ -480,7 +522,7 @@ const DomainProject = () => {
         <TableList
           columns={getDomainColumns((id) => setDeleteDomainId(id))}
           data={domains}
-          emptyMessage="No domains found"
+          emptyMessage="No departments found"
         />
       )}
 
@@ -690,6 +732,23 @@ const DomainProject = () => {
         data="delete"
         onClose={() => setDeleteDomainId(null)}
         onConfirm={confirmDeleteDomain}
+      />
+      <EditProjectModal
+        open={editProject !== null}
+        project={editProject}
+        domains={domains}
+        users={projectUsers}
+        usersLoading={projectUsersLoading}
+        onClose={() => setEditProject(null)}
+        onSaved={() => {
+          // A membership change invalidates the cached projects[] on each user.
+          projectUsersLoaded.current = false;
+          loadProjectUsers();
+          fetchData(currentPage);
+          fetchProjectStats()
+            .then((res) => setStats(res?.data || null))
+            .catch(() => {});
+        }}
       />
     </motion.div>
   );
