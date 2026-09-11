@@ -81,6 +81,10 @@
 }
 
 .ctm__aside {
+  // The task's collections, stacked: tags, then subtasks.
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   padding-left: 24px;
   border-left: 1px solid var(--border-light);
 
@@ -326,14 +330,40 @@
 // ─── Subtasks ───────────────────────────────────────────────────
 // Listed under the parent, numbered, with the whole row indented so the nesting
 // is visible without drawing tree lines.
+/*
+ * Grows with the subtasks, then scrolls. Without the cap a task with a dozen
+ * subtasks pushed the Create button off the bottom of the panel; one scrollbar
+ * on the list keeps the rest of the form — and the buttons — where they were.
+ */
 .ctm__subtasks {
   display: flex;
   flex-direction: column;
   gap: 5px;
   margin: 9px 0 0;
-  padding: 0 0 0 14px;
+  padding: 0 4px 0 14px;
   list-style: none;
   border-left: 2px solid var(--border-light);
+
+  max-height: 296px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--border-light);
+    border-radius: 999px;
+  }
+
+  // The list view's panel stacks priority and both dates, so each row is about
+  // twice as tall — the same handful of subtasks needs the extra room before
+  // scrolling is worth it.
+  &--tall {
+    max-height: 420px;
+  }
 }
 
 .ctm__subtask {
@@ -373,6 +403,21 @@
 
   @media (max-width: 520px) {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /*
+   * The list view's create panel is a fixed 380px column — narrow regardless of
+   * the viewport, so it asks for the reflow directly rather than waiting for a
+   * breakpoint. Priority takes the full width and the two dates share the row
+   * under it: at ~168px each they still fit, and the row stays half the height
+   * a full stack would cost, which is twice as many subtasks on screen.
+   */
+  &--stack {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+    > :first-child {
+      grid-column: 1 / -1;
+    }
   }
 }
 
@@ -436,4 +481,69 @@
     // Enough to show it is editable, without boxing every row.
     border-bottom: 1px solid #7c3aed;
   }
+}
+
+// ─── Shared subtasks ────────────────────────────────────────────
+// Who a subtask belongs to. Its own full-width line above the priority/date
+// grid: the name is the longest value on the row and would squeeze the dates
+// into uselessness if it shared their columns.
+.ctm__subtask-owner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 7px 0 0 22px;
+}
+
+// "waits for #2" — the turn order, said on the row it constrains.
+.ctm__subtask-waits {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background-color: rgba(100, 116, 139, 0.12);
+  color: #64748b;
+  font-size: 9.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: help;
+}
+
+// The toggle that turns the list into a relay.
+.ctm__seq {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  background-color: var(--bg-surface);
+  cursor: pointer;
+
+  input {
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    margin: 1px 0 0;
+    accent-color: #7c3aed;
+    cursor: pointer;
+  }
+
+  > span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+}
+
+.ctm__seq-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ctm__seq-note {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--text-faint);
 }

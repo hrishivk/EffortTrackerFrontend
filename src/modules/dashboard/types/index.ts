@@ -1,4 +1,4 @@
-import type { taskList } from "../../user/types";
+import type { SubtaskBlocker, TaskUser, taskList } from "../../user/types";
 import type { formUserData } from "../../../shared/types/User";
 import type { PROJECT_COLORS } from "../components/ganttConstants";
 
@@ -142,7 +142,19 @@ export interface BoardTask {
     status?: string | null;
     priority?: string | null;
     due_date?: string | null;
+    /** Whose piece it is — a shared task splits its children across a room. */
+    assigned_to?: string | number | null;
+    assignedUser?: TaskUser | null;
+    /** Computed by the API: not startable yet, and what it is waiting on. */
+    is_blocked?: boolean;
+    blocked_by?: SubtaskBlocker | null;
   }[];
+  /**
+   * The API's own subtask tally. Preferred over counting `subtasks[]`, which is
+   * only the slice a given response happened to nest.
+   */
+  subtask_count?: number;
+  subtask_done_count?: number;
   status?: string;
   assignees: { name: string; status: string; userId: string | number | null | undefined }[];
 }

@@ -2069,22 +2069,20 @@
 }
 
 // ─── Hero ───────────────────────────────────────────────────────
+/*
+ * One band across the top, in groups ruled off from each other: identity,
+ * counts, status, actions. It wraps rather than scrolls, so a narrow window
+ * stacks the groups instead of cutting the actions menu off the end.
+ */
 .wsd__hero {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 22px 24px 20px;
-  border-radius: 16px;
-  background: linear-gradient(115deg, #6d28d9 0%, #7c3aed 48%, #a855f7 100%);
-  box-shadow: inset -90px 0 130px rgba(255, 255, 255, 0.07);
-}
-
-// The identity row: badge, name and the counts.
-.wsd__hero-main {
   display: flex;
   align-items: center;
   gap: 20px;
   flex-wrap: wrap;
+  padding: 20px 24px;
+  border-radius: 18px;
+  background: linear-gradient(115deg, #6d28d9 0%, #7c3aed 48%, #a855f7 100%);
+  box-shadow: inset -90px 0 130px rgba(255, 255, 255, 0.07);
 }
 
 .wsd__hero-badge {
@@ -2092,18 +2090,18 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 68px;
-  height: 68px;
-  border: 1.5px solid rgba(255, 255, 255, 0.38);
-  border-radius: 16px;
+  width: 58px;
+  height: 58px;
+  border: 1.5px solid rgba(255, 255, 255, 0.34);
+  border-radius: 18px;
   background-color: rgba(255, 255, 255, 0.18);
   color: #fff;
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
 }
 
 .wsd__hero-ident {
-  flex: 1;
+  flex: 1 1 240px;
   min-width: 190px;
 }
 
@@ -2113,7 +2111,7 @@
   gap: 10px;
   flex-wrap: wrap;
   margin: 0;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: #fff;
 }
@@ -2124,11 +2122,11 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
+  padding: 4px 10px;
   border-radius: 999px;
   background-color: #fff;
   color: var(--text-primary);
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 700;
   white-space: nowrap;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
@@ -2152,6 +2150,10 @@
 
 .wsd__hero-chip--on_hold .wsd__hero-chip-dot {
   background-color: #64748b;
+}
+
+.wsd__hero-chip--completed .wsd__hero-chip-dot {
+  background-color: #0d9488;
 }
 
 // ─── The lock screen on a private workspace ─────────────────────
@@ -2217,141 +2219,216 @@
 // Planned, opened, sometimes paused — a sequence, so it reads as a track. It
 // sits on the violet band, so the rule and the unvisited dots are white and
 // only the current stage takes a real colour.
-.wsd__rail {
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-// The label and the explanation are carried by the stages themselves here —
-// on the hero there is no room for a heading as well.
-.wsd__rail-label,
-.wsd__rail-note {
-  display: none;
-}
-
-.wsd__rail-track {
-  display: flex;
-  align-items: flex-start;
-  // Centred and held to a readable width rather than spanning the whole band.
-  max-width: 560px;
-  margin: 0 auto;
-}
-
-.wsd__stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 9px;
+// ─── Status control and actions menu ────────────────────────────
+.wsd__status {
   position: relative;
-  /*
-   * Equal thirds, the last one included. Letting the last stage shrink to fit
-   * did two things wrong: the other two split the leftover width so On Hold
-   * sat next to Active instead of at the end, and Active's rule — which
-   * reaches half its own width past its right edge — then overshot beyond the
-   * narrow last stage, leaving a line hanging off the end of the track.
-   *
-   * With equal thirds the dots land at 1/6, 1/2 and 5/6, and each rule ends
-   * exactly on the next dot.
-   */
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 0;
-  border: none;
-  background: none;
+  flex-shrink: 0;
+  padding-left: 20px;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+
+  @media (max-width: 900px) {
+    padding-left: 0;
+    border-left: none;
+  }
+}
+
+.wsd__status-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.wsd__status-info {
+  display: inline-flex;
+  color: rgba(255, 255, 255, 0.68);
+  cursor: help;
+}
+
+// A pill rather than a select: it reads as the current state first and as a
+// control second, which is the order it matters in.
+.wsd__status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 172px;
+  padding: 7px 9px 7px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.17);
+  color: #fff;
   font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
   cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.27);
+  }
 
   &:disabled {
     cursor: not-allowed;
+    opacity: 0.8;
   }
 }
 
-// The rule from this stage's dot across to the next one's.
-.wsd__stage-line {
-  position: absolute;
-  left: 50%;
-  top: 8px;
-  right: -50%;
-  height: 2px;
-  background-color: rgba(255, 255, 255, 0.35);
+.wsd__status-caret {
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+
+  &--up {
+    transform: rotate(180deg);
+  }
 }
 
-.wsd__stage-dot {
+// The one mark of which state a workspace is in, on the band and in the menu.
+.wsd__status-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #cbd5e1;
+
+  &--active {
+    background-color: #4ade80;
+  }
+
+  &--planning {
+    background-color: #fbbf24;
+  }
+
+  &--on_hold {
+    background-color: #94a3b8;
+  }
+
+  &--completed {
+    background-color: #2dd4bf;
+  }
+}
+
+.wsd__more {
+  position: relative;
+  flex-shrink: 0;
+  padding-left: 20px;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+
+  @media (max-width: 900px) {
+    padding-left: 0;
+    margin-left: auto;
+    border-left: none;
+  }
+}
+
+.wsd__more-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  z-index: 1;
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.75);
-  border-radius: 50%;
-  background-color: transparent;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.17);
   color: #fff;
-  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.2s,
-    width 0.15s, height 0.15s;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.29);
+  }
 }
 
-.wsd__stage-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-  font-size: 12px;
+/*
+ * Both hero dropdowns. Hung from the right edge of whichever control opened
+ * it, because each sits at the end of the band — dropping left would take it
+ * off the page.
+ */
+.wsd__drop {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  min-width: 224px;
+  padding: 6px;
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.24);
+
+  &--status {
+    min-width: 268px;
+  }
+}
+
+.wsd__drop-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 11px;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13.5px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
-}
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.12s;
 
-.wsd__stage:hover:not(:disabled):not(.wsd__stage--on) {
-  .wsd__stage-dot {
-    border-color: #fff;
-    background-color: rgba(255, 255, 255, 0.25);
+  svg {
+    flex-shrink: 0;
+    color: var(--text-faint);
   }
 
-  .wsd__stage-name {
-    color: #fff;
-  }
-}
-
-// Stages already passed read as done, but quietly.
-.wsd__stage--past .wsd__stage-dot {
-  border-color: rgba(255, 255, 255, 0.9);
-  background-color: rgba(255, 255, 255, 0.9);
-}
-
-// The stage the workspace is at: filled in its own colour, ringed so it lifts
-// off the band, and a little larger than the rest.
-.wsd__stage--on {
-  .wsd__stage-name {
-    color: #fff;
-    font-weight: 700;
+  &:hover:not(:disabled) {
+    background-color: var(--bg-hover);
   }
 
-  .wsd__stage-dot {
-    width: 22px;
-    height: 22px;
-    border-color: #fff;
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 
-  &.wsd__stage--planning .wsd__stage-dot {
-    background-color: #d97706;
-    box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.35);
-  }
-
-  &.wsd__stage--active .wsd__stage-dot {
-    background-color: #16a34a;
-    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.35);
-  }
-
-  &.wsd__stage--on_hold .wsd__stage-dot {
-    background-color: #64748b;
-    box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.4);
+  &--on {
+    background-color: var(--bg-hover);
   }
 }
 
-// The current stage's dot is bigger, so its rule starts a touch further out.
-.wsd__stage--on .wsd__stage-line {
-  top: 10px;
+// The status options carry their consequence under the label.
+.wsd__drop-text {
+  flex: 1;
+  min-width: 0;
+
+  b {
+    display: block;
+    font-weight: 600;
+  }
+
+  small {
+    display: block;
+    margin-top: 1px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-faint);
+  }
+}
+
+.wsd__drop-row--danger {
+  color: #dc2626;
+
+  svg {
+    color: #dc2626;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: rgba(239, 68, 68, 0.09);
+  }
 }
 
 .wsd__hero-key {
@@ -2359,7 +2436,7 @@
   align-items: center;
   gap: 7px;
   margin: 7px 0 0;
-  font-size: 12.5px;
+  font-size: 11.5px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.86);
 }
@@ -2387,7 +2464,7 @@
   align-items: center;
   gap: 6px;
   margin: 8px 0 0;
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -2396,9 +2473,13 @@
   display: flex;
   align-items: stretch;
   flex-shrink: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
 
-  @media (max-width: 760px) {
+  @media (max-width: 900px) {
     width: 100%;
+    padding-top: 16px;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.22);
   }
 }
 
@@ -2407,32 +2488,43 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 96px;
-  padding: 0 22px;
+  min-width: 92px;
+  padding: 0 20px;
   color: #fff;
 
   & + & {
-    border-left: 1px solid rgba(255, 255, 255, 0.25);
+    border-left: 1px solid rgba(255, 255, 255, 0.22);
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 900px) {
     flex: 1;
     min-width: 0;
     padding: 0 10px;
   }
 }
 
-.wsd__stat-n {
-  margin-top: 5px;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.1;
+.wsd__stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 33px;
+  height: 33px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 11px;
+  background-color: rgba(255, 255, 255, 0.16);
 }
 
 .wsd__stat-label {
-  margin-top: 2px;
+  margin-top: 9px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.wsd__stat-n {
+  margin-top: 2px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.15;
 }
 
 // ─── Description strip ──────────────────────────────────────────
@@ -3069,6 +3161,13 @@
   }
 }
 
+// One circle under the next, when a room needs more than one.
+.rmo__stages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .rmo__stage {
   position: relative;
   /*
@@ -3078,18 +3177,17 @@
    * they beat `aspect-ratio` and gave a 620x520 box — so the size is set on
    * one axis only and the ratio does the rest.
    */
-  width: min(100%, 560px);
+  width: min(100%, 660px);
   aspect-ratio: 1;
   margin: 0 auto;
 }
 
+// An ellipse, not a circle — width and height come from the node geometry in
+// RoomDetail so the two always agree.
 .rmo__ring {
   position: absolute;
   left: 50%;
   top: 50%;
-  // 52% wide is a radius of 26%, which is where the nodes are placed.
-  width: 52%;
-  aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border: 1.5px dashed rgba(124, 58, 237, 0.32);
   border-radius: 50%;
@@ -3105,13 +3203,13 @@
   pointer-events: none;
 
   &--outer {
-    width: 34%;
+    width: 30%;
     aspect-ratio: 1;
     background-color: rgba(124, 58, 237, 0.07);
   }
 
   &--inner {
-    width: 25%;
+    width: 22%;
     aspect-ratio: 1;
     background-color: rgba(124, 58, 237, 0.13);
   }
@@ -3125,7 +3223,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 29%;
+  // 25% leaves the inner column clear of the core at every member count.
+  width: 25%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
@@ -3139,6 +3238,11 @@
   font-size: 26px;
   font-weight: 700;
   line-height: 1.05;
+}
+
+// A range rather than a count, on the circles after the first.
+.rmo__core-n--range {
+  font-size: 21px;
 }
 
 .rmo__core-label {
@@ -3534,5 +3638,121 @@
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+}
+
+// ─── "This workspace is finished" ───────────────────────────────
+// A strip under the hero rather than a control on it. It exists only while the
+// workspace is completed, so it has room to say what it is for — which an icon
+// on the band could only do through a tooltip.
+.wsd__done {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 13px 15px;
+  border: 1px solid rgba(13, 148, 136, 0.28);
+  border-radius: 13px;
+  background-color: rgba(13, 148, 136, 0.07);
+
+  @media (max-width: 620px) {
+    flex-wrap: wrap;
+  }
+}
+
+// Once it has been sent, the strip stops asking and just confirms.
+.wsd__done--sent {
+  border-color: rgba(22, 163, 74, 0.28);
+  background-color: rgba(22, 163, 74, 0.06);
+
+  .wsd__done-icon {
+    background-color: rgba(22, 163, 74, 0.14);
+    color: #16a34a;
+  }
+
+  .wsd__done-go {
+    background-color: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+
+    &:hover {
+      border-color: #0d9488;
+      background-color: transparent;
+      color: #0d9488;
+    }
+  }
+}
+
+.wsd__done-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background-color: rgba(13, 148, 136, 0.14);
+  color: #0d9488;
+}
+
+.wsd__done-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  b {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  small {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+}
+
+.wsd__done-go {
+  flex-shrink: 0;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 9px;
+  background-color: #0d9488;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background-color: #0f766e;
+  }
+}
+
+// What the managers will actually receive, shown before it is sent.
+.wsd__announce-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-surface);
+
+  b {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  span {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
   }
 }

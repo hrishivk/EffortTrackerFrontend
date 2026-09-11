@@ -71,13 +71,42 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
   },
 
 
+  /**
+   * Task comments. There is no GET — a task's thread arrives inside
+   * `/task-list`, so these three only mutate.
+   */
+  createTaskComment: (url: string, data: { task_id: string; body: string }) => {
+    return apiservice.post(url, data, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+  updateTaskComment: (
+    url: string,
+    data: { task_id: string; comment_id: string; body: string }
+  ) => {
+    return apiservice.patch(url, data, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+  // Query params, not a body — DELETE bodies are dropped by some proxies.
+  deleteTaskComment: (url: string) => {
+    return apiservice.delete(url, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+
   listTaskGroups: (url: string, assignedTo?: string) => {
     return apiservice.get(url, {
       params: { ...(assignedTo ? { assigned_to: assignedTo } : {}), _t: Date.now() },
       headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
     });
   },
-  createTaskGroup: (url: string, data: { name: string; color: string }) => {
+  createTaskGroup: (
+    url: string,
+    // assigned_to names the board the lane belongs to. Omitted -> the caller's
+    // own board, which is what the API assumes.
+    data: { name: string; color: string; assigned_to?: string }
+  ) => {
     return apiservice.post(url, data, {
       headers: { "Content-Type": "application/json" },
     });
@@ -133,6 +162,27 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
   },
   leaveAction: (url: string, data: any) => {
     return apiservice.patch(url, data, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+
+  /** Who this caller may announce a finished workspace to. */
+  listNotifyTargets: (url: string) => {
+    return apiservice.get(url, {
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+    });
+  },
+
+  /**
+   * Announce a finished workspace to the managers who were picked. The only
+   * place the frontend *raises* a notification rather than just reading them —
+   * every other one is a side effect of something the API already does.
+   */
+  notifyWorkspaceCompleted: (
+    url: string,
+    data: { workspace_id: string; user_ids: string[] }
+  ) => {
+    return apiservice.post(url, data, {
       headers: { "Content-Type": "application/json" },
     });
   },

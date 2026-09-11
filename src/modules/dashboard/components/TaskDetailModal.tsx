@@ -5,6 +5,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import type { taskList } from "../../user/types";
 import { updateTaskLane } from "../../../core/actions/action";
+import { assigneeOf, blockedReason } from "../../../shared/utils/subtasks";
 import type { TaskGroup } from "../types";
 import { findGroupForStatus } from "./boardConstants";
 import { parseServerTime } from "../../../shared/utils/serverTime";
@@ -99,8 +100,11 @@ export default function TaskDetailModal({
     ? (task.project as any).name : (task.project || "");
   const projColor = projectColorMap[projName] || PROJECT_COLORS[0];
 
-  const assigneeName = task.dailyLog?.assignedUser?.fullName || "Unassigned";
-  const assigneeEmail = task.dailyLog?.assignedUser?.email || "";
+  // The flat field first: a subtask opened from a board card carries its own
+  // assignee there, and only inherits `dailyLog` from the parent.
+  const assignee = assigneeOf(task);
+  const assigneeName = assignee?.fullName || "Unassigned";
+  const assigneeEmail = assignee?.email || "";
   const creatorName = task.dailyLog?.creator?.fullName || "Unknown";
 
   const prio = (task.priority || "medium").toLowerCase();
@@ -113,7 +117,14 @@ export default function TaskDetailModal({
   let actionIcon: React.ReactNode = null;
   let nextStatus = "";
 
-  if (canStartTask) {
+  /*
+   * A sequential subtask whose turn has not come. The server refuses the start
+   * with a 409 either way; withholding the button is what stops somebody being
+   * offered an action that cannot work.
+   */
+  const blocked = blockedReason(task);
+
+  if (canStartTask && !blocked) {
     if (isYetToStart) {
       actionLabel = "Start Timer";
       actionIcon = <PlayArrowIcon sx={{ fontSize: 18 }} />;
@@ -425,6 +436,27 @@ export default function TaskDetailModal({
           >
             Cancel
           </button>
+
+          {/* Why there is no Start button. Without this the footer just goes
+              quiet and it reads as a permissions problem. */}
+          {blocked && canStartTask && (
+            <span
+              title={blocked}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "10px 18px",
+                borderRadius: 12,
+                backgroundColor: "rgba(100, 116, 139, 0.12)",
+                color: "#64748b",
+                fontSize: 12.5,
+                fontWeight: 600,
+              }}
+            >
+              {blocked}
+            </span>
+          )}
 
           {actionLabel && (
             <button

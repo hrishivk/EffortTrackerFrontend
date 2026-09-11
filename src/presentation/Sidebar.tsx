@@ -57,6 +57,7 @@ const WS_STATUS: Record<string, string> = {
   planning: "Planning",
   active: "Active",
   on_hold: "On Hold",
+  completed: "Completed",
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -187,18 +188,16 @@ const Sidebar: React.FC<SidebarProps> = ({
    * only way to see its rooms was to find the 16px caret — the name is a link,
    * so clicking the obvious target navigated instead of expanding.
    *
-   * The room page carries `?ws=<workspace>&id=<room>`, so `ws` has to win over
-   * `id`; on the workspace page only `id` is present.
+   * Every one of these routes names the workspace `ws` — the room page adds
+   * `room` for the room, and room-tasks a `user` on top of that — so there is
+   * one key to read rather than a guess about which one holds a workspace.
    */
   const activeWsId = useMemo(() => {
-    // Only on the pages that carry a workspace id. Other screens use `?id=`
-    // for their own records, and reading it here would fire a doomed fetch.
     const onWorkspacePage = ["/workspace", "/room", "/room-tasks"].some(
       (suffix) => pathname.endsWith(suffix)
     );
     if (!onWorkspacePage) return "";
-    const q = new URLSearchParams(search);
-    return q.get("ws") || q.get("id") || "";
+    return new URLSearchParams(search).get("ws") || "";
   }, [pathname, search]);
 
   useEffect(() => {
@@ -236,9 +235,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   const rolePath = `/${(role ?? "").toLowerCase()}`;
   const setupPath = `${rolePath}/workspace-setup`;
   const workspacePath = (id: string) =>
-    `${rolePath}/workspace?id=${encodeURIComponent(id)}`;
+    `${rolePath}/workspace?ws=${encodeURIComponent(id)}`;
   const roomPath = (wsId: string, roomId: string) =>
-    `${rolePath}/room?ws=${encodeURIComponent(wsId)}&id=${encodeURIComponent(roomId)}`;
+    `${rolePath}/room?ws=${encodeURIComponent(wsId)}&room=${encodeURIComponent(roomId)}`;
   const here = `${pathname}${search}`;
 
   const renderInner = (isCollapsed: boolean, pillId: string) => (

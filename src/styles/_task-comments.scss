@@ -1,0 +1,244 @@
+/**
+ * Comment threads on a task or a subtask.
+ *
+ * Used in two places at two densities: the main task's thread in the detail
+ * panel, and the nested thread on a single expanded subtask (`--dense`).
+ */
+
+.tcm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+
+  &__older {
+    margin: 0;
+    font-size: 10.5px;
+    font-style: italic;
+    color: var(--text-faint);
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    // Long threads scroll inside the panel rather than pushing the composer
+    // off the bottom of the dialog.
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 2px;
+
+    &--dense {
+      max-height: 168px;
+      gap: 7px;
+    }
+  }
+
+  &__empty {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  &__row {
+    display: flex;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__avatar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    // Matches every other avatar in the detail modal, which is the only place
+    // this thread is rendered.
+    background-color: #7c3aed;
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+  }
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  &__name {
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__when,
+  &__edited {
+    flex-shrink: 0;
+    font-size: 10px;
+    color: var(--text-faint);
+  }
+
+  &__edited {
+    font-style: italic;
+  }
+
+  &__actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 2px;
+    margin-left: auto;
+    // Revealed on hover so a thread reads as text, not as a row of controls.
+    opacity: 0;
+    transition: opacity 0.15s;
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px;
+      border: none;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--text-faint);
+      cursor: pointer;
+
+      &:hover {
+        background-color: var(--bg-hover);
+        color: var(--text-secondary);
+      }
+    }
+  }
+
+  &__row:hover &__actions,
+  &__actions:focus-within {
+    opacity: 1;
+  }
+
+  &__text {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    // Keeps the newlines the API preserves, and breaks a pasted URL.
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &__edit {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    margin-top: 4px;
+
+    textarea {
+      flex: 1;
+      min-width: 0;
+      padding: 6px 8px;
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      background-color: var(--bg-surface);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 12.5px;
+      line-height: 1.45;
+      resize: vertical;
+
+      &:focus {
+        border-color: #7c3aed;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+      }
+    }
+  }
+
+  &__edit-actions {
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    gap: 3px;
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px;
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      background-color: var(--bg-surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        border-color: #7c3aed;
+        color: #7c3aed;
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+    }
+  }
+
+  &__compose {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+
+    textarea {
+      flex: 1;
+      min-width: 0;
+      padding: 7px 10px;
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      background-color: var(--bg-surface);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 12.5px;
+      line-height: 1.45;
+      resize: vertical;
+
+      &::placeholder {
+        color: var(--text-faint);
+      }
+
+      &:focus {
+        border-color: #7c3aed;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+      }
+    }
+  }
+
+  &__send {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+    }
+  }
+}

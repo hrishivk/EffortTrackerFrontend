@@ -73,6 +73,21 @@ export default function RoomMemberTasks() {
     [room, memberId]
   );
 
+  /**
+   * The room's roster, in the shape the create form wants. This is what lets a
+   * subtask be handed to somebody else in the room — the API validates each
+   * `subtasks[].assigned_to` against exactly this list.
+   */
+  const roomMembers = useMemo(
+    () =>
+      (room?.members ?? []).map((m) => ({
+        id: m.id,
+        name: m.fullName,
+        role: m.role,
+      })),
+    [room]
+  );
+
   if (loading) {
     return (
       <div className="wsd">
@@ -107,7 +122,7 @@ export default function RoomMemberTasks() {
               navigate(
                 `/${rolePath}/room?ws=${encodeURIComponent(
                   workspaceId ?? ""
-                )}&id=${encodeURIComponent(roomId ?? "")}`
+                )}&room=${encodeURIComponent(roomId ?? "")}`
               )
             }
           >
@@ -146,7 +161,7 @@ export default function RoomMemberTasks() {
             navigate(
               `/${rolePath}/room?ws=${encodeURIComponent(
                 workspaceId ?? ""
-              )}&id=${encodeURIComponent(roomId ?? "")}`
+              )}&room=${encodeURIComponent(roomId ?? "")}`
             )
           }
         >
@@ -177,6 +192,8 @@ export default function RoomMemberTasks() {
           viewUserName={member.fullName}
           viewProject={workspace?.project?.name}
           lockedProject={workspace?.project?.name}
+          roomId={roomId ?? undefined}
+          roomMembers={roomMembers}
         />
       </div>
     </div>

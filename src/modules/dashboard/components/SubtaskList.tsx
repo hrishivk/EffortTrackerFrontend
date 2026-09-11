@@ -4,8 +4,10 @@ import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 
 import { toLocalDate } from "../../../shared/utils/taskStatus";
+import { assigneeOf, blockedReason } from "../../../shared/utils/subtasks";
 import { STATUS_ACCENT, PRIORITY_STYLE } from "./boardConstants";
 import TaskTimer from "./TaskTimer";
+import type { SubtaskBlocker, TaskUser } from "../../user/types";
 
 /** The slice of a child task this list needs. */
 export interface SubtaskRow {
@@ -17,7 +19,23 @@ export interface SubtaskRow {
   start_time?: string | null;
   end_time?: string | null;
   total_seconds?: number;
+  /** Whose piece this is — a shared task splits its children across a room. */
+  assigned_to?: string | number | null;
+  assignedUser?: TaskUser | null;
+  dailyLog?: { assignedUser?: TaskUser } | null;
+  /** Computed by the API: this one cannot be started yet, and what it waits on. */
+  is_blocked?: boolean;
+  blocked_by?: SubtaskBlocker | null;
 }
+
+const initialsOf = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
 const normalize = (v?: string | null) =>
   (v || "").toLowerCase().replace(/[\s-]+/g, "_");
@@ -91,6 +109,8 @@ export default function SubtaskList({
         const due = toLocalDate(sub.due_date);
         const ran = runWindow(sub);
         const isDone = normalize(sub.status) === "completed";
+        const who = assigneeOf(sub);
+        const waiting = blockedReason(sub);
 
         const open = onSelect && sub.id ? () => onSelect(sub.id!) : undefined;
 
@@ -100,10 +120,22 @@ export default function SubtaskList({
             onClick={open}
             title={open ? `Open "${sub.description}"` : sub.description}
             style={{
+              /*
+               * Two lines, not one.
+               *
+               * A board card is about 250px wide and this row carries a name, an
+               * assignee, a priority, a run window, a deadline and a clock. As a
+               * single flex line every one of those held its width and the name —
+               * the only thing that could shrink — was squeezed to nothing while
+               * the clock still overflowed the card. So the name gets a line of
+               * its own and the rest wrap underneath it.
+               */
               display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: dense ? "4px 7px" : "7px 10px",
+              flexDirection: "column",
+              gap: dense ? 3 : 5,
+              minWidth: 0,
+              overflow: "hidden",
+              padding: dense ? "5px 7px" : "7px 10px",
               borderRadius: 8,
               backgroundColor: "var(--bg-surface)",
               border: "1px solid var(--border-light)",
@@ -119,72 +151,141 @@ export default function SubtaskList({
               e.currentTarget.style.borderColor = "var(--border-light)";
             }}
           >
-            <Icon sx={{ fontSize: dense ? 13 : 15, color, flexShrink: 0 }} />
-            <span
+            {/* Line one: what it is, whose it is, and the one thing to do. */}
+            <div
               style={{
-                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
                 minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                fontSize: dense ? 11.5 : 12.5,
-                fontWeight: 500,
-                color: isDone ? "var(--text-faint)" : "var(--text-primary)",
-                textDecoration: isDone ? "line-through" : "none",
               }}
             >
-              {sub.description}
-            </span>
+              <Icon sx={{ fontSize: dense ? 13 : 15, color, flexShrink: 0 }} />
 
-            {prio && (
               <span
                 style={{
-                  flexShrink: 0,
-                  fontSize: dense ? 9 : 10,
-                  fontWeight: 700,
-                  letterSpacing: 0.3,
-                  color: prio.color,
-                }}
-              >
-                {(sub.priority || "").toUpperCase()}
-              </span>
-            )}
-
-            {/* When it actually ran, if it has. */}
-            {ran && (
-              <span
-                title={ran.title}
-                style={{
-                  flexShrink: 0,
-                  fontSize: dense ? 9.5 : 10.5,
-                  color: "var(--text-faint)",
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  fontSize: dense ? 11.5 : 12.5,
+                  fontWeight: 500,
+                  color: isDone ? "var(--text-faint)" : "var(--text-primary)",
+                  textDecoration: isDone ? "line-through" : "none",
                 }}
               >
-                {ran.label}
+                {sub.description}
               </span>
-            )}
 
-            {due && (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 3,
-                  flexShrink: 0,
-                  fontSize: dense ? 9.5 : 10.5,
-                  color: "var(--text-faint)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <CalendarTodayOutlinedIcon sx={{ fontSize: dense ? 10 : 11 }} />
-                {due.toLocaleDateString("en-US", { month: "short", day: "2-digit" })}
-              </span>
-            )}
+              {/* Who holds it. On a shared task this is the point of the row:
+                  three children, three people, one card. */}
+              {who && (
+                <span
+                  title={who.fullName}
+                  style={{
+                    display: "inline-flex",
+                    flexShrink: 0,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: dense ? 17 : 19,
+                    height: dense ? 17 : 19,
+                    borderRadius: "50%",
+                    backgroundColor: "#7c3aed",
+                    color: "#fff",
+                    fontSize: dense ? 7.5 : 8.5,
+                    fontWeight: 700,
+                  }}
+                >
+                  {initialsOf(who.fullName)}
+                </span>
+              )}
 
-            {/* Ticks while this subtask is running, the same as the List's
-                Total Time column. */}
-            <span style={{ flexShrink: 0 }}>
+              {renderAction && (
+                <span style={{ flexShrink: 0 }}>{renderAction(sub)}</span>
+              )}
+            </div>
+
+            {/*
+             * Line two: everything else, wrapping. `flexWrap` is what actually
+             * guarantees this cannot overflow the card — a narrow card simply
+             * gets a second line rather than a clipped clock.
+             */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: dense ? "2px 7px" : "3px 9px",
+                minWidth: 0,
+                paddingLeft: dense ? 19 : 21,
+              }}
+            >
+              {prio && (
+                <span
+                  style={{
+                    fontSize: dense ? 9 : 10,
+                    fontWeight: 700,
+                    letterSpacing: 0.3,
+                    color: prio.color,
+                  }}
+                >
+                  {(sub.priority || "").toUpperCase()}
+                </span>
+              )}
+
+              {/* Not startable yet — the turn order, visible without opening
+                  the task. */}
+              {waiting && (
+                <span
+                  title={waiting}
+                  style={{
+                    padding: "1px 5px",
+                    borderRadius: 5,
+                    backgroundColor: "rgba(100, 116, 139, 0.12)",
+                    color: "#64748b",
+                    fontSize: dense ? 8.5 : 9.5,
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                    cursor: "help",
+                  }}
+                >
+                  WAITING
+                </span>
+              )}
+
+              {/* When it actually ran, if it has. */}
+              {ran && (
+                <span
+                  title={ran.title}
+                  style={{
+                    fontSize: dense ? 9.5 : 10.5,
+                    color: "var(--text-faint)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {ran.label}
+                </span>
+              )}
+
+              {due && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 3,
+                    fontSize: dense ? 9.5 : 10.5,
+                    color: "var(--text-faint)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <CalendarTodayOutlinedIcon sx={{ fontSize: dense ? 10 : 11 }} />
+                  {due.toLocaleDateString("en-US", { month: "short", day: "2-digit" })}
+                </span>
+              )}
+
+              {/* Ticks while this subtask is running — its own clock, not the
+                  task's. */}
               <TaskTimer
                 dense
                 status={sub.status}
@@ -192,11 +293,7 @@ export default function SubtaskList({
                 endTime={sub.end_time}
                 totalSeconds={sub.total_seconds}
               />
-            </span>
-
-            {renderAction && (
-              <span style={{ flexShrink: 0 }}>{renderAction(sub)}</span>
-            )}
+            </div>
           </li>
         );
       })}

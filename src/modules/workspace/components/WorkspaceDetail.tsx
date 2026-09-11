@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -16,6 +16,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 
 import {
   addRoomMember,
@@ -23,7 +26,9 @@ import {
   deleteRoom,
   deleteWorkspace,
   fetchWorkspace,
+  fetchNotifyTargets,
   joinWorkspace,
+  notifyWorkspaceCompleted,
   updateRoom,
   updateWorkspace,
 } from "../../../core/actions/workspaceAction";
@@ -55,6 +60,7 @@ const STATUS_LABEL: Record<string, string> = {
   planning: "Planning",
   active: "Active",
   on_hold: "On Hold",
+  completed: "Completed",
 };
 
 /**
@@ -66,6 +72,14 @@ const STATUS_CHOICES: { value: WorkspaceStatus; label: string; note: string }[] 
   { value: "planning", label: "Planning", note: "Members cannot open it yet" },
   { value: "active", label: "Active", note: "Open to everyone in its rooms" },
   { value: "on_hold", label: "On Hold", note: "Closed to members for now" },
+  {
+    value: "completed",
+    label: "Completed",
+    // Deliberately still open. The other two closed states mean "not ready" and
+    // "not running"; this one means "done", and a finished workspace nobody can
+    // open is a record nobody can read.
+    note: "Finished — still open to read",
+  },
 ];
 
 const apiMessage = (error: unknown, fallback: string): string => {
@@ -73,12 +87,21 @@ const apiMessage = (error: unknown, fallback: string): string => {
   return res?.data?.message || fallback;
 };
 
+interface ManagerOption {
+  id: string;
+  name: string;
+  /** Shown under the name; the role is not, since every row is an AM. */
+  email?: string;
+  /** The caller's own manager — surfaced, because they usually want telling. */
+  isMine: boolean;
+}
+
 export default function WorkspaceDetail() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { showSnackbar } = useSnackbar();
   const [params] = useSearchParams();
-  const id = params.get("id");
+  const id = params.get("ws");
   const rolePath = pathname.split("/")[1] ?? "";
 
   const { user } = useAppSelector((state) => state.user);
@@ -103,6 +126,11 @@ export default function WorkspaceDetail() {
   /** The workspace code being typed at the lock screen. */
   const [codeTry, setCodeTry] = useState("");
   const [unlocking, setUnlocking] = useState(false);
+  /** The hero's status picker and actions menu, and their outside-click roots. */
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const statusRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   /**
    * `silent` re-reads without the full-page spinner.
@@ -134,6 +162,31 @@ export default function WorkspaceDetail() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /* Either hero dropdown closes on an outside click or on Escape. */
+  useEffect(() => {
+    if (!statusOpen && !menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (statusRef.current && !statusRef.current.contains(target)) {
+        setStatusOpen(false);
+      }
+      if (menuRef.current && !menuRef.current.contains(target)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setStatusOpen(false);
+      setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [statusOpen, menuOpen]);
 
   const rooms = useMemo(() => workspace?.rooms ?? [], [workspace]);
 
@@ -210,7 +263,92 @@ export default function WorkspaceDetail() {
     }
   };
 
+  // ─── "This workspace is finished" ────────────────────────────────
+  //
+  // Marking a workspace Completed changes a chip; it does not tell anybody.
+  // This is the telling — and it is deliberately a separate, explicit act,
+  // because who needs to hear about it is a judgement the person finishing the
+  // work makes, not something a status change can guess.
+
+  const [announceOpen, setAnnounceOpen] = useState(false);
+  const [managers, setManagers] = useState<ManagerOption[]>([]);
+  const [managersLoading, setManagersLoading] = useState(false);
+  const [pickedManagers, setPickedManagers] = useState<string[]>([]);
+  const [sending, setSending] = useState(false);
+  /**
+   * How many were told, this session only.
+   *
+   * The API keeps no "announced" flag, so the page cannot know on load whether
+   * anybody has been told. Rather than assert either way, the strip asks
+   * neutrally until a send happens in front of us — and then says what it saw.
+   */
+  const [announcedTo, setAnnouncedTo] = useState(0);
+
+  const openAnnounce = async () => {
+    setPickedManagers([]);
+    setAnnounceOpen(true);
+    setManagersLoading(true);
+    try {
+      /*
+       * One purpose-built read: it already excludes the caller and decides who
+       * is eligible. The only narrowing we do is to AM — this announcement is
+       * for the account manager who owns the work, and SP administers the
+       * system rather than waiting to hear a workspace finished.
+       */
+      const rows = await fetchNotifyTargets();
+      setManagers(
+        rows
+          .filter((t) => !!t.id)
+          .filter((t) => (t.role || "").toUpperCase() === "AM")
+          .map((t) => ({
+            id: String(t.id),
+            name: t.fullName,
+            email: t.email,
+            isMine: !!t.is_my_manager,
+          }))
+          // Your own manager first — the likeliest person to want this.
+          .sort(
+            (a, b) =>
+              Number(b.isMine) - Number(a.isMine) || a.name.localeCompare(b.name)
+          )
+      );
+    } catch (error) {
+      showSnackbar({
+        message: apiMessage(error, "Could not load the managers"),
+        severity: "error",
+      });
+      setManagers([]);
+    } finally {
+      setManagersLoading(false);
+    }
+  };
+
+  const sendAnnounce = async () => {
+    if (!workspace || pickedManagers.length === 0) return;
+    setSending(true);
+    try {
+      await notifyWorkspaceCompleted(workspace.id, pickedManagers);
+      setAnnouncedTo(pickedManagers.length);
+      showSnackbar({
+        message:
+          pickedManagers.length === 1
+            ? "Notified 1 manager"
+            : `Notified ${pickedManagers.length} managers`,
+        severity: "success",
+      });
+      setAnnounceOpen(false);
+    } catch (error) {
+      showSnackbar({
+        message: apiMessage(error, "Could not send that notification"),
+        severity: "error",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
   const setStatus = async (status: WorkspaceStatus) => {
+    setStatusOpen(false);
     if (!workspace || status === workspace.status) return;
     setBusy(true);
     try {
@@ -517,8 +655,13 @@ export default function WorkspaceDetail() {
       </div>
 
       {/* ─── Hero ─── */}
+      {/*
+        * One band: who this workspace is, what is in it, the stage it is at
+        * and everything that can be done to it, ruled off into groups. The
+        * status and the menu sit at the end because they are the manager's
+        * half of the band — everything to their left is true for everyone.
+        */}
       <div className="wsd__hero">
-        <div className="wsd__hero-main">
         <span className="wsd__hero-badge">
           {(workspace.name[0] ?? "W").toUpperCase()}
         </span>
@@ -575,6 +718,7 @@ export default function WorkspaceDetail() {
 
           <p className="wsd__hero-date">
             <CalendarMonthOutlinedIcon sx={{ fontSize: 15 }} />
+            Created:{" "}
             {new Date(workspace.created_at).toLocaleDateString("en-GB", {
               day: "2-digit",
               month: "short",
@@ -585,90 +729,170 @@ export default function WorkspaceDetail() {
 
         <div className="wsd__stats">
           {[
-            { icon: FolderOutlinedIcon, n: workspace.project ? 1 : 0, label: "Project" },
+            {
+              icon: FolderOutlinedIcon,
+              n: workspace.project ? 1 : 0,
+              label: "Projects",
+            },
             { icon: MeetingRoomOutlinedIcon, n: rooms.length, label: "Rooms" },
             { icon: PeopleAltOutlinedIcon, n: memberCount, label: "Users" },
           ].map(({ icon: Icon, n, label }) => (
             <div key={label} className="wsd__stat">
-              <Icon sx={{ fontSize: 19, opacity: 0.85 }} />
-              <span className="wsd__stat-n">{n}</span>
+              <span className="wsd__stat-icon">
+                <Icon sx={{ fontSize: 19 }} />
+              </span>
               <span className="wsd__stat-label">{label}</span>
+              <span className="wsd__stat-n">{n}</span>
             </div>
           ))}
         </div>
-        </div>
 
-        {/*
-         * The life cycle across the foot of the hero: the workspace's
-         * identity and the stage it is at are one statement, and the
-         * status decides whether anyone else sees any of it.
-         */}
         {canManage && (
-          <div className="wsd__rail">
-            <p className="wsd__rail-label">Workspace status</p>
-
+          <>
             {/*
-             * The three states as a track, because they are a life cycle rather
-             * than an arbitrary set: a workspace is planned, opened, and
-             * sometimes paused. Any stage is clickable — the order tells the
-             * story, it does not constrain the move.
+             * The status as one pill that reads as the current state first and
+             * as a control second. What each state means for the people in the
+             * workspace is on the option itself — the choice decides who can
+             * open it, so the menu says so rather than leaving it to be found.
              */}
-            <div className="wsd__rail-track" role="radiogroup" aria-label="Workspace status">
-              {STATUS_CHOICES.map((c, i) => {
-                const currentIndex = STATUS_CHOICES.findIndex(
-                  (x) => x.value === workspace.status
-                );
-                const on = c.value === workspace.status;
-                const behind = i < currentIndex;
-                return (
-                  <button
-                    key={c.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    className={`wsd__stage wsd__stage--${c.value}${
-                      on ? " wsd__stage--on" : ""
-                    }${behind ? " wsd__stage--past" : ""}`}
-                    title={c.note}
-                    disabled={busy}
-                    onClick={() => void setStatus(c.value)}
-                  >
-                    {/* The rule joining this stage to the next. */}
-                    {i < STATUS_CHOICES.length - 1 && (
-                      <span className="wsd__stage-line" aria-hidden />
-                    )}
-                    <span className="wsd__stage-dot">
-                      {busy && on ? (
-                        <CircularProgress size={10} sx={{ color: "inherit" }} />
-                      ) : on ? (
-                        <CheckIcon sx={{ fontSize: 12 }} />
-                      ) : null}
-                    </span>
-                    <span className="wsd__stage-name">{c.label}</span>
-                  </button>
-                );
-              })}
+            <div className="wsd__status" ref={statusRef}>
+              <p className="wsd__status-label">
+                Workspace status
+                <span
+                  className="wsd__status-info"
+                  title="Decides who can open this workspace"
+                >
+                  <InfoOutlinedIcon sx={{ fontSize: 15 }} />
+                </span>
+              </p>
+
+              <button
+                type="button"
+                className="wsd__status-pill"
+                aria-haspopup="listbox"
+                aria-expanded={statusOpen}
+                disabled={busy}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setStatusOpen((open) => !open);
+                }}
+              >
+                {busy ? (
+                  <CircularProgress size={11} sx={{ color: "#fff" }} />
+                ) : (
+                  <span
+                    className={`wsd__status-dot wsd__status-dot--${workspace.status}`}
+                    aria-hidden
+                  />
+                )}
+                {STATUS_LABEL[workspace.status] ?? workspace.status}
+                <KeyboardArrowDownIcon
+                  className={`wsd__status-caret${
+                    statusOpen ? " wsd__status-caret--up" : ""
+                  }`}
+                  sx={{ fontSize: 21 }}
+                />
+              </button>
+
+              {statusOpen && (
+                <div
+                  className="wsd__drop wsd__drop--status"
+                  role="listbox"
+                  aria-label="Workspace status"
+                >
+                  {STATUS_CHOICES.map((c) => {
+                    const on = c.value === workspace.status;
+                    return (
+                      <button
+                        key={c.value}
+                        type="button"
+                        role="option"
+                        aria-selected={on}
+                        className={`wsd__drop-row${
+                          on ? " wsd__drop-row--on" : ""
+                        }`}
+                        disabled={busy}
+                        onClick={() => void setStatus(c.value)}
+                      >
+                        <span
+                          className={`wsd__status-dot wsd__status-dot--${c.value}`}
+                          aria-hidden
+                        />
+                        <span className="wsd__drop-text">
+                          <b>{c.label}</b>
+                          <small>{c.note}</small>
+                        </span>
+                        {on && <CheckIcon sx={{ fontSize: 15 }} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            <p className="wsd__rail-note">
-              {STATUS_CHOICES.find((c) => c.value === workspace.status)?.note}
-            </p>
+            <div className="wsd__more" ref={menuRef}>
+              <button
+                type="button"
+                className="wsd__more-btn"
+                title="Workspace actions"
+                aria-label="Workspace actions"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                onClick={() => {
+                  setStatusOpen(false);
+                  setMenuOpen((open) => !open);
+                }}
+              >
+                <MoreVertIcon sx={{ fontSize: 21 }} />
+              </button>
 
-            {/* Set apart from the status track: the stages are reversible,
-                this is not. */}
-            <button
-              type="button"
-              className="wsd__danger"
-              title={`Delete ${workspace.name}`}
-              disabled={busy}
-              onClick={() => setPendingWsDelete(true)}
-            >
-              <DeleteOutlineIcon sx={{ fontSize: 16 }} />
-              Delete workspace
-            </button>
-          </div>
+              {menuOpen && (
+                <div className="wsd__drop" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="wsd__drop-row wsd__drop-row--danger"
+                    disabled={busy}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setPendingWsDelete(true);
+                    }}
+                  >
+                    <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                    Delete workspace
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
+
+      {/* ─── Finished: let the account managers know ─── */}
+      {canManage && workspace.status === "completed" && (
+        <div className={`wsd__done${announcedTo ? " wsd__done--sent" : ""}`}>
+          <span className="wsd__done-icon">
+            {announcedTo ? (
+              <CheckIcon sx={{ fontSize: 19 }} />
+            ) : (
+              <CampaignOutlinedIcon sx={{ fontSize: 19 }} />
+            )}
+          </span>
+          <span className="wsd__done-text">
+            <b>This workspace is finished.</b>
+            <small>
+              {announcedTo
+                ? `${announcedTo} account manager${
+                    announcedTo === 1 ? "" : "s"
+                  } notified. You can send it again if you need to.`
+                : "Marking it completed does not notify anybody — announce it to let the account managers know."}
+            </small>
+          </span>
+          <button type="button" className="wsd__done-go" onClick={() => void openAnnounce()}>
+            {announcedTo ? "Announce again" : "Announce it"}
+          </button>
+        </div>
+      )}
 
       {/* ─── Description ─── */}
       {workspace.description?.trim() && (
@@ -816,7 +1040,7 @@ export default function WorkspaceDetail() {
                     <Link
                       to={`/${rolePath}/room?ws=${encodeURIComponent(
                         workspace.id
-                      )}&id=${encodeURIComponent(room.id)}`}
+                      )}&room=${encodeURIComponent(room.id)}`}
                       className="wsd__room-enter"
                     >
                       View Room
@@ -947,6 +1171,133 @@ export default function WorkspaceDetail() {
                 <AddIcon sx={{ fontSize: 17 }} />
               )}
               Create room
+            </button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/*
+       * Announcing a finished workspace.
+       *
+       * Reuses the member picker's shape — same rows, same ticks — because it
+       * is the same act: choose people from a list. Multi-select, because a
+       * finished workspace usually concerns more than one manager.
+       */}
+      <Dialog
+        open={announceOpen}
+        onClose={() => !sending && setAnnounceOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 4,
+              backgroundColor: "var(--bg-card)",
+              backgroundImage: "none",
+            },
+          },
+        }}
+      >
+        <div className="wsd__modal">
+          <div className="wsd__modal-head">
+            <span className="cws__tile cws__tile--project">
+              <CampaignOutlinedIcon sx={{ fontSize: 20 }} />
+            </span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h3 className="wsd__modal-title">Announce completion</h3>
+              <p className="wsd__modal-caption">
+                Tell managers that &ldquo;{workspace.name}&rdquo; is finished.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="cws__icon-btn"
+              title="Close"
+              disabled={sending}
+              onClick={() => setAnnounceOpen(false)}
+            >
+              <CloseIcon sx={{ fontSize: 19 }} />
+            </button>
+          </div>
+
+          <p className="cws__label">
+            Account managers{" "}
+            <span className="wsd__modal-count">
+              {pickedManagers.length
+                ? `· ${pickedManagers.length} selected`
+                : "· pick at least one"}
+            </span>
+          </p>
+
+          <div className="wsd__pick">
+            {managersLoading && <p className="cws__empty">Loading managers…</p>}
+            {!managersLoading && managers.length === 0 && (
+              <p className="cws__empty">No account managers to notify.</p>
+            )}
+            {managers.map((m) => {
+              const on = pickedManagers.includes(m.id);
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`wsd__pick-row${on ? " wsd__pick-row--on" : ""}`}
+                  onClick={() =>
+                    setPickedManagers((list) =>
+                      on ? list.filter((x) => x !== m.id) : [...list, m.id]
+                    )
+                  }
+                >
+                  <span className="cws__avatar cws__avatar--sm">
+                    {initials(m.name)}
+                  </span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span className="wsd__pick-name">{m.name}</span>
+                    <span className="wsd__pick-role">
+                      {m.email ?? "Account Manager"}
+                      {m.isMine && (
+                        <span className="cws__shared-tag">Your manager</span>
+                      )}
+                    </span>
+                  </span>
+                  <span className="wsd__pick-tick">
+                    {on && <CheckIcon sx={{ fontSize: 14 }} />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* What they will actually receive, so it is not sent blind. */}
+          <p className="wsd__announce-preview">
+            <b>Workspace Completed</b>
+            <span>
+              &ldquo;{workspace.name}&rdquo;
+              {workspace.project?.name ? ` (${workspace.project.name})` : ""} has
+              been marked completed.
+            </span>
+          </p>
+
+          <div className="wsd__modal-foot">
+            <button
+              type="button"
+              className="cws__ghost"
+              disabled={sending}
+              onClick={() => setAnnounceOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="cws__primary"
+              disabled={pickedManagers.length === 0 || sending}
+              onClick={() => void sendAnnounce()}
+            >
+              {sending ? (
+                <CircularProgress size={15} sx={{ color: "#fff" }} />
+              ) : (
+                <CampaignOutlinedIcon sx={{ fontSize: 17 }} />
+              )}
+              Send notification
             </button>
           </div>
         </div>

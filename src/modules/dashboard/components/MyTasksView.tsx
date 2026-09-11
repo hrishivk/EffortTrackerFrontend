@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   TextField,
   FormControl,
@@ -21,10 +21,13 @@ import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../../store/configureStore";
 import {
   addTask,
+  addTaskComment,
   createTaskGroup,
   deleteTaskGroup,
+  editTaskComment,
   fetchTask,
   fetchTaskGroups,
+  removeTaskComment,
   updateTaskGroup,
   updateTaskLane,
 } from "../../../core/actions/action";
@@ -43,10 +46,20 @@ import TaskBoardView from "./TaskBoardView";
 import TaskTimer from "./TaskTimer";
 import DueBadge from "./DueBadge";
 import { taskTiming } from "../../../shared/utils/taskTime";
+import {
+  assigneeIdOf,
+  assigneeOf,
+  completeBlockedReason,
+} from "../../../shared/utils/subtasks";
 import TaskActionCell from "./TaskActionCell";
 import TaskDetailPanel from "./TaskDetailPanel";
+import SubtaskEditor from "./SubtaskEditor";
 import SubtaskProgress from "./SubtaskProgress";
-import CreateTaskModal, { type CreateTaskFormData } from "./CreateTaskModal";
+import CreateTaskModal, {
+  type CreateTaskFormData,
+  type SubtaskAssignee,
+  type SubtaskDraft,
+} from "./CreateTaskModal";
 import type { TaskGroup } from "../types";
 import {
   findGroupForStatus,
@@ -59,6 +72,7 @@ import { parseServerTime } from "../../../shared/utils/serverTime";
 import {
   TASK_STATUS_FILTER_OPTIONS,
   dueState,
+  toDateInput,
   toLocalDate,
 } from "../../../shared/utils/taskStatus";
 import FilterPanel, {
@@ -114,11 +128,7 @@ const selectSx = {
   "& .MuiInputBase-input": { padding: "8px 14px", fontSize: 13, color: "var(--text-primary)" },
 };
 
-/**
- * A select that shows its value but cannot be changed. MUI's disabled styling
- * dims the text to near-unreadable, so the colour is restored: the point is
- * "this is fixed", not "this is unavailable".
- */
+
 const fixedSelectSx = {
   ...selectSx,
   "& .MuiOutlinedInput-root": {
@@ -198,6 +208,20 @@ const findTaskById = (list: taskList[], id: string | null): taskList | null => {
   return null;
 };
 
+/**
+ * Is this person actually on this task?
+ *
+ * True when they hold the task itself, or any subtask of it. The second half is
+ * what keeps a shared task visible to everybody working it: three members, one
+ * card, and each of them holds one piece.
+ *
+ * Merely being in the same room does not count. That is the difference between
+ * "the work I have" and "everything happening near me".
+ */
+const isOnTask = (task: taskList, personId: string): boolean =>
+  assigneeIdOf(task) === personId ||
+  (task.subtasks ?? []).some((sub) => assigneeIdOf(sub) === personId);
+
 /** Statuses arrive in a few spellings; compare them in one normalised form. */
 const normalizeStatus = (value?: string | null) =>
   (value || "").toLowerCase().replace(/[\s-]+/g, "_");
@@ -207,6 +231,17 @@ const apiMessage = (error: unknown, fallback: string): string => {
   const res = (error as { response?: { data?: { message?: string } } })?.response;
   return res?.data?.message || fallback;
 };
+
+/**
+ * A move the server refused because it was out of turn, or against one of the
+ * transition rules. Matched on the code, not the copy — the messages are
+ * written to be shown as-is and will change.
+ */
+const isConflict = (error: unknown): boolean =>
+  (error as { response?: { status?: number } })?.response?.status === 409;
+
+const assigneeNameOf = (task?: taskList | null): string =>
+  assigneeOf(task)?.fullName || "";
 
 const formatDateLabel = (date: Date) => {
   const today = new Date();
@@ -241,6 +276,22 @@ interface MyTasksViewProps {
    * owns exactly one project.
    */
   lockedProject?: string;
+  /**
+   * The room this view belongs to, when it is one of the workspace pages.
+   *
+   * Set, a task raised here is the room's: it carries `room_id`, so the API
+   * makes it readable by every member and validates each subtask's assignee
+   * against the room's roster.
+   */
+  roomId?: string;
+  /** That roster, so a subtask can be handed to one of them. */
+  roomMembers?: SubtaskAssignee[];
+  /**
+   * A task to open as soon as it is on screen — the id a notification carried.
+   * Always a **parent** task id; a subtask has no panel of its own, so a
+   * notification about one points at the task it belongs to.
+   */
+  focusTaskId?: string;
 }
 
 type GroupedTask = {
@@ -260,6 +311,12 @@ type GroupedTask = {
   total_seconds?: number;
   /** Child tasks, from the first task in the row. */
   subtasks?: taskList[];
+  /**
+   * The API's own tally. Preferred over counting `subtasks[]`, which is only
+   * what this response happened to nest.
+   */
+  subtask_count?: number;
+  subtask_done_count?: number;
   status?: string;
   tasks: taskList[];
   assignees: { name: string; status: string; userId: string | number | null | undefined }[];
@@ -289,10 +346,12 @@ function groupTasks(
       due_date: t.due_date,
       total_seconds: t.total_seconds ?? 0,
       subtasks: t.subtasks ?? [],
+      subtask_count: t.subtask_count,
+      subtask_done_count: t.subtask_done_count,
       status: t.status,
       tasks: [t],
       assignees: [{
-        name: t.dailyLog?.assignedUser?.fullName || getUserName(t.assigned_to),
+        name: assigneeNameOf(t) || getUserName(t.assigned_to),
         status: t.status || "",
         userId: t.assigned_to,
       }],
@@ -316,7 +375,7 @@ function groupTasks(
   for (const [key, rowTasks] of map) {
     const first = rowTasks[0];
     const assignees = rowTasks.map((t) => ({
-      name: t.dailyLog?.assignedUser?.fullName || getUserName(t.assigned_to),
+      name: assigneeNameOf(t) || getUserName(t.assigned_to),
       status: t.status || "",
       userId: t.assigned_to,
     }));
@@ -347,6 +406,8 @@ function groupTasks(
       // Subtasks belong to the task, not to an assignee, so the first row's set
       // is the row's set.
       subtasks: first.subtasks ?? [],
+      subtask_count: first.subtask_count,
+      subtask_done_count: first.subtask_done_count,
       status: first.status,
       tasks: rowTasks,
       assignees,
@@ -361,6 +422,9 @@ export default function MyTasksView({
   viewProject,
   viewTab,
   lockedProject,
+  roomId,
+  roomMembers = [],
+  focusTaskId,
 }: MyTasksViewProps) {
   const { showSnackbar } = useSnackbar();
   const navigate = useNavigate();
@@ -424,9 +488,24 @@ export default function MyTasksView({
     // Whose tasks are being viewed, so a task raised here is for them.
     assignees: (viewUserId ? [viewUserId] : []) as string[],
     priority: "HIGH",
-    startDate: "",
+    startDate: toDateInput(new Date()),
     dueDate: "",
+    /** Subtasks run strictly in listed order — each waits for the one above. */
+    sequential: false,
+    subtasks: [] as SubtaskDraft[],
   });
+  /**
+   * The panel's step. The task's own fields fill the card on their own, so the
+   * subtasks — which grow without limit — get a step of their own rather than a
+   * third screen of scrolling under them.
+   */
+  const [createStep, setCreateStep] = useState<1 | 2>(1);
+  /**
+   * Whether this task is being broken down. Off, the panel is the one card it
+   * has always been and the button creates the task; on, there is a second step
+   * to fill in first. Subtasks stay optional either way.
+   */
+  const [wantSubtasks, setWantSubtasks] = useState(false);
 
   /**
    * Opening the inline form puts the locked project and the viewed user back,
@@ -438,9 +517,13 @@ export default function MyTasksView({
     if (viewUserId) setAssignToSelf(false);
     setForm((f) => ({
       ...f,
+      // The day on screen, so a task raised here lands where you are looking.
+      startDate: f.startDate || toDateInput(selectedDate),
       ...(lockedProject ? { project: lockedProject } : {}),
       ...(viewUserId && !f.assignees.length ? { assignees: [viewUserId] } : {}),
     }));
+    setCreateStep(1);
+    setWantSubtasks(false);
     setShowCreateForm(true);
   };
 
@@ -550,25 +633,48 @@ export default function MyTasksView({
     return filters;
   }, [assigneeFilter, projectFilter, statusFilter]);
 
+  /**
+   * Drop anything the viewed person is not actually on.
+   *
+   * `/task-list` returns a task to any **member of its room**, not just to the
+   * people working it, and it ignores `assigned_to` for a USER — so opening
+   * your own page inside a room came back with every task in that room. This is
+   * a guard against that, not the fix: the fix is the API honouring
+   * `assigned_to` and dropping the room-wide rule (docs/room-shared-tasks-api.md
+   * §3). Until it does, this stops one member's page showing another's work.
+   *
+   * **It cannot repair pagination.** `totalPages` counts what the server
+   * returned, so while the API over-returns a page may render lighter than its
+   * count suggests. That is a reason to fix the API, not to widen this.
+   *
+   * Only applied where the page is about one person; the ordinary dashboard is
+   * left to the API's own scoping.
+   */
+  const scopeToViewedUser = useCallback(
+    (rows: taskList[]) =>
+      viewUserId ? rows.filter((t) => isOnTask(t, String(viewUserId))) : rows,
+    [viewUserId]
+  );
+
   const loadTasks = useCallback(async () => {
     setLoading(true);
     try {
       const taskRes = await fetchTask(selectedDate, String(userId), role, activeFilters(), { page, limit: ITEMS_PER_PAGE });
-      setTasks(taskRes?.data || []);
+      setTasks(scopeToViewedUser(taskRes?.data || []));
       setTotalPages(taskRes?.totalPages || 1);
     } catch {
       setTasks([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, userId, role, activeFilters, page]);
+  }, [selectedDate, userId, role, activeFilters, page, scopeToViewedUser]);
 
   /** Board data: same /task-list endpoint, one big page so no column is empty by accident. */
   const loadBoardTasks = useCallback(async () => {
     setBoardLoading(true);
     try {
       const res = await fetchTask(selectedDate, String(userId), role, activeFilters(), { page: 1, limit: BOARD_TASK_LIMIT });
-      setBoardTasks(res?.data || []);
+      setBoardTasks(scopeToViewedUser(res?.data || []));
       setBoardHasMore((res?.totalPages || 1) > 1);
     } catch {
       setBoardTasks([]);
@@ -576,7 +682,7 @@ export default function MyTasksView({
     } finally {
       setBoardLoading(false);
     }
-  }, [selectedDate, userId, role, activeFilters]);
+  }, [selectedDate, userId, role, activeFilters, scopeToViewedUser]);
 
   useEffect(() => {
     loadInitialData();
@@ -593,6 +699,27 @@ export default function MyTasksView({
     if (viewMode === "board") loadBoardTasks();
   }, [viewMode, loadBoardTasks]);
 
+  /*
+   * The create panel belongs to the List view — it sits in the row beside the
+   * table. Board and Gantt raise a task their own way (Board through the Create
+   * Task dialog), so leaving the panel open across a switch stranded a
+   * half-filled form next to a view that had no part in it.
+   */
+  useEffect(() => {
+    if (viewMode !== "list") setShowCreateForm(false);
+  }, [viewMode]);
+
+  /**
+   * Whose board is on screen. For SP/AM that is the selected assignee (seeded
+   * from the viewUserId prop), otherwise their own board — which the API
+   * assumes when this is undefined.
+   *
+   * Every board-group call has to agree on this value: the lanes are stored per
+   * user, so reading one board and writing to another is what made a manager's
+   * new group vanish.
+   */
+  const boardOwnerId = isManagerRole && assigneeFilter ? assigneeFilter : undefined;
+
   /**
    * Board groups. Loaded alongside the board; a failure leaves the board on its
    * status lanes rather than breaking it, which also covers the API not having
@@ -601,9 +728,7 @@ export default function MyTasksView({
   const loadBoardGroups = useCallback(async () => {
     try {
       // SP/AM can look at someone else's board; the API ignores this otherwise.
-      const res = await fetchTaskGroups(
-        isManagerRole && assigneeFilter ? assigneeFilter : undefined
-      );
+      const res = await fetchTaskGroups(boardOwnerId);
       const rows = Array.isArray(res?.data) ? res.data : [];
       setBoardGroups(
         rows
@@ -624,17 +749,22 @@ export default function MyTasksView({
     } catch {
       setBoardGroups([]);
     }
-  }, [isManagerRole, assigneeFilter]);
+  }, [boardOwnerId]);
 
-  // Loaded for every view, not just the Board: the Status filter is built from
-  // these groups and the filter panel is available in List view too.
+  // Board view only, like loadBoardTasks above: the lanes are drawn nowhere
+  // else, so a List or Gantt visit pays nothing for them. What was loaded is
+  // kept when the view changes — leaving the Board is not a reason to drop the
+  // lanes the Status filter is built from — and a board owner change while off
+  // the Board is picked up by the fetch that runs on the way back in.
   useEffect(() => {
-    loadBoardGroups();
-  }, [loadBoardGroups]);
+    if (viewMode === "board") loadBoardGroups();
+  }, [viewMode, loadBoardGroups]);
 
   const handleGroupCreate = async (data: { name: string; color: string }) => {
     try {
-      await createTaskGroup(data);
+      // Same board the groups were read from, so a manager's lane lands on the
+      // user's board and comes back in the reload below.
+      await createTaskGroup(data, boardOwnerId);
       showSnackbar({ message: `Group "${data.name}" created`, severity: "success" });
       await loadBoardGroups();
     } catch (error: unknown) {
@@ -693,7 +823,7 @@ export default function MyTasksView({
    */
   const taskFilterValues: FilterValues = {
     ...(lockedProject ? {} : { project: projectFilter }),
-    assignee: assigneeFilter,
+    ...(viewUserId ? {} : { assignee: assigneeFilter }),
     status: statusFilter,
   };
 
@@ -762,17 +892,13 @@ export default function MyTasksView({
     return options;
   })();
 
-  const taskFilterCategories: FilterCategory[] = [
-    {
-      key: "taskFilters",
-      label: "Project & People",
-      icon: <FiGrid size={16} />,
-      caption: lockedProject
-        ? `Filter ${lockedProject} tasks by assignee`
-        : filterableUsers.length > 0
-          ? "Filter tasks by project and assignee"
-          : "Filter tasks by project",
-      fields: [
+  /*
+   * Project and assignee, minus whichever the page has already settled. On a
+   * room member's page both are pinned — the workspace owns one project and the
+   * header names one person — so this comes out empty and the category is
+   * dropped below rather than rendered as a heading with nothing under it.
+   */
+  const peopleFields = [
         ...(lockedProject
           ? []
           : [
@@ -787,7 +913,9 @@ export default function MyTasksView({
                 options: projectFilterOptions,
               },
             ]),
-        ...(filterableUsers.length > 0
+        // Hidden when the page is already one person's — the header says whose
+        // tasks these are, so a control that could contradict it does not belong.
+        ...(filterableUsers.length > 0 && !viewUserId
           ? [
               {
                 key: "assignee",
@@ -807,8 +935,25 @@ export default function MyTasksView({
               },
             ]
           : []),
-      ],
-    },
+  ];
+
+  const taskFilterCategories: FilterCategory[] = [
+    ...(peopleFields.length
+      ? [
+          {
+            key: "taskFilters",
+            label: "Project & People",
+            icon: <FiGrid size={16} />,
+            caption:
+              peopleFields.length === 1 && peopleFields[0].key === "assignee"
+                ? "Filter tasks by assignee"
+                : filterableUsers.length > 0 && !viewUserId
+                  ? "Filter tasks by project and assignee"
+                  : "Filter tasks by project",
+            fields: peopleFields,
+          } as FilterCategory,
+        ]
+      : []),
     {
       key: "statusFilters",
       label: "Status",
@@ -834,7 +979,14 @@ export default function MyTasksView({
      * widened to that member's tasks across every project.
      */
     setProjectFilter(lockedProject ?? values.project ?? "");
-    setAssigneeFilter(values.assignee ?? "");
+    /*
+     * And the pinned assignee, for the same reason. `viewUserId` is whose page
+     * this is — the room member the ring was clicked on — so it is not the
+     * reader's to change, and for a USER the field is not in the tray at all.
+     * Without this, applying a status filter sent `assigned_to` back as "" and
+     * the page widened from "Mayookh's tasks" to everybody's.
+     */
+    setAssigneeFilter(viewUserId ?? values.assignee ?? "");
     setStatusFilter(values.status ?? "");
     setPage(1);
   };
@@ -843,6 +995,23 @@ export default function MyTasksView({
     if (!search) return true;
     return (t.description || "").toLowerCase().includes(search.toLowerCase());
   });
+
+  /**
+   * Open the task a notification pointed at, once the list has loaded it.
+   *
+   * It cannot be opened on mount: the panel reads the task out of the fetched
+   * data, which is not there yet. So this waits for the row to appear and fires
+   * once — `opened` keeps a later reload from re-opening a panel the reader has
+   * since closed.
+   */
+  const openedFocus = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusTaskId || openedFocus.current === focusTaskId) return;
+    const pool = viewMode === "board" ? boardTasks : tasks;
+    if (!findTaskById(pool, focusTaskId)) return;
+    openedFocus.current = focusTaskId;
+    setPanelTaskId(focusTaskId);
+  }, [focusTaskId, tasks, boardTasks, viewMode]);
 
   /** The task the detail panel is showing, taken from the current data. */
   const panelTask = findTaskById(
@@ -1179,17 +1348,47 @@ export default function MyTasksView({
       key: "action",
       header: "Action",
       render: (row) => {
-        // A task with subtasks has no Start of its own — its state follows its
-        // children. The bar shows how far along it is and opens the panel, which
-        // is where the children get started.
-        if ((row.subtasks?.length ?? 0) > 0) {
+        /*
+         * A task with subtasks shows two things, because they are two separate
+         * things: how far through its children it is, and its own Start.
+         *
+         * The children no longer move the parent — starting one starts that one
+         * — so the owner needs their own control here rather than only inside
+         * the panel. The bar still opens the panel, which is where each child's
+         * own action lives.
+         */
+        const finished = ["completed", "done"].includes(normalizeStatus(row.status));
+
+        if ((row.subtask_count ?? row.subtasks?.length ?? 0) > 0) {
           return (
-            <SubtaskProgress
-              subtasks={row.subtasks}
-              onOpen={() => setPanelTaskId(String(row.tasks[0]?.id ?? ""))}
-            />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <SubtaskProgress
+                dense
+                subtasks={row.subtasks}
+                done={row.subtask_done_count}
+                total={row.subtask_count}
+                onOpen={() => setPanelTaskId(String(row.tasks[0]?.id ?? ""))}
+              />
+              {/* The progress bar already opens the task, so a finished row
+                  needs nothing beside it — a second button to the same place,
+                  or a badge repeating the Status column. */}
+              {!finished && (
+                <TaskActionCell
+                  dense
+                  status={row.status}
+                  owns={ownsAllTasks(row)}
+                  busy={!!quickBusy[row.key]}
+                  // Startable on its own, but not finishable while a piece of it
+                  // is outstanding — a task showing DONE beside "1/2" is wrong.
+                  completeBlockedReason={completeBlockedReason(row)}
+                  onStart={() => void handleQuickStatus(row, "in_progress")}
+                  onComplete={() => void handleQuickStatus(row, "completed")}
+                />
+              )}
+            </span>
           );
         }
+        // A task on its own keeps the full cycle, ending on the Completed badge.
         return (
           <TaskActionCell
             status={row.status}
@@ -1219,10 +1418,7 @@ export default function MyTasksView({
   // A card is only draggable under the same rules the detail modal enforces:
   // you move your own tasks, and you can only have one task in progress.
   const ownsAllTasks = (row: GroupedTask) =>
-    row.tasks.every(
-      (t) =>
-        String(t.dailyLog?.assignedUser?.id || t.assigned_to || "") === String(userId)
-    );
+    row.tasks.every((t) => assigneeIdOf(t) === String(userId));
 
   const dragBlockedReason = (row: GroupedTask): string | null => {
     if (!ownsAllTasks(row)) return "Only the assignee can move this task";
@@ -1264,9 +1460,31 @@ export default function MyTasksView({
   };
 
   /**
-   * Create from the Board's modal. Dates and times are combined into the single
-   * timestamps the API takes; the lane comes through as `group_id` so the card
-   * appears where it was asked for.
+   * The `subtasks[]` the API takes, from the drafted rows.
+   *
+   * `position` is 1-based and always distinct: two children on the same number
+   * are peers that do not block each other, which is not what an ordered list
+   * on screen promises. An unassigned child sends no `assigned_to` and inherits
+   * the parent's owner.
+   */
+  const toSubtaskPayload = (subtasks: SubtaskDraft[]) =>
+    subtasks.map((sub, i) => ({
+      name: sub.name,
+      ...(sub.assignee ? { assigned_to: sub.assignee } : {}),
+      position: i + 1,
+      priority: sub.priority,
+      start_date: sub.startDate || undefined,
+      due_date: sub.dueDate || undefined,
+    }));
+
+  /**
+   * Create from the Board's modal.
+   *
+   * **One request, whatever the assignees.** This used to POST once per
+   * assignee, which made two independent tasks out of one — wrong now that a
+   * task's work is split across its subtasks, since each copy would carry a
+   * duplicate set of them. The parent has a single owner; everyone else is on
+   * the task through a subtask of their own.
    */
   const handleModalCreate = async (data: CreateTaskFormData) => {
     setSubmitting(true);
@@ -1275,38 +1493,31 @@ export default function MyTasksView({
     // lane is resolved here rather than offered as a choice.
     const startLane = findGroupForStatus(boardGroups, "yet_to_start");
     try {
-      const assigneeIds =
-        isUserOrDev || !data.assignees.length ? [String(userId)] : data.assignees;
+      const owner =
+        isUserOrDev || !data.assignees.length ? String(userId) : data.assignees[0];
 
-      await Promise.all(
-        assigneeIds.map((assigneeId) =>
-          addTask({
-            description: data.taskName.trim(),
-            project: data.project,
-            project_id: formProjects.find((p) => p.name === data.project)?.id,
-            assigned_to: assigneeId,
-            created_by: userId,
-            priority: data.priority,
-            status: "yet_to_start",
-            group_id: startLane?.id,
-            // The plan goes in its own fields. It used to ride in `end_time`,
-            // which the API overwrites on completion — that destroyed the
-            // deadline the moment the task was finished.
-            start_date: data.startDate || undefined,
-            due_date: data.dueDate || undefined,
-            // Not stored yet — see docs/create-task-fields.md.
-            tags: data.tags.length ? data.tags : undefined,
-            subtasks: data.subtasks.length
-              ? data.subtasks.map((sub) => ({
-                  name: sub.name,
-                  priority: sub.priority,
-                  start_date: sub.startDate || undefined,
-                  due_date: sub.dueDate || undefined,
-                }))
-              : undefined,
-          })
-        )
-      );
+      await addTask({
+        description: data.taskName.trim(),
+        project: data.project,
+        project_id: formProjects.find((p) => p.name === data.project)?.id,
+        assigned_to: owner,
+        created_by: userId,
+        priority: data.priority,
+        status: "yet_to_start",
+        group_id: startLane?.id,
+        // Makes it the room's task: readable by every member, and the roster
+        // each subtask's assignee is validated against.
+        room_id: roomId,
+        // The plan goes in its own fields. It used to ride in `end_time`,
+        // which the API overwrites on completion — that destroyed the
+        // deadline the moment the task was finished.
+        start_date: data.startDate || undefined,
+        due_date: data.dueDate || undefined,
+        tags: data.tags.length ? data.tags : undefined,
+        // Only meaningful with children to order, so it is not sent without them.
+        sequential: data.subtasks.length > 1 ? data.sequential : undefined,
+        subtasks: data.subtasks.length ? toSubtaskPayload(data.subtasks) : undefined,
+      });
 
       showSnackbar({
         message: `"${data.taskName.trim()}" created`,
@@ -1346,6 +1557,17 @@ export default function MyTasksView({
    * exactly like a board drop.
    */
   const handleQuickStatus = async (row: GroupedTask, next: "in_progress" | "completed") => {
+    // The button is already withheld for this, but the check belongs at the
+    // request too: a view that has gone stale must not be able to finish a task
+    // whose subtasks are still open.
+    const outstanding = next === "completed" ? completeBlockedReason(row) : null;
+    if (outstanding) {
+      showSnackbar({
+        message: `Can't complete this task — ${outstanding}`,
+        severity: "warning",
+      });
+      return;
+    }
     const ids = row.tasks.map((t) => String(t.id));
     setQuickBusy((b) => ({ ...b, [row.key]: true }));
     try {
@@ -1361,7 +1583,14 @@ export default function MyTasksView({
       });
       await (viewMode === "board" ? loadBoardTasks() : loadTasks());
     } catch (error: unknown) {
-      showSnackbar({ message: apiMessage(error, "Failed to update task"), severity: "error" });
+      showSnackbar({
+        message: apiMessage(error, "Failed to update task"),
+        severity: isConflict(error) ? "warning" : "error",
+      });
+      // A refused transition means this view is behind — go and get the truth.
+      if (isConflict(error)) {
+        await (viewMode === "board" ? loadBoardTasks() : loadTasks());
+      }
     } finally {
       setQuickBusy((b) => {
         const nextBusy = { ...b };
@@ -1372,14 +1601,19 @@ export default function MyTasksView({
   };
 
   /**
-   * Start or complete one child task, and carry the consequence up to its parent.
+   * Start or complete one child task, and nothing else.
    *
-   * A parent with subtasks has no Start action of its own, so its state has to
-   * follow theirs: the first child to start moves it to In Progress, and the last
-   * child to finish completes it.
+   * This used to carry the move up to the parent with a second PATCH: first
+   * child to start moved it to In Progress, last to finish completed it. That
+   * is gone. A subtask and the task it belongs to are separate units of work
+   * with separate clocks — the task is started by whoever owns it, from its own
+   * card in the detail panel, and no child's move starts it for them.
+   *
+   * A `409` is the server refusing an out-of-turn start. Its message names what
+   * the subtask is waiting on, so it is shown as-is — and the list is reloaded,
+   * because a 409 means somebody else has moved and this view is stale.
    */
   const handleSubtaskStatus = async (
-    parent: taskList | null,
     subtaskId: string | undefined,
     next: "in_progress" | "completed"
   ) => {
@@ -1387,42 +1621,44 @@ export default function MyTasksView({
     const key = String(subtaskId);
     setQuickBusy((b) => ({ ...b, [key]: true }));
     try {
-      const lane = (status: "in_progress" | "completed") => {
-        const g = findGroupForStatus(boardGroups, status);
-        return g ? { groupId: g.id } : { status, groupId: null };
-      };
+      const g = findGroupForStatus(boardGroups, next);
+      const res = await updateTaskLane(key, g ? { groupId: g.id } : { status: next, groupId: null });
 
-      await updateTaskLane(key, lane(next));
-
-      // Roll the parent forward, if this move settles it.
-      let rolled: "in_progress" | "completed" | null = null;
-      const siblings = parent?.subtasks ?? [];
-      if (parent && siblings.length) {
-        const parentStatus = normalizeStatus(parent.status);
-        if (next === "completed") {
-          const allDone = siblings.every(
-            (sib) =>
-              String(sib.id) === key || normalizeStatus(sib.status) === "completed"
-          );
-          if (allDone && parentStatus !== "completed") rolled = "completed";
-        } else if (parentStatus === "yet_to_start" || parentStatus === "pending") {
-          rolled = "in_progress";
-        }
-      }
-      if (rolled && parent) await updateTaskLane(String(parent.id), lane(rolled));
+      /*
+       * Nothing here touches the parent.
+       *
+       * A subtask is its own unit of work with its own clock: starting one
+       * starts that one, and the task it belongs to is started by whoever owns
+       * it, from its own card. The frontend used to carry the child's move up
+       * to the parent with a second PATCH — that is gone, and the API is asked
+       * not to do it either (see docs/room-shared-tasks-api.md §4b).
+       *
+       * The parent still comes back on the response because its children's
+       * `is_blocked` flags have to be recomputed after any move; it is read
+       * only to report what actually happened, never to assume it.
+       */
+      const rolled: taskList | null = res?.data?.parent ?? null;
+      const parentDone = normalizeStatus(rolled?.status) === "completed";
 
       showSnackbar({
-        message:
-          rolled === "completed"
-            ? "All subtasks done — task completed"
-            : next === "in_progress"
-              ? "Subtask started"
-              : "Subtask completed",
+        // Only says the task finished if the response actually says so.
+        message: parentDone
+          ? "Last subtask done — the task is complete"
+          : next === "in_progress"
+            ? "Subtask started"
+            : "Subtask completed",
         severity: "success",
       });
       await (viewMode === "board" ? loadBoardTasks() : loadTasks());
     } catch (error: unknown) {
-      showSnackbar({ message: apiMessage(error, "Failed to update subtask"), severity: "error" });
+      showSnackbar({
+        message: apiMessage(error, "Failed to update subtask"),
+        severity: isConflict(error) ? "warning" : "error",
+      });
+      // Someone else moved: what is on screen is out of date either way.
+      if (isConflict(error)) {
+        await (viewMode === "board" ? loadBoardTasks() : loadTasks());
+      }
     } finally {
       setQuickBusy((b) => {
         const rest = { ...b };
@@ -1430,6 +1666,83 @@ export default function MyTasksView({
         return rest;
       });
     }
+  };
+
+  // ─── Comments ─────────────────────────────────────────────────────
+  //
+  // `taskId` is whatever the thread hangs off — the main task or one subtask.
+  // There is no read endpoint: comments arrive nested in `/task-list`, so the
+  // reload after each write is what refreshes the thread.
+
+  const reloadTasks = () =>
+    viewMode === "board" ? loadBoardTasks() : loadTasks();
+
+  const handleCommentAdd = async (taskId: string, body: string) => {
+    try {
+      await addTaskComment(taskId, body);
+      await reloadTasks();
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to post comment"), severity: "error" });
+    }
+  };
+
+  const handleCommentEdit = async (taskId: string, commentId: string, body: string) => {
+    try {
+      await editTaskComment(taskId, commentId, body);
+      await reloadTasks();
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to edit comment"), severity: "error" });
+    }
+  };
+
+  const handleCommentDelete = async (taskId: string, commentId: string) => {
+    try {
+      await removeTaskComment(taskId, commentId);
+      await reloadTasks();
+      showSnackbar({ message: "Comment deleted", severity: "success" });
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to delete comment"), severity: "error" });
+    }
+  };
+
+  /*
+   * Same rule as the modal: a task has to outlast its subtasks, so the last day
+   * any of them runs to is the floor for its own due date. `YYYY-MM-DD` compares
+   * correctly as a string and "" sorts below every real date.
+   */
+  const panelLastSubtaskDue = form.subtasks.reduce(
+    (latest, sub) => (sub.dueDate > latest ? sub.dueDate : latest),
+    ""
+  );
+  const panelDue =
+    panelLastSubtaskDue > form.dueDate ? panelLastSubtaskDue : form.dueDate;
+  const panelDueMin =
+    panelLastSubtaskDue > form.startDate ? panelLastSubtaskDue : form.startDate;
+
+  /**
+   * What has to be true before the subtasks step. The same checks guard the
+   * submit — this only brings them forward, so a missing project is caught on
+   * the step that holds the field rather than two screens later.
+   */
+  const stepOneError = (): string | null => {
+    if (!form.taskName.trim()) return "Task name is required";
+    if (!form.project) return "Please select a project";
+    if (!isUserOrDev && !assignToSelf && form.assignees.length === 0) {
+      return "Please assign at least one person";
+    }
+    if (form.startDate && panelDue && form.startDate > panelDue) {
+      return "Start date must be on or before the due date";
+    }
+    return null;
+  };
+
+  const goToSubtasks = () => {
+    const error = stepOneError();
+    if (error) {
+      showSnackbar({ message: error, severity: "error" });
+      return;
+    }
+    setCreateStep(2);
   };
 
   const handleCreateTask = async () => {
@@ -1445,7 +1758,7 @@ export default function MyTasksView({
       showSnackbar({ message: "Please assign at least one person", severity: "error" });
       return;
     }
-    if (form.startDate && form.dueDate && form.startDate > form.dueDate) {
+    if (form.startDate && panelDue && form.startDate > panelDue) {
       showSnackbar({
         message: "Start date must be on or before the due date",
         severity: "error",
@@ -1458,7 +1771,17 @@ export default function MyTasksView({
       // USER/DEVELOPER always self-assign
       const assigneeIds = (isUserOrDev || assignToSelf) ? [String(userId)] : form.assignees;
 
-      const promises = assigneeIds.map((assigneeId) => {
+      /*
+       * A room task is created once. Its work is split across its subtasks, so
+       * duplicating the parent per assignee would duplicate everyone's subtasks
+       * with it — three copies of the same shared task, one per member.
+       *
+       * Outside a room, assigning the same task to several people still means
+       * one independent row each, which is what this panel has always done.
+       */
+      const owners = roomId ? assigneeIds.slice(0, 1) : assigneeIds;
+
+      const promises = owners.map((assigneeId) => {
         const payload: CreateTaskPayload = {
           description: form.taskName,
           project: form.project,
@@ -1468,18 +1791,24 @@ export default function MyTasksView({
           priority: form.priority,
           // Plan dates, not the actual-work timestamps — see handleModalCreate.
           start_date: form.startDate || undefined,
-          due_date: form.dueDate || undefined,
+          // `panelDue`, not `form.dueDate`: the subtasks may have pushed it out.
+          due_date: panelDue || undefined,
           status: "yet_to_start",
           group_id: findGroupForStatus(boardGroups, "yet_to_start")?.id,
+          room_id: roomId,
+          sequential: form.subtasks.length > 1 ? form.sequential : undefined,
+          subtasks: form.subtasks.length ? toSubtaskPayload(form.subtasks) : undefined,
         };
         return addTask(payload);
       });
       await Promise.all(promises);
-      const count = assigneeIds.length;
+      const count = owners.length;
       showSnackbar({
         message: assignToSelf
           ? "Task assigned to yourself successfully"
-          : `Task assigned to ${count} member${count > 1 ? "s" : ""} successfully`,
+          : count > 1
+            ? `Task assigned to ${count} members successfully`
+            : "Task created successfully",
         severity: "success",
       });
       setForm({
@@ -1489,9 +1818,13 @@ export default function MyTasksView({
         project: lockedProject ?? "",
         assignees: viewUserId ? [viewUserId] : [],
         priority: "HIGH",
-        startDate: "",
+        startDate: toDateInput(selectedDate),
         dueDate: "",
+        sequential: false,
+        subtasks: [],
       });
+        setCreateStep(1);
+      setWantSubtasks(false);
       setAssignToSelf(false);
       setShowCreateForm(false);
       if (viewMode === "board") await loadBoardTasks();
@@ -1683,7 +2016,7 @@ export default function MyTasksView({
               <div className="relative w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
                 <input
                   type="date"
-                  value={selectedDate.toISOString().split("T")[0]}
+                  value={toDateInput(selectedDate)}
                   onChange={(e) => {
                     if (e.target.value) {
                       setSelectedDate(new Date(e.target.value + "T00:00:00"));
@@ -1764,7 +2097,9 @@ export default function MyTasksView({
                       Create New Task
                     </h3>
                     <p className="mt-1" style={{ fontSize: 12, color: "var(--text-faint)" }}>
-                      Fill in the details to add a new task to your workspace.
+                      {createStep === 1
+                        ? "Fill in the details to add a new task."
+                        : "Break the task down — as many subtasks as it needs."}
                     </p>
                   </div>
                   <IconButton size="small" onClick={() => setShowCreateForm(false)}>
@@ -1772,6 +2107,8 @@ export default function MyTasksView({
                   </IconButton>
                 </div>
 
+                {createStep === 1 && (
+                  <>
                 {/* Task Name */}
                 <div className="mb-4">
                   <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
@@ -2062,7 +2399,7 @@ export default function MyTasksView({
                       slotProps={{
                         inputLabel: { shrink: true },
                         // Can't plan a start after the due date.
-                        htmlInput: form.dueDate ? { max: form.dueDate } : undefined,
+                        htmlInput: panelDue ? { max: panelDue } : undefined,
                       }}
                     />
                   </div>
@@ -2074,23 +2411,82 @@ export default function MyTasksView({
                       fullWidth
                       size="small"
                       type="date"
-                      value={form.dueDate}
+                      value={panelDue}
                       onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
                       sx={selectSx}
                       slotProps={{
                         inputLabel: { shrink: true },
-                        htmlInput: form.startDate ? { min: form.startDate } : undefined,
+                        htmlInput: panelDueMin ? { min: panelDueMin } : undefined,
                       }}
                     />
+                    {/* Said out loud, because the field moved on its own. */}
+                    {panelLastSubtaskDue > form.dueDate && (
+                      <p className="ctm__hint">Set by the longest subtask.</p>
+                    )}
                   </div>
                 </div>
+                  </>
+                )}
+
+                {/* Step two: subtasks, the same rows as the board's Create Task
+                    dialog, reflowed for this 380px column. */}
+                {createStep === 2 && (
+                  <div className="mb-4">
+                    <SubtaskEditor
+                      compact
+                      subtasks={form.subtasks}
+                      onChange={(next) => setForm((f) => ({ ...f, subtasks: next }))}
+                      sequential={form.sequential}
+                      onSequentialChange={(next) =>
+                        setForm((f) => ({ ...f, sequential: next }))
+                      }
+                      roomMembers={roomMembers}
+                      defaultStartDate={form.startDate}
+                      defaultDueDate={panelDue}
+                    />
+                  </div>
+                )}
+
+                {/*
+                  * The one thing that decides whether there is a second step at
+                  * all. Off — the default — the button below creates the task,
+                  * exactly as this panel always worked.
+                  */}
+                {createStep === 1 && (
+                  <div
+                    className="d-flex align-items-center gap-2 cursor-pointer mb-3"
+                    onClick={() => {
+                      const next = !wantSubtasks;
+                      setWantSubtasks(next);
+                      // Turning it back off drops the drafted rows rather than
+                      // saving subtasks the panel no longer shows.
+                      if (!next) {
+                        setForm((f) => ({ ...f, subtasks: [] }));
+                                          }
+                    }}
+                    style={{ lineHeight: 1 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={wantSubtasks}
+                      readOnly
+                      style={{ accentColor: "#7c3aed", width: 15, height: 15, margin: 0, cursor: "pointer" }}
+                    />
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-secondary)", cursor: "pointer" }}>
+                      Break this into subtasks
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex gap-2 sm:gap-3">
                   <button
                     className="flex-1 btn font-semibold"
                     style={{ border: "1px solid var(--border-light)", color: "var(--text-secondary)", borderRadius: 12, fontSize: 13, padding: "10px 0" }}
-                    onClick={() => setShowCreateForm(false)}
+                    onClick={() =>
+                      createStep === 1 ? setShowCreateForm(false) : setCreateStep(1)
+                    }
                   >
-                    Cancel
+                    {createStep === 1 ? "Cancel" : "Back"}
                   </button>
                   <button
                     className="flex-1 btn text-white font-semibold"
@@ -2101,11 +2497,15 @@ export default function MyTasksView({
                       padding: "10px 0",
                       opacity: submitting || (!assignToSelf && noMembersAssigned) ? 0.7 : 1,
                     }}
-                    onClick={handleCreateTask}
+                    onClick={
+                      createStep === 1 && wantSubtasks ? goToSubtasks : handleCreateTask
+                    }
                     disabled={submitting || (!assignToSelf && noMembersAssigned)}
                   >
                     {submitting ? (
                       <CircularProgress size={16} sx={{ color: "#fff" }} />
+                    ) : createStep === 1 && wantSubtasks ? (
+                      "Next"
                     ) : (
                       "Create Task"
                     )}
@@ -2172,9 +2572,9 @@ export default function MyTasksView({
         onClose={() => setSelectedTask(null)}
         onStatusUpdate={viewMode === "board" ? loadBoardTasks : loadTasks}
         canStartTask={
-          selectedTask
-            ? String(selectedTask.dailyLog?.assignedUser?.id || selectedTask.assigned_to || "") === String(userId)
-            : false
+          // A subtask opened from a board card carries its own assignee, which
+          // on a shared task is not the person who owns the parent.
+          selectedTask ? assigneeIdOf(selectedTask) === String(userId) : false
         }
         projectColorMap={projectColorMap}
         groups={boardGroups}
@@ -2185,16 +2585,16 @@ export default function MyTasksView({
         task={panelTask}
         open={panelTaskId !== null}
         onClose={() => setPanelTaskId(null)}
-        owns={
-          panelTask
-            ? String(
-                panelTask.dailyLog?.assignedUser?.id || panelTask.assigned_to || ""
-              ) === String(userId)
-            : false
-        }
+        owns={panelTask ? assigneeIdOf(panelTask) === String(userId) : false}
+        // Each subtask now has an owner of its own, so the panel decides row by
+        // row who may act rather than applying the parent's answer to all of them.
+        currentUserId={userId}
         busy={quickBusy}
-        onStart={(id) => void handleSubtaskStatus(panelTask, id, "in_progress")}
-        onComplete={(id) => void handleSubtaskStatus(panelTask, id, "completed")}
+        onStart={(id) => void handleSubtaskStatus(id, "in_progress")}
+        onComplete={(id) => void handleSubtaskStatus(id, "completed")}
+        onCommentAdd={handleCommentAdd}
+        onCommentEdit={handleCommentEdit}
+        onCommentDelete={handleCommentDelete}
         projectColorMap={projectColorMap}
       />
 
@@ -2203,6 +2603,7 @@ export default function MyTasksView({
         onClose={() => setCreateTaskOpen(false)}
         projects={formProjects}
         assignableUsers={assignableUsers}
+        defaultStartDate={toDateInput(selectedDate)}
         startLane={findGroupForStatus(boardGroups, "yet_to_start")}
         fixedProject={lockedProject}
         defaultAssignee={
@@ -2210,6 +2611,7 @@ export default function MyTasksView({
         }
         isUserOrDev={isUserOrDev}
         currentUserName={user?.fullName}
+        roomMembers={roomMembers}
         submitting={submitting}
         onSubmit={handleModalCreate}
       />

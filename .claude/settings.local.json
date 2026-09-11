@@ -5,7 +5,10 @@
       "Bash(npx tsc *)",
       "Bash(npx vite *)",
       "Bash(grep -n \"roleOptions\\\\|const \\\\[form\\\\|requirePasswordChange:\\\\|handleChange = \\\\|projectList.length > 0\\\\|Switch$\\\\|payload.projects\\\\|const roleOptionsFor\" src/modules/sp/components/Create/CreateUser.tsx)",
-      "Bash(python -)"
+      "Bash(python -)",
+      "Bash(git push *)",
+      "Bash(git ls-remote *)",
+      "Bash(git fetch *)"
     ]
   }
 }

@@ -1,7 +1,45 @@
+/** A person as every task payload now carries them, flat and on `dailyLog`. */
+export type TaskUser = {
+  id: string;
+  fullName: string;
+  email?: string;
+};
+
+/**
+ * One comment on a task or a subtask. Both are rows in `tasks`, so a subtask
+ * thread is the same shape read off the subtask itself.
+ *
+ * `user` is resolved live on read, so a rename shows through; it is null for a
+ * deleted account, and `user_name` is the snapshot taken when the comment was
+ * written. Render `user.fullName` and fall back to `user_name`.
+ */
+export type TaskComment = {
+  id: string;
+  user_id: string;
+  user_name?: string | null;
+  user?: TaskUser | null;
+  body: string;
+  created_at: string;
+  /** Null until edited — non-null is what marks a comment "edited". */
+  updated_at?: string | null;
+};
+
+/**
+ * What a blocked subtask is waiting on: always the *earliest* thing still
+ * outstanding, not the one immediately before it.
+ */
+export type SubtaskBlocker = {
+  id: string;
+  description: string;
+  assignedUser?: TaskUser | null;
+};
+
 export type taskList = {
   id?: string;
   created_by?: string  | number | null;
   assigned_to?: string  | number | null ;
+  /** The assignee, sent flat on every task and subtask. */
+  assignedUser?: TaskUser | null;
   project: string | { id: string; name: string };
   description: string;
   priority: string;
@@ -25,6 +63,32 @@ export type taskList = {
   subtasks?: taskList[];
   updated_at?: string;
   completed_at?: string;
+
+  // ─── Room shared tasks ────────────────────────────────────────────
+  /** The room this task belongs to. What makes it readable by the room. */
+  room_id?: string | null;
+  /** A child's order inside its parent. Meaningless without a `parent_id`. */
+  position?: number;
+  /** On the parent: its children run strictly in `position` order. */
+  sequential?: boolean;
+  /**
+   * Computed by the API, not stored: this child cannot be started yet. Already
+   * false for anything in progress or completed, so it answers exactly "can
+   * Start be pressed".
+   */
+  is_blocked?: boolean;
+  blocked_by?: SubtaskBlocker | null;
+  /** The newest 50, oldest first. `comment_count` is the true total. */
+  comments?: TaskComment[];
+  comment_count?: number;
+  /** The tally the API keeps, so nobody counts `subtasks[]` by hand. */
+  subtask_count?: number;
+  subtask_done_count?: number;
+  /**
+   * The recomputed parent, returned by `PATCH /updateTask` after a child moves.
+   * Null when the row updated was top-level.
+   */
+  parent?: taskList | null;
   dailyLog?: {
     id: string;
     created_by: string;
@@ -45,6 +109,16 @@ export type taskList = {
 
 export type SubtaskInput = {
   name: string;
+  /**
+   * The room member this child belongs to. Omitted, it inherits the parent's
+   * assignee — which is the old single-owner behaviour.
+   */
+  assigned_to?: string;
+  /**
+   * 1-based order. Two children on the same number are peers and do not block
+   * each other, so these are always sent distinct.
+   */
+  position?: number;
   priority?: string;
   start_date?: string;
   due_date?: string;
@@ -56,7 +130,15 @@ export type CreateTaskPayload = Omit<taskList, "subtasks"> & {
 };
 
 
-export type WorkspaceStatus = "planning" | "active" | "on_hold";
+/**
+ * Where a workspace is in its life.
+ *
+ * `completed` is the end of it — the work is finished. Unlike `planning` and
+ * `on_hold`, which close a workspace because it is not ready or not running, a
+ * completed one stays **open to its members**: the record of what was done is
+ * the point of finishing it.
+ */
+export type WorkspaceStatus = "planning" | "active" | "on_hold" | "completed";
 
 /**
  * Who can open the workspace. `private` means only its assigned users, and

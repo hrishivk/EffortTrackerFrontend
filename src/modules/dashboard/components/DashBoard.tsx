@@ -46,6 +46,8 @@ const UserDashboard = () => {
   const viewUserId = searchParams.get("viewUser") || "";
   const viewProject = searchParams.get("viewProject") || "";
   const viewTab = searchParams.get("tab") || "";
+  /** A task to open on arrival — how a notification reaches its task. */
+  const focusTaskId = searchParams.get("task") || "";
   const [activeTab, setActiveTab] = useState<"overview" | "myTasks" | "profile">(
     viewUserId || viewProject || viewTab === "myTasks" ? "myTasks" : viewTab === "profile" ? "profile" : "overview"
   );
@@ -181,7 +183,12 @@ const UserDashboard = () => {
             }}
           />
         ) : currentTab === "myTasks" ? (
-          <MyTasksView viewUserId={viewUserId} viewProject={viewProject} viewTab={viewTab} />
+          <MyTasksView
+            viewUserId={viewUserId}
+            viewProject={viewProject}
+            viewTab={viewTab}
+            focusTaskId={focusTaskId}
+          />
         ) : (
           <>
             <div>

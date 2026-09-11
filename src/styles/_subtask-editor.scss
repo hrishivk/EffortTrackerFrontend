@@ -1,0 +1,392 @@
+/**
+ * The subtask builder, shared by the board's Create Task dialog and the list
+ * view's create panel.
+ *
+ * One line per subtask. Everything else opens on the row being worked on, so a
+ * task with six children is six lines rather than eighteen stacked fields.
+ */
+
+.ste {
+  padding: 12px 13px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+}
+
+.ste__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+}
+
+.ste__title {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ste__count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+// The relay switch. Beside the count, because it changes what every row means.
+.ste__seq {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding: 4px 9px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.4);
+  }
+
+  // Lit while it is on, so the state is legible without reading the box.
+  &:has(input:checked) {
+    border-color: #7c3aed;
+    background-color: rgba(124, 58, 237, 0.1);
+    color: #7c3aed;
+  }
+
+  input {
+    width: 13px;
+    height: 13px;
+    margin: 0;
+    accent-color: #7c3aed;
+    cursor: pointer;
+  }
+}
+
+.ste__empty {
+  margin: 0 0 9px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.ste__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  // Long lists scroll rather than pushing the form's buttons off the bottom.
+  max-height: 300px;
+  margin: 0 0 8px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
+}
+
+.ste__row {
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  background-color: var(--bg-card);
+  transition: border-color 0.15s, opacity 0.15s;
+
+  &--open {
+    border-color: rgba(124, 58, 237, 0.45);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.08);
+  }
+
+  &--dragging {
+    opacity: 0.4;
+  }
+
+  // Where the dragged row would land.
+  &--over {
+    border-color: #7c3aed;
+    box-shadow: inset 0 2px 0 0 #7c3aed;
+  }
+}
+
+// ─── The one-line summary ───────────────────────────────────────
+.ste__summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  min-width: 0;
+}
+
+.ste__grip {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--text-faint);
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.ste__index {
+  flex-shrink: 0;
+  min-width: 15px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-align: right;
+}
+
+.ste__name {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+
+  &:hover {
+    border-color: var(--border-light);
+  }
+
+  &:focus {
+    border-color: #7c3aed;
+    outline: none;
+    background-color: var(--bg-surface);
+  }
+}
+
+.ste__who {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  // The same violet every avatar uses — the detail modal's included. An
+  // assignee is identified by their initials and the tooltip, not by a hue.
+  background-color: #7c3aed;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.ste__prio {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.ste__due {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+// "↑2" — the row this one waits for, when the list runs in order.
+.ste__waits {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background-color: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: help;
+}
+
+.ste__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-secondary);
+  }
+
+  &--on {
+    border-color: #7c3aed;
+    background-color: rgba(124, 58, 237, 0.1);
+    color: #7c3aed;
+  }
+
+  &--danger:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+  }
+}
+
+// ─── The editor, for one row at a time ──────────────────────────
+.ste__detail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 2px 9px 10px 28px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ste__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ste__label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-faint);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.ste__date {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background-color: var(--bg-card);
+
+  &:focus-within {
+    border-color: #7c3aed;
+  }
+
+  svg {
+    flex-shrink: 0;
+    font-size: 13px;
+    color: var(--text-faint);
+  }
+
+  input {
+    width: 100%;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 11.5px;
+
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
+// ─── Adding the next one ────────────────────────────────────────
+.ste__add {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 7px 0 10px;
+  border: 1px dashed var(--border-light);
+  border-radius: 9px;
+  background-color: var(--bg-card);
+
+  &:focus-within {
+    border-style: solid;
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  }
+
+  > input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 12.5px;
+
+    &::placeholder {
+      color: var(--text-faint);
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  > button {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 11px;
+    border: none;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:disabled {
+      background: var(--bg-hover);
+      color: var(--text-faint);
+      cursor: not-allowed;
+    }
+  }
+}
+
+.ste__hint {
+  margin: 7px 0 0;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+
+// ─── Compact: the list view's 380px create panel ────────────────
+.ste--compact {
+  padding: 10px;
+
+  .ste__list {
+    max-height: 232px;
+  }
+
+  // Two columns rather than four — the panel is a fixed narrow column
+  // regardless of the viewport, so it asks for the reflow directly.
+  .ste__detail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-left: 22px;
+  }
+
+  .ste__seq {
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+}

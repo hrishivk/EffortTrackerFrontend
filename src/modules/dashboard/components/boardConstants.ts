@@ -193,3 +193,40 @@ export const BOARD_LANE_MAX_HEIGHT = "58vh";
 
 export const GROUP_LANE_PREFIX = "group:";
 export const groupLaneKey = (groupId: string) => `${GROUP_LANE_PREFIX}${groupId}`;
+
+/**
+ * Priorities, their colours, and the compact Select that carries them on a
+ * subtask row. Here rather than in a component file because both create forms
+ * draw the same rows — the board's Create Task dialog and the list view's
+ * create panel.
+ */
+export const PRIORITIES = [
+  { value: "HIGH", label: "High" },
+  { value: "MEDIUM", label: "Medium" },
+  { value: "LOW", label: "Low" },
+];
+
+export const PRIORITY_COLORS: Record<string, string> = {
+  HIGH: "#dc2626",
+  MEDIUM: "#d97706",
+  LOW: "#2563eb",
+};
+
+export const miniSelectSx = {
+  "& .MuiOutlinedInput-root": {
+    height: 32,
+    borderRadius: "8px",
+    backgroundColor: "var(--bg-card)",
+    color: "var(--text-primary)",
+    fontSize: 11.5,
+    "& fieldset": { borderColor: "var(--border-light)" },
+    "&:hover fieldset": { borderColor: "var(--border-light)" },
+    "&.Mui-focused fieldset": { borderColor: "#7c3aed", borderWidth: 1 },
+  },
+  "& .MuiSelect-select": {
+    display: "flex",
+    alignItems: "center",
+    paddingLeft: "2px",
+  },
+  "& .MuiSvgIcon-root": { color: "var(--text-faint)" },
+};

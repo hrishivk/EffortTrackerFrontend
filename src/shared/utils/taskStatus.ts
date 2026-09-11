@@ -105,6 +105,18 @@ export const toLocalDate = (value?: string | null): Date | null => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
+/**
+ * A `Date` as the `YYYY-MM-DD` an `<input type="date">` wants, read in local
+ * time. `toISOString()` is the trap here: it converts to UTC first, so anywhere
+ * ahead of UTC a local midnight lands on the previous day and the picker shows
+ * yesterday. See `toLocalDate` above for the same problem in reverse.
+ */
+export const toDateInput = (date: Date): string => {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+};
+
 /** True when the value is a bare calendar day rather than a timestamp. */
 export const isPlainDate = (value?: string | null): boolean =>
   !!value && /^\d{4}-\d{2}-\d{2}$/.test(value.trim());

@@ -39,8 +39,31 @@ import type { Workspace, WorkspaceRoom } from "../../user/types";
 
 
 /** Ring radius as a percent of the canvas, and how many nodes fit on it. */
-const ORBIT_R = 26;
-const ORBIT_MAX = 12;
+/*
+ * The ring the members sit on. Narrow across and tall down, because a member's
+ * card is wide and short: the horizontal budget is what runs out first, so the
+ * ring spends its room on the vertical instead.
+ */
+const ORBIT_RX = 19;
+const ORBIT_RY_MIN = 24;
+const ORBIT_RY_MAX = 40;
+/** At most this much of a side arc, and at most this far apart along it. */
+const ORBIT_ARC = (Math.PI / 180) * 150;
+const ORBIT_STEP = (Math.PI / 180) * 40;
+/**
+ * The left column runs a little tighter than the right. With an even number of
+ * members the two columns would otherwise place their nodes at matching
+ * heights, and the topmost pair's cards would meet in the middle.
+ */
+const ORBIT_LEFT_SQUEEZE = 0.78;
+/**
+ * Ten to a circle. Past that the columns run out of vertical room, so the
+ * eleventh member starts a second circle underneath rather than being squeezed
+ * into the first — an outward ring cannot work, because a member's card
+ * extends outward and would leave the box.
+ */
+const ORBIT_PER_RING = 10;
+const ORBIT_MAX = 40;
 
 /**
  * The candidates form a second, wider ring outside the members' one, spread
@@ -61,7 +84,7 @@ export default function RoomDetail() {
   const { showSnackbar } = useSnackbar();
   const [params] = useSearchParams();
   const workspaceId = params.get("ws");
-  const roomId = params.get("id");
+  const roomId = params.get("room");
   const rolePath = pathname.split("/")[1] ?? "";
 
   /**
@@ -135,34 +158,68 @@ export default function RoomDetail() {
   }, [load]);
 
   /**
-   * Where each member sits on the ring. Angles start at the top and run
-   * clockwise; `side` puts the label card on whichever side faces outward, so
-   * it never crosses the centre.
+   * The members, ten to a circle, and where each one sits on the circle it
+   * landed in.
+   *
+   * Two columns per circle — one down the right, one down the left — rather
+   * than points spread around a full ring, which is what this used to do. A
+   * card extends outward *horizontally* from its avatar, so a member sitting
+   * near 12 or 6 o'clock has no outward to extend into: past four or five
+   * members the top and bottom cards ran into each other and into the total in
+   * the middle. On a side arc every card has the horizontal room it needs, and
+   * the only thing a bigger room costs is height.
    */
-  const nodes = useMemo(() => {
-    const list = (room?.members ?? []).slice(0, ORBIT_MAX);
-    const step = (Math.PI * 2) / Math.max(list.length, 1);
-    /*
-     * An even count would otherwise put nodes exactly at 12 and 6 o'clock,
-     * where cos is ~0 and the card side is a coin toss — and a card hanging
-     * off the very top reads badly. A quarter-step turn straddles the vertical
-     * instead. Odd counts already avoid it.
-     */
-    const turn = list.length > 1 && list.length % 2 === 0 ? step / 4 : 0;
-    return list.map((m, i) => {
-      const angle = i * step - Math.PI / 2 + turn;
-      return {
-        member: m,
-        left: 50 + Math.cos(angle) * ORBIT_R,
-        top: 50 + Math.sin(angle) * ORBIT_R,
-        side: Math.cos(angle) < -0.01 ? "left" : "right",
-        // A marker between this member and the next, so the ring reads as slots.
-        dot: {
-          left: 50 + Math.cos(angle + step / 2) * ORBIT_R,
-          top: 50 + Math.sin(angle + step / 2) * ORBIT_R,
-        },
+  const rings = useMemo(() => {
+    const all = (room?.members ?? []).slice(0, ORBIT_MAX);
+    const out = [];
+
+    for (let start = 0; start < Math.max(all.length, 1); start += ORBIT_PER_RING) {
+      const list = all.slice(start, start + ORBIT_PER_RING);
+      const rightCount = Math.ceil(list.length / 2);
+      const leftCount = list.length - rightCount;
+      // The circle opens up as it fills, so the cards keep their gap.
+      const ry = Math.min(
+        ORBIT_RY_MAX,
+        ORBIT_RY_MIN + Math.max(0, rightCount - 1) * 4
+      );
+
+      /** The angle of one slot in a column, measured off the horizontal. */
+      const slot = (column: number, count: number, right: boolean) => {
+        const spread =
+          Math.min(ORBIT_ARC, Math.max(count - 1, 0) * ORBIT_STEP) *
+          (right ? 1 : ORBIT_LEFT_SQUEEZE);
+        const offset = count > 1 ? (column / (count - 1) - 0.5) * spread : 0;
+        // Mirroring through the vertical keeps both columns running downward.
+        return right ? offset : Math.PI - offset;
       };
-    });
+
+      const point = (angle: number) => ({
+        left: 50 + Math.cos(angle) * ORBIT_RX,
+        top: 50 + Math.sin(angle) * ry,
+      });
+
+      out.push({
+        start,
+        end: start + list.length,
+        ry,
+        nodes: list.map((m, i) => {
+          const right = i < rightCount;
+          const column = right ? i : i - rightCount;
+          const count = right ? rightCount : leftCount;
+          const angle = slot(column, count, right);
+          const next = column + 1 < count ? slot(column + 1, count, right) : null;
+          return {
+            member: m,
+            ...point(angle),
+            side: right ? "right" : "left",
+            // A marker between this member and the next down the same column.
+            dot: next === null ? null : point((angle + next) / 2),
+          };
+        }),
+      });
+    }
+
+    return out;
   }, [room]);
 
   /** How many of each role, for the legend beside the ring. */
@@ -348,12 +405,17 @@ export default function RoomDetail() {
              * The members sit on a ring around the total. Positions are
              * computed rather than laid out, so any number spaces evenly.
              */}
+            <div className="rmo__stages">
+            {rings.map((ring, r) => (
             <div
-              className={`rmo__stage${overStage ? " rmo__stage--over" : ""}${
-                fanOpen ? " rmo__stage--fanned" : ""
+              key={ring.start}
+              className={`rmo__stage${overStage && r === 0 ? " rmo__stage--over" : ""}${
+                fanOpen && r === 0 ? " rmo__stage--fanned" : ""
               }`}
+              /* Only the first circle takes a drop — the add puts a member in
+                 the room, and which circle they land on is arithmetic. */
               onDragOver={(e) => {
-                if (!drag) return;
+                if (!drag || r !== 0) return;
                 e.preventDefault();
                 e.dataTransfer.dropEffect = "move";
                 if (!overStage) setOverStage(true);
@@ -363,6 +425,7 @@ export default function RoomDetail() {
                 setOverStage(false);
               }}
               onDrop={(e) => {
+                if (r !== 0) return;
                 e.preventDefault();
                 const id = drag;
                 setOverStage(false);
@@ -375,7 +438,7 @@ export default function RoomDetail() {
                * rather than on the centre circle, so it does not read as part
                * of the members' count.
                */}
-              {canManage && (
+              {canManage && r === 0 && (
                 <button
                   type="button"
                   className={`rmo__add${fanOpen ? " rmo__add--on" : ""}`}
@@ -398,7 +461,7 @@ export default function RoomDetail() {
                * so a member's label card sits above a candidate rather than
                * under it where the two are close.
                */}
-              {canManage && fanOpen && (
+              {canManage && fanOpen && r === 0 && (
                 <>
                   <span className="rmo__fan-arc" />
                   {fan.map(({ person, left, top }, i) => (
@@ -449,24 +512,41 @@ export default function RoomDetail() {
                 </>
               )}
 
-              <span className="rmo__ring" />
+              {/* Sized from the node geometry, so the nodes sit on it. */}
+              <span
+                className="rmo__ring"
+                style={{ width: `${ORBIT_RX * 2}%`, height: `${ring.ry * 2}%` }}
+              />
 
               <span className="rmo__halo rmo__halo--outer" />
               <span className="rmo__halo rmo__halo--inner" />
 
+              {/* The first circle carries the count; the rest say which slice
+                  of the room they are holding. */}
               <div className="rmo__core">
-                <PeopleAltOutlinedIcon sx={{ fontSize: 24 }} />
-                <span className="rmo__core-n">{room.members.length}</span>
-                <span className="rmo__core-label">Total Members</span>
+                {r === 0 ? (
+                  <>
+                    <PeopleAltOutlinedIcon sx={{ fontSize: 24 }} />
+                    <span className="rmo__core-n">{room.members.length}</span>
+                    <span className="rmo__core-label">Total Members</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="rmo__core-n rmo__core-n--range">
+                      {ring.start + 1}–{ring.end}
+                    </span>
+                    <span className="rmo__core-label">Members</span>
+                  </>
+                )}
               </div>
 
-              {canManage && fanOpen && (
+              {canManage && fanOpen && r === 0 && (
                 <span className="rmo__fan-tip">
                   Drag onto the ring to add
                 </span>
               )}
 
-              {!fanOpen && room.members.length === 0 && (
+              {!fanOpen && r === 0 && room.members.length === 0 && (
                 <span className="rmo__fan-tip">
                   {canManage
                     ? candidates.length === 0
@@ -476,16 +556,17 @@ export default function RoomDetail() {
                 </span>
               )}
 
-              {nodes.map(({ member, left, top, side, dot }) => {
+              {ring.nodes.map(({ member, left, top, side, dot }) => {
                 /*
-                 * Everyone in the room is drawn, but a member only gets a link
-                 * to their own tasks — the ring stays a picture of the team
-                 * rather than a way to read a colleague's workload. The node
-                 * is otherwise identical, so the content is built once and
-                 * only its wrapper changes.
+                 * Everyone in the room is drawn, but only a manager gets a
+                 * link to somebody else's tasks — a member's own node is the
+                 * only one they can open. A room is shared work, not a shared
+                 * inbox. The node is otherwise identical, so the content is
+                 * built once and only its wrapper changes.
                  *
-                 * `RoomMemberTasks` turns the same URL away when it is typed
-                 * by hand; this only decides whether the node invites a click.
+                 * `RoomMemberTasks` applies the same rule when the URL is typed
+                 * by hand, and `/task-list` is what actually enforces it; this
+                 * only decides whether the node invites a click.
                  */
                 const open = canOpenMemberTasks(workspace, user, member.id);
 
@@ -529,10 +610,12 @@ export default function RoomDetail() {
 
                 return (
                   <div key={member.id}>
-                    <span
-                      className="rmo__dot"
-                      style={{ left: `${dot.left}%`, top: `${dot.top}%` }}
-                    />
+                    {dot && (
+                      <span
+                        className="rmo__dot"
+                        style={{ left: `${dot.left}%`, top: `${dot.top}%` }}
+                      />
+                    )}
                     {open ? (
                       <Link
                         to={tasksPath(member.id)}
@@ -554,6 +637,8 @@ export default function RoomDetail() {
                   </div>
                 );
               })}
+            </div>
+            ))}
             </div>
 
             <aside className="rmo__legend">

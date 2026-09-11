@@ -9,6 +9,11 @@ import {
   FiClock,
   FiSend,
   FiSlash,
+  FiUserPlus,
+  FiPlayCircle,
+  FiMessageSquare,
+  FiAtSign,
+  FiAward,
 } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -42,6 +47,18 @@ const typeConfig: Record<string, { icon: React.ReactNode; color: string; bg: str
   leave_approved:         { icon: <FiCheckCircle size={12} />, color: "#16a34a", bg: "#dcfce7" },
   leave_rejected:         { icon: <FiXCircle size={12} />,     color: "#dc2626", bg: "#fee2e2" },
   leave_cancelled:        { icon: <FiSlash size={12} />,       color: "#6b7280", bg: "#f3f4f6" },
+
+  // Shared room tasks. `task_subtask_unblocked` is the one that carries weight —
+  // it is what tells the next person their turn has come, so it is the only one
+  // given the running-blue treatment rather than a neutral grey.
+  task_subtask_assigned:  { icon: <FiUserPlus size={12} />,      color: "#7c3aed", bg: "#f5f3ff" },
+  task_subtask_unblocked: { icon: <FiPlayCircle size={12} />,    color: "#2563eb", bg: "#dbeafe" },
+  task_comment:           { icon: <FiMessageSquare size={12} />, color: "#0d9488", bg: "#ccfbf1" },
+  task_comment_mention:   { icon: <FiAtSign size={12} />,        color: "#d97706", bg: "#fef3c7" },
+
+  // Raised by a person, not by an event: someone finished a workspace and chose
+  // who should hear about it. Teal, matching the Completed status chip.
+  workspace_completed:    { icon: <FiAward size={12} />,          color: "#0d9488", bg: "#ccfbf1" },
 };
 
 const defaultConfig = { icon: <FiBell size={12} />, color: "#7c3aed", bg: "#f5f3ff" };
@@ -129,6 +146,24 @@ const typeToTab: Record<string, string> = {
   leave_cancelled: "teamLeaves",         // AM sees cancellation
 };
 
+/**
+ * Notifications about a task, which open the task list rather than a leave tab.
+ *
+ * `reference_id` is always the **parent** task id, never the subtask — a
+ * subtask has no card of its own, so that is the id worth opening. It is
+ * carried through as `?task=`, which the task list uses to open that task's
+ * detail panel once its page has loaded.
+ */
+const TASK_TYPES = new Set([
+  "task_subtask_assigned",
+  "task_subtask_unblocked",
+  "task_comment",
+  "task_comment_mention",
+]);
+
+/** Opens the workspace itself; `reference_id` is the workspace id. */
+const WORKSPACE_TYPES = new Set(["workspace_completed"]);
+
 export default function NotificationPanel() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -141,9 +176,24 @@ export default function NotificationPanel() {
   const role = user?.role?.toLowerCase();
 
   const handleNavigate = (n: Notification) => {
+    const rolePath = role === "sp" ? "sp" : role === "am" ? "am" : "user";
+
+    if (TASK_TYPES.has(n.type)) {
+      navigate(
+        `/${rolePath}/dashboard?tab=myTasks&task=${encodeURIComponent(n.reference_id)}`
+      );
+      setOpen(false);
+      return;
+    }
+
+    if (WORKSPACE_TYPES.has(n.type)) {
+      navigate(`/${rolePath}/workspace?ws=${encodeURIComponent(n.reference_id)}`);
+      setOpen(false);
+      return;
+    }
+
     const tab = typeToTab[n.type];
     if (tab) {
-      const rolePath = role === "sp" ? "sp" : role === "am" ? "am" : "user";
       navigate(`/${rolePath}/attendance?tab=${tab}`);
       setOpen(false);
     }
@@ -176,7 +226,7 @@ export default function NotificationPanel() {
     }
   }, []);
 
-  // Fetch unread count on mount (page refresh) and whenever the logged-in user changes
+ 
   useEffect(() => {
     if (user?.id) loadCount();
   }, [user?.id, loadCount]);
@@ -190,10 +240,7 @@ export default function NotificationPanel() {
     }
   }, [open, loadCount, loadNotifications]);
 
-  /*
-   * The account panel offers a Notifications row, and the bell lives here —
-   * so it asks by event rather than the layout owning this open state.
-   */
+ 
   useEffect(() => {
     const onAsk = () => setOpen(true);
     window.addEventListener(OPEN_NOTIFICATIONS, onAsk);
@@ -217,7 +264,7 @@ export default function NotificationPanel() {
       );
       setUnreadCount((c) => Math.max(0, c - 1));
     } catch {
-      /* silent */
+  
     }
   };
 
@@ -227,7 +274,7 @@ export default function NotificationPanel() {
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch {
-      /* silent */
+   
     }
   };
 
@@ -239,7 +286,7 @@ export default function NotificationPanel() {
 
   return (
     <>
-      {/* Bell */}
+  
       <button
         onClick={() => setOpen((prev) => !prev)}
         className="relative p-2 rounded-lg transition-colors"
@@ -259,26 +306,18 @@ export default function NotificationPanel() {
         )}
       </button>
 
-      {/*
-       * Portalled to <body> on purpose. `.app-header` sets `backdrop-filter`
-       * for its frosted look, and any backdrop-filter other than `none` makes
-       * that element the containing block for fixed-position descendants and
-       * its own stacking context. Rendered in place, the panel's `fixed`
-       * offsets would resolve against the 64px-tall header instead of the
-       * viewport, and its z-index would be trapped under the header's own — so
-       * it came out the wrong size and behind the page content.
-       */}
+     
       {createPortal(
         <AnimatePresence>
         {open && (
           <>
-            {/* Backdrop */}
+         
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setOpen(false)}
-              className="fixed inset-0 top-[64px] bg-black/10 z-[80]"
+              className="fixed inset-0 bg-black/10 z-[80]"
             />
 
             {/* Sidebar */}

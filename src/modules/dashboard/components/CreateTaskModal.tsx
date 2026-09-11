@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Dialog from "@mui/material/Dialog";
 import CircularProgress from "@mui/material/CircularProgress";
 import FormControl from "@mui/material/FormControl";
@@ -15,21 +15,26 @@ import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined
 import RadioButtonCheckedIcon from "@mui/icons-material/RadioButtonChecked";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
-import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 
+import { toDateInput } from "../../../shared/utils/taskStatus";
 import type { formUserData } from "../../../shared/types/User";
-import { STATUS_ACCENT } from "./boardConstants";
+import { PRIORITIES, STATUS_ACCENT } from "./boardConstants";
+import SubtaskEditor from "./SubtaskEditor";
 
-/** A child task, with its own priority and dates. */
+/** A child task, with its own assignee, priority and dates. */
 export interface SubtaskDraft {
   name: string;
+  /**
+   * The room member who owns this child. "" means it inherits the parent's
+   * assignee, which is how a task outside a room still behaves.
+   */
+  assignee: string;
   priority: string;
   startDate: string;
   dueDate: string;
 }
 
-/** Everything the form collects. Fields the API cannot store yet are marked. */
+/** Everything the form collects. */
 export interface CreateTaskFormData {
   taskName: string;
   project: string;
@@ -37,22 +42,18 @@ export interface CreateTaskFormData {
   startDate: string;
   dueDate: string;
   assignees: string[];
-  /** No column yet — see docs/create-task-fields.md */
   tags: string[];
+  /** Subtasks run strictly in listed order — each waits for the one above. */
+  sequential: boolean;
   subtasks: SubtaskDraft[];
 }
 
-const PRIORITIES = [
-  { value: "HIGH", label: "High" },
-  { value: "MEDIUM", label: "Medium" },
-  { value: "LOW", label: "Low" },
-];
-
-const PRIORITY_COLORS: Record<string, string> = {
-  HIGH: "#dc2626",
-  MEDIUM: "#d97706",
-  LOW: "#2563eb",
-};
+/** Somebody a subtask can be handed to. */
+export interface SubtaskAssignee {
+  id: string;
+  name: string;
+  role?: string;
+}
 
 const TAG_COLORS = [
   { bg: "rgba(124, 58, 237, 0.12)", text: "#7c3aed" },
@@ -104,25 +105,6 @@ const fixedSelectSx = {
 };
 
 /** The same select, two thirds the height, for a subtask row. */
-const miniSelectSx = {
-  "& .MuiOutlinedInput-root": {
-    height: 32,
-    borderRadius: "8px",
-    backgroundColor: "var(--bg-card)",
-    color: "var(--text-primary)",
-    fontSize: 11.5,
-    "& fieldset": { borderColor: "var(--border-light)" },
-    "&:hover fieldset": { borderColor: "var(--border-light)" },
-    "&.Mui-focused fieldset": { borderColor: "#7c3aed", borderWidth: 1 },
-  },
-  "& .MuiSelect-select": {
-    display: "flex",
-    alignItems: "center",
-    paddingLeft: "2px",
-  },
-  "& .MuiSvgIcon-root": { color: "var(--text-faint)" },
-};
-
 const menuProps = {
   PaperProps: {
     sx: {
@@ -154,11 +136,18 @@ const emptyForm = (): CreateTaskFormData => ({
   dueDate: "",
   assignees: [],
   tags: [],
+  sequential: false,
   subtasks: [],
 });
 
 interface CreateTaskModalProps {
   open: boolean;
+  /**
+   * The day the task starts unless changed, as `YYYY-MM-DD` — the day the
+   * caller is looking at. Falls back to today, so the field is never blank:
+   * a task with no start date has no place on the board's timeline.
+   */
+  defaultStartDate?: string;
   onClose: () => void;
   projects: { id: string; name: string }[];
   assignableUsers: formUserData[];
@@ -184,6 +173,15 @@ interface CreateTaskModalProps {
   /** USER / DEVLOPER self-assign, so the Assignee field is theirs and fixed. */
   isUserOrDev: boolean;
   currentUserName?: string;
+  /**
+   * The room's members, when this task is being raised inside one. Each subtask
+   * can be handed to one of them, which is what turns a task into shared work:
+   * three people on one task, each holding their own piece.
+   *
+   * Empty outside a room — the per-subtask assignee column is then hidden and
+   * every child inherits the parent's assignee, as before.
+   */
+  roomMembers?: SubtaskAssignee[];
   submitting: boolean;
   /** Resolves once the task is saved. */
   onSubmit: (data: CreateTaskFormData) => Promise<void>;
@@ -191,6 +189,7 @@ interface CreateTaskModalProps {
 
 export default function CreateTaskModal({
   open,
+  defaultStartDate,
   onClose,
   projects,
   assignableUsers,
@@ -199,13 +198,12 @@ export default function CreateTaskModal({
   defaultAssignee,
   isUserOrDev,
   currentUserName,
+  roomMembers = [],
   submitting,
   onSubmit,
 }: CreateTaskModalProps) {
   const [form, setForm] = useState<CreateTaskFormData>(emptyForm);
   const [tagDraft, setTagDraft] = useState("");
-  const [subtaskDraft, setSubtaskDraft] = useState("");
-  const subtaskRef = useRef<HTMLInputElement>(null);
   const [touched, setTouched] = useState(false);
 
   const set = <K extends keyof CreateTaskFormData>(key: K, value: CreateTaskFormData[K]) =>
@@ -221,12 +219,27 @@ export default function CreateTaskModal({
     setForm({
       ...emptyForm(),
       project: fixedProject ?? "",
+      startDate: defaultStartDate || toDateInput(new Date()),
       assignees: !isUserOrDev && defaultAssignee ? [defaultAssignee.id] : [],
     });
     setTagDraft("");
-    setSubtaskDraft("");
     setTouched(false);
-  }, [open, fixedProject, defaultAssignee, isUserOrDev]);
+  }, [open, fixedProject, defaultStartDate, defaultAssignee, isUserOrDev]);
+
+  /*
+   * The task has to outlast its subtasks, so the last day any of them runs to
+   * is the floor for its own due date: put a subtask three weeks out and the
+   * task's deadline goes with it. `YYYY-MM-DD` compares correctly as a string,
+   * and "" sorts below every real date, so an unset date never wins.
+   */
+  const lastSubtaskDue = form.subtasks.reduce(
+    (latest, sub) => (sub.dueDate > latest ? sub.dueDate : latest),
+    ""
+  );
+  /** What the Due Date field shows and what gets saved. */
+  const dueDate = lastSubtaskDue > form.dueDate ? lastSubtaskDue : form.dueDate;
+  /** A due date can be moved out past the subtasks, never back inside them. */
+  const dueMin = lastSubtaskDue > form.startDate ? lastSubtaskDue : form.startDate;
 
   const nameMissing = touched && !form.taskName.trim();
   const projectMissing = touched && !form.project;
@@ -238,38 +251,11 @@ export default function CreateTaskModal({
     setTagDraft("");
   };
 
-  /**
-   * Append a subtask and stay in the box. A task usually has several, so the
-   * field keeps focus and clears rather than sending you hunting for it again.
-   */
-  const addSubtask = () => {
-    const t = subtaskDraft.trim();
-    if (!t) return;
-    set("subtasks", [
-      ...form.subtasks,
-      // Inherit the parent's dates as a starting point — a subtask nearly always
-      // sits inside its parent's window, and it stays editable either way.
-      {
-        name: t,
-        priority: "MEDIUM",
-        startDate: form.startDate,
-        dueDate: form.dueDate,
-      },
-    ]);
-    setSubtaskDraft("");
-    subtaskRef.current?.focus();
-  };
-
-  const editSubtask = (index: number, patch: Partial<SubtaskDraft>) =>
-    set(
-      "subtasks",
-      form.subtasks.map((sub, i) => (i === index ? { ...sub, ...patch } : sub))
-    );
-
   const submit = async () => {
     setTouched(true);
     if (!form.taskName.trim() || !form.project) return;
-    await onSubmit({ ...form });
+    // `dueDate` rather than `form.dueDate`: the subtasks may have pushed it out.
+    await onSubmit({ ...form, dueDate });
   };
 
   return (
@@ -466,7 +452,7 @@ export default function CreateTaskModal({
                 <input
                   type="date"
                   value={form.startDate}
-                  max={form.dueDate || undefined}
+                  max={dueDate || undefined}
                   onChange={(e) => set("startDate", e.target.value)}
                 />
               </div>
@@ -477,11 +463,17 @@ export default function CreateTaskModal({
                 <CalendarTodayOutlinedIcon />
                 <input
                   type="date"
-                  value={form.dueDate}
-                  min={form.startDate || undefined}
+                  value={dueDate}
+                  min={dueMin || undefined}
                   onChange={(e) => set("dueDate", e.target.value)}
                 />
               </div>
+              {/* Said out loud, because the field moved on its own. */}
+              {lastSubtaskDue > form.dueDate && (
+                <p className="ctm__hint">
+                  Set by the subtask that runs longest.
+                </p>
+              )}
             </div>
           </div>
 
@@ -532,127 +524,25 @@ export default function CreateTaskModal({
             </div>
           </div>
 
-          {/* Subtasks */}
-          <div className="ctm__row ctm__row--1">
-            <div>
-              <label className="ctm__label">
-                Subtasks
-                {form.subtasks.length > 0 && (
-                  <span className="ctm__label-count">{form.subtasks.length}</span>
-                )}
-              </label>
-              {/* Existing subtasks first, so the input below always reads as
-                  "add the next one" rather than "the subtask field". */}
-              {form.subtasks.length > 0 && (
-                <ol className="ctm__subtasks">
-                  {form.subtasks.map((sub, i) => (
-                    <li key={i} className="ctm__subtask">
-                      <div className="ctm__subtask-top">
-                        <DragIndicatorIcon
-                          sx={{ fontSize: 15, color: "var(--text-faint)", flexShrink: 0 }}
-                        />
-                        <span className="ctm__subtask-index">{i + 1}</span>
-                        <input
-                          className="ctm__subtask-name"
-                          value={sub.name}
-                          onChange={(e) => editSubtask(i, { name: e.target.value })}
-                          title={sub.name}
-                        />
-                        <button
-                          type="button"
-                          title="Remove subtask"
-                          onClick={() => set("subtasks", form.subtasks.filter((_, j) => j !== i))}
-                        >
-                          <CloseIcon sx={{ fontSize: 13 }} />
-                        </button>
-                      </div>
-
-                      <div className="ctm__subtask-meta">
-                        <FormControl fullWidth size="small" sx={miniSelectSx}>
-                          <Select
-                            value={sub.priority}
-                            onChange={(e) => editSubtask(i, { priority: e.target.value })}
-                            MenuProps={menuProps}
-                            startAdornment={
-                              <InputAdornment position="start" sx={{ marginRight: 0.5 }}>
-                                <FlagOutlinedIcon
-                                  sx={{
-                                    fontSize: 13,
-                                    color: PRIORITY_COLORS[sub.priority] || "var(--text-faint)",
-                                  }}
-                                />
-                              </InputAdornment>
-                            }
-                          >
-                            {PRIORITIES.map((pr) => (
-                              <MenuItem key={pr.value} value={pr.value}>
-                                {pr.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-
-                        <label className="ctm__mini" title="Subtask start date">
-                          <CalendarTodayOutlinedIcon />
-                          <input
-                            type="date"
-                            value={sub.startDate}
-                            max={sub.dueDate || undefined}
-                            onChange={(e) => editSubtask(i, { startDate: e.target.value })}
-                          />
-                        </label>
-
-                        <label className="ctm__mini" title="Subtask due date">
-                          <CalendarTodayOutlinedIcon />
-                          <input
-                            type="date"
-                            value={sub.dueDate}
-                            min={sub.startDate || undefined}
-                            onChange={(e) => editSubtask(i, { dueDate: e.target.value })}
-                          />
-                        </label>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-
-              <div
-                className="ctm__field"
-                style={{ marginTop: form.subtasks.length ? 8 : 0 }}
-              >
-                <AccountTreeOutlinedIcon />
-                <input
-                  ref={subtaskRef}
-                  value={subtaskDraft}
-                  onChange={(e) => setSubtaskDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addSubtask();
-                    }
-                  }}
-                  placeholder={
-                    form.subtasks.length
-                      ? `Add subtask ${form.subtasks.length + 1}...`
-                      : "Add a subtask..."
-                  }
-                />
-                <button
-                  type="button"
-                  className="ctm__inline-add"
-                  onClick={addSubtask}
-                  disabled={!subtaskDraft.trim()}
-                >
-                  <AddIcon sx={{ fontSize: 15 }} /> Add
-                </button>
-              </div>
-              <p className="ctm__hint">
-                Press Enter to add it and keep going — add as many as the task needs.
-              </p>
-            </div>
-          </div>
-
+          {/*
+           * Subtasks sit in the right column with the tags — the collections,
+           * beside the task's own fields on the left.
+           *
+           * This only fits because a row is now one line. The previous version
+           * showed every field on every row, three deep, and four children
+           * filled the column; `compact` reflows the one row being edited to
+           * two columns, which is what the half-width column has room for.
+           */}
+          <SubtaskEditor
+            compact
+            subtasks={form.subtasks}
+            onChange={(next) => set("subtasks", next)}
+            sequential={form.sequential}
+            onSequentialChange={(next) => set("sequential", next)}
+            roomMembers={roomMembers}
+            defaultStartDate={form.startDate}
+            defaultDueDate={dueDate}
+          />
           </div>
         </div>
 

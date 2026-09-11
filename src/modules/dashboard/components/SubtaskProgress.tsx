@@ -4,17 +4,18 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { subtaskProgress } from "../../../shared/utils/subtasks";
 import { STATUS_ACCENT } from "./boardConstants";
 
-/**
- * How far through its subtasks a task is.
- *
- * A task with subtasks has no Start action of its own — its state follows its
- * children — so this doubles as the way into the detail panel, where the
- * children can actually be started.
- */
+
 
 interface SubtaskProgressProps {
   subtasks?: { status?: string | null }[];
-  /** Opens the detail panel. Without it this is a plain indicator. */
+  /**
+   * The API's own tally (`subtask_done_count` / `subtask_count`). Preferred
+   * over counting `subtasks[]`, which is only the slice this caller happens to
+   * hold — a response that nests no children would otherwise read 0 of 0.
+   */
+  done?: number;
+  total?: number;
+
   onOpen?: () => void;
   /** Narrower bar and smaller type, for a Board card. */
   dense?: boolean;
@@ -22,10 +23,14 @@ interface SubtaskProgressProps {
 
 export default function SubtaskProgress({
   subtasks,
+  done: doneProp,
+  total: totalProp,
   onOpen,
   dense = false,
 }: SubtaskProgressProps) {
-  const { done, total } = subtaskProgress(subtasks);
+  const counted = subtaskProgress(subtasks);
+  const done = doneProp ?? counted.done;
+  const total = totalProp ?? counted.total;
   if (!total) return null;
 
   const pct = Math.round((done / total) * 100);
@@ -103,7 +108,6 @@ export default function SubtaskProgress({
       type="button"
       title={`${label} — open the task`}
       onClick={(e) => {
-        // The row and the card both have their own click behaviour.
         e.stopPropagation();
         onOpen();
       }}

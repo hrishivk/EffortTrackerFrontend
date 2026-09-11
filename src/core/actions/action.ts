@@ -95,6 +95,11 @@ export const fetchTasksByProject = async (project: string, pagination?: { page?:
  * A built-in status lane sets `status` and clears any group link; a custom group
  * sets `group_id` and leaves the status alone, so `status` stays one of the
  * values the API validates.
+ *
+ * Resolves to the response wrapper. `data.parent` is the whole parent card,
+ * recomputed — status rolled up and every child's `is_blocked` / `blocked_by`
+ * re-evaluated — or null when the row updated was top-level. Moving a child
+ * out of turn rejects with a `409` whose message is written to be shown as-is.
  */
 export const updateTaskLane = async (
   taskId: string,
@@ -107,6 +112,42 @@ export const updateTaskLane = async (
   return response.data;
 };
 
+// ─── Task comments ────────────────────────────────────────────────
+//
+// `taskId` is whatever the comment is on — the main task or one subtask. Both
+// are rows in `tasks`, so a subtask thread needs nothing special.
+//
+// There is no read here on purpose: a task's comments arrive inside
+// `/task-list`, so the list reload after a write is the read.
+
+export const addTaskComment = async (taskId: string, body: string) => {
+  const response = await userServiceMethood.createTaskComment("/task-comment", {
+    task_id: taskId,
+    body,
+  });
+  return response.data;
+};
+
+export const editTaskComment = async (
+  taskId: string,
+  commentId: string,
+  body: string
+) => {
+  const response = await userServiceMethood.updateTaskComment("/task-comment", {
+    task_id: taskId,
+    comment_id: commentId,
+    body,
+  });
+  return response.data;
+};
+
+export const removeTaskComment = async (taskId: string, commentId: string) => {
+  const response = await userServiceMethood.deleteTaskComment(
+    `/task-comment?task_id=${encodeURIComponent(taskId)}&comment_id=${encodeURIComponent(commentId)}`
+  );
+  return response.data;
+};
+
 // ─── Board groups ─────────────────────────────────────────────────
 
 export const fetchTaskGroups = async (assignedTo?: string) => {
@@ -114,8 +155,18 @@ export const fetchTaskGroups = async (assignedTo?: string) => {
   return response.data;
 };
 
-export const createTaskGroup = async (data: { name: string; color: string }) => {
-  const response = await userServiceMethood.createTaskGroup("/task-groups", data);
+// `assignedTo` is the board the lane is being added to, and it has to be the
+// same user the groups were fetched for: without it the API scopes the new row
+// to the caller, so a manager adding a lane to someone else's board gets it on
+// their own instead and the reload never shows it.
+export const createTaskGroup = async (
+  data: { name: string; color: string },
+  assignedTo?: string
+) => {
+  const response = await userServiceMethood.createTaskGroup("/task-groups", {
+    ...data,
+    ...(assignedTo ? { assigned_to: assignedTo } : {}),
+  });
   return response.data;
 };
 

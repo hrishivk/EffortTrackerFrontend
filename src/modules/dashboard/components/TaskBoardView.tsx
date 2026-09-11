@@ -203,7 +203,12 @@ function BoardCard({
   // rather than inferring it from the lane. A card parked in a group keeps the
   // total it earned on the way there.
   const subs = task.subtasks ?? [];
-  const progress = subtaskProgress(subs);
+  // The API's tally when it sent one, otherwise counted from what is nested.
+  const counted = subtaskProgress(subs);
+  const progress = {
+    done: task.subtask_done_count ?? counted.done,
+    total: task.subtask_count ?? counted.total,
+  };
   // A parent's clock is its subtasks': first start to last finish.
   const timing = taskTiming(task);
   const showTimer = hasTrackedTime({
@@ -508,6 +513,11 @@ function BoardCard({
                 marginTop: 8,
                 paddingLeft: 8,
                 borderLeft: "2px solid var(--border-light)",
+                // Without these the rows lay out against their content rather
+                // than the card, and a long subtask name pushed the whole list
+                // past the card's right edge.
+                minWidth: 0,
+                overflow: "hidden",
               }}
             >
               <SubtaskList subtasks={subs} dense onSelect={onSubtaskOpen} />

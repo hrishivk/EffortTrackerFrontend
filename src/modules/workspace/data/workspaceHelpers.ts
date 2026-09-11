@@ -24,7 +24,14 @@ export const workspaceGate = (
 
   if (ws.locked || !ws.status) return { open: true };
 
-  if (ws.status === "active" || privileged) return { open: true };
+  /*
+   * `completed` opens like `active` does. The other two closed states mean "not
+   * ready" and "not running"; this one means the work is done, and a finished
+   * workspace nobody can open is a record nobody can read.
+   */
+  if (ws.status === "active" || ws.status === "completed" || privileged) {
+    return { open: true };
+  }
 
   return {
     open: false,
@@ -51,7 +58,12 @@ export const visibleWorkspaces = <
     );
   }
 
-  return list.filter((ws) => ws.locked === true || ws.status === "active");
+  // Finished workspaces stay listed: they are still open, so hiding them would
+  // leave a member with a workspace they can reach but cannot find.
+  return list.filter(
+    (ws) =>
+      ws.locked === true || ws.status === "active" || ws.status === "completed"
+  );
 };
 
 
@@ -63,6 +75,21 @@ export const canManageWorkspace = (
   user?.role === "SP" ||
   (!!ws?.created_by && String(ws.created_by) === String(user?.id));
 
+/**
+ * Whether this viewer may open `memberId`'s task list inside a room.
+ *
+ * A manager sees anyone; everybody else sees only themselves. Being in the same
+ * room is **not** enough — a room is shared work, not a shared inbox, and a
+ * colleague's task list is theirs.
+ *
+ * This is narrower than what a member can see of a *shared task*: they still get
+ * the main task and every sibling subtask on it, because they hold a piece of it
+ * and have to know who is ahead of them. That arrives through their own list.
+ * Browsing somebody's whole list is the separate thing, and it stays closed.
+ *
+ * `/task-list` is what actually enforces this; here it only decides whether the
+ * ring offers the link.
+ */
 export const canOpenMemberTasks = (
   ws: { created_by?: string } | null | undefined,
   user: { id?: string | number | null; role?: string } | null | undefined,
