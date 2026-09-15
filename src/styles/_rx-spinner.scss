@@ -7,8 +7,6 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  // Light black: dark enough to push the page back, sheer enough that the user
-  // can still see what they are waiting on.
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(2px);
   animation: rxs-fade 0.22s ease-out both;
@@ -29,8 +27,6 @@
   justify-content: center;
 }
 
-// A ring that leaves the dial and fades, on a long cycle so it stays a pulse
-// rather than a ripple machine.
 .rxs__halo {
   position: absolute;
   inset: 0;
@@ -138,8 +134,6 @@
   }
 }
 
-// The arc grows and shrinks, and drifts round as it does, which is what gives
-// the ring its variable speed without changing the rotation itself.
 @keyframes rxs-draw {
   0% {
     stroke-dasharray: 20 276;
@@ -155,7 +149,7 @@
   }
 }
 
-// Barely there — enough that the mark is alive, not enough to pulse at you.
+
 @keyframes rxs-breathe {
   0%,
   100% {
@@ -204,8 +198,7 @@
   }
 }
 
-// Someone who has asked for less motion gets the ring only, holding still at a
-// legible length, and a mark that does not move at all.
+
 @media (prefers-reduced-motion: reduce) {
   .rxs-overlay {
     animation: none;

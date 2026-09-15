@@ -49,7 +49,6 @@ import { taskTiming } from "../../../shared/utils/taskTime";
 import {
   assigneeIdOf,
   assigneeOf,
-  completeBlockedReason,
 } from "../../../shared/utils/subtasks";
 import TaskActionCell from "./TaskActionCell";
 import TaskDetailPanel from "./TaskDetailPanel";
@@ -1380,7 +1379,6 @@ export default function MyTasksView({
                   busy={!!quickBusy[row.key]}
                   // Startable on its own, but not finishable while a piece of it
                   // is outstanding — a task showing DONE beside "1/2" is wrong.
-                  completeBlockedReason={completeBlockedReason(row)}
                   onStart={() => void handleQuickStatus(row, "in_progress")}
                   onComplete={() => void handleQuickStatus(row, "completed")}
                 />
@@ -1557,17 +1555,6 @@ export default function MyTasksView({
    * exactly like a board drop.
    */
   const handleQuickStatus = async (row: GroupedTask, next: "in_progress" | "completed") => {
-    // The button is already withheld for this, but the check belongs at the
-    // request too: a view that has gone stale must not be able to finish a task
-    // whose subtasks are still open.
-    const outstanding = next === "completed" ? completeBlockedReason(row) : null;
-    if (outstanding) {
-      showSnackbar({
-        message: `Can't complete this task — ${outstanding}`,
-        severity: "warning",
-      });
-      return;
-    }
     const ids = row.tasks.map((t) => String(t.id));
     setQuickBusy((b) => ({ ...b, [row.key]: true }));
     try {
@@ -1619,6 +1606,10 @@ export default function MyTasksView({
   ) => {
     if (!subtaskId) return;
     const key = String(subtaskId);
+    // Read before the write, so the response can be compared against it.
+    const parentStatusBefore = tasks.find((t) =>
+      (t.subtasks ?? []).some((sub) => String(sub.id) === key)
+    )?.status;
     setQuickBusy((b) => ({ ...b, [key]: true }));
     try {
       const g = findGroupForStatus(boardGroups, next);
@@ -1637,17 +1628,23 @@ export default function MyTasksView({
        * `is_blocked` flags have to be recomputed after any move; it is read
        * only to report what actually happened, never to assume it.
        */
+      /*
+       * If the parent's own status moved, the server rolled it up — which it is
+       * asked not to do (§4b). Say so rather than reporting it as the expected
+       * outcome: a task nobody finished showing as complete is a bug to see,
+       * not a success to celebrate.
+       */
       const rolled: taskList | null = res?.data?.parent ?? null;
-      const parentDone = normalizeStatus(rolled?.status) === "completed";
+      const parentMoved =
+        !!rolled && normalizeStatus(rolled.status) !== normalizeStatus(parentStatusBefore);
 
       showSnackbar({
-        // Only says the task finished if the response actually says so.
-        message: parentDone
-          ? "Last subtask done — the task is complete"
+        message: parentMoved
+          ? `Subtask ${next === "in_progress" ? "started" : "completed"} — but the server also moved the main task`
           : next === "in_progress"
             ? "Subtask started"
             : "Subtask completed",
-        severity: "success",
+        severity: parentMoved ? "warning" : "success",
       });
       await (viewMode === "board" ? loadBoardTasks() : loadTasks());
     } catch (error: unknown) {

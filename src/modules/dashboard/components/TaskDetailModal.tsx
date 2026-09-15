@@ -5,7 +5,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import type { taskList } from "../../user/types";
 import { updateTaskLane } from "../../../core/actions/action";
-import { assigneeOf, blockedReason } from "../../../shared/utils/subtasks";
+import { assigneeOf } from "../../../shared/utils/subtasks";
 import type { TaskGroup } from "../types";
 import { findGroupForStatus } from "./boardConstants";
 import { parseServerTime } from "../../../shared/utils/serverTime";
@@ -117,14 +117,7 @@ export default function TaskDetailModal({
   let actionIcon: React.ReactNode = null;
   let nextStatus = "";
 
-  /*
-   * A sequential subtask whose turn has not come. The server refuses the start
-   * with a 409 either way; withholding the button is what stops somebody being
-   * offered an action that cannot work.
-   */
-  const blocked = blockedReason(task);
-
-  if (canStartTask && !blocked) {
+  if (canStartTask) {
     if (isYetToStart) {
       actionLabel = "Start Timer";
       actionIcon = <PlayArrowIcon sx={{ fontSize: 18 }} />;

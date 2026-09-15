@@ -1,7 +1,6 @@
 import CircularProgress from "@mui/material/CircularProgress";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
-import HourglassEmptyRoundedIcon from "@mui/icons-material/HourglassEmptyRounded";
 
 /**
  * Where a task is, and the one thing you can do to it next.
@@ -12,7 +11,9 @@ import HourglassEmptyRoundedIcon from "@mui/icons-material/HourglassEmptyRounded
  *   Yet to Start → [▶ Start]
  *   In Progress  → [● Running ✓]   the tick finishes it
  *   Completed    → [✓ Completed]
- *   Waiting      → [⌛ Waiting]     a sequential subtask whose turn has not come
+ *
+ * Every task and subtask starts and finishes on its own. Nothing here waits on
+ * a sibling, and finishing a task does not wait on its children.
  */
 
 const chipBase = (dense: boolean) => ({
@@ -31,18 +32,6 @@ interface TaskActionCellProps {
   owns: boolean;
   busy?: boolean;
   dense?: boolean;
-  /**
-   * Why this cannot be started yet, or null when it can — the API's
-   * `is_blocked` / `blocked_by`, phrased for a tooltip. Shown instead of Start,
-   * so the turn order is visible before anyone clicks and gets a 409.
-   */
-  blockedReason?: string | null;
-  /**
-   * Why this cannot be *completed* yet, or null when it can — a parent whose
-   * subtasks are unfinished. The Running chip keeps its dot but loses its tick,
-   * so a task cannot be marked done while a piece of it is outstanding.
-   */
-  completeBlockedReason?: string | null;
   onStart: () => void;
   onComplete: () => void;
 }
@@ -52,8 +41,6 @@ export default function TaskActionCell({
   owns,
   busy = false,
   dense = false,
-  blockedReason = null,
-  completeBlockedReason = null,
   onStart,
   onComplete,
 }: TaskActionCellProps) {
@@ -65,26 +52,6 @@ export default function TaskActionCell({
     e.stopPropagation();
     run();
   };
-
-  // Ahead of the Start branch: a blocked subtask is still "yet to start", and
-  // offering the button there would be the click the 409 exists to catch.
-  if (blockedReason && (st === "yet_to_start" || st === "pending")) {
-    return (
-      <span
-        title={blockedReason}
-        style={{
-          ...base,
-          padding: dense ? "3px 8px" : "4px 10px",
-          backgroundColor: "rgba(100, 116, 139, 0.12)",
-          color: "#64748b",
-          cursor: "help",
-        }}
-      >
-        <HourglassEmptyRoundedIcon sx={{ fontSize: dense ? 12 : 13 }} />
-        Waiting
-      </span>
-    );
-  }
 
   if ((st === "yet_to_start" || st === "pending") && owns) {
     return (
@@ -116,27 +83,24 @@ export default function TaskActionCell({
   if (st === "in_progress") {
     return (
       <span
-        title={completeBlockedReason ?? undefined}
         style={{
           ...base,
           // Without the tick the chip is text, so it does not need the padding
           // that made room for a button.
-          padding:
-            owns && !completeBlockedReason
-              ? dense
-                ? "2px 3px 2px 8px"
-                : "3px 4px 3px 10px"
-              : dense
-                ? "3px 8px"
-                : "4px 10px",
+          padding: owns
+            ? dense
+              ? "2px 3px 2px 8px"
+              : "3px 4px 3px 10px"
+            : dense
+              ? "3px 8px"
+              : "4px 10px",
           backgroundColor: "rgba(37, 99, 235, 0.12)",
           color: "#2563eb",
-          cursor: completeBlockedReason ? "help" : undefined,
         }}
       >
         <span className="task-running-dot" />
         Running
-        {owns && !completeBlockedReason && (
+        {owns && (
           <button
             type="button"
             className="task-running-done"

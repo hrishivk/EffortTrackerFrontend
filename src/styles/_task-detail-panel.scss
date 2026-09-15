@@ -547,18 +547,6 @@
   margin-left: auto;
 }
 
-.tdp__card-waits {
-  max-width: 220px;
-  overflow: hidden;
-  padding: 2px 7px;
-  border-radius: 5px;
-  background-color: rgba(100, 116, 139, 0.12);
-  color: #64748b;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  cursor: help;
-}
-
 .tdp__card-thread {
   margin: 10px 0 2px 64px;
   padding-top: 10px;
@@ -712,23 +700,6 @@
   border-radius: 50%;
   background-color: rgba(22, 163, 74, 0.14);
   color: #16a34a;
-}
-
-// Not startable yet — the turn order, visible before anyone clicks.
-.tdp__wait {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 8px;
-  background-color: rgba(100, 116, 139, 0.12);
-  color: #64748b;
-  font-size: 10.5px;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: help;
 }
 
 .tdp__comment-btn {

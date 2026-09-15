@@ -23,7 +23,6 @@ import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
 import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
-import HourglassEmptyRoundedIcon from "@mui/icons-material/HourglassEmptyRounded";
 import LowPriorityRoundedIcon from "@mui/icons-material/LowPriorityRounded";
 
 import type { taskList } from "../../user/types";
@@ -32,8 +31,6 @@ import { isTaskRunning } from "../../../shared/utils/taskTime";
 import {
   assigneeIdOf,
   assigneeOf,
-  blockedReason,
-  completeBlockedReason,
 } from "../../../shared/utils/subtasks";
 import { STATUS_ACCENT, PRIORITY_STYLE } from "./boardConstants";
 import TaskTimer from "./TaskTimer";
@@ -345,7 +342,6 @@ export default function TaskDetailPanel({
     const working = !!busy[id];
     const rowAssigneeId = assigneeIdOf(row);
     const rowOwns = rowAssigneeId ? rowAssigneeId === String(currentUserId ?? "") : owns;
-    const blocked = blockedReason(row);
 
     if (st === "completed" || st === "done") {
       return (
@@ -355,36 +351,14 @@ export default function TaskDetailPanel({
       );
     }
 
-    // Ahead of the Start branch: a blocked subtask is still "not started", and
-    // offering the button there is the click the server's 409 exists to catch.
-    if (blocked) {
-      return (
-        <span className="tdp__wait" title={blocked}>
-          <HourglassEmptyRoundedIcon sx={{ fontSize: 13 }} />
-          Waiting
-        </span>
-      );
-    }
-
     if (!rowOwns) return null;
 
     if (st === "in_progress") {
       /*
-       * A task is not finished while a piece of it is outstanding. Its own
-       * clock still runs and its Start was always its own — this only stops it
-       * being marked done ahead of its children, which is what put a DONE badge
-       * next to "1/2" on the list.
+       * A task finishes on its own say-so. Its subtasks are separate units of
+       * work with separate clocks, so an open child no longer withholds this —
+       * whoever owns the task decides when the task is done.
        */
-      const early = completeBlockedReason(row);
-      if (early) {
-        return (
-          <span className="tdp__wait" title={`Can't complete yet — ${early}`}>
-            <HourglassEmptyRoundedIcon sx={{ fontSize: 13 }} />
-            {early}
-          </span>
-        );
-      }
-
       return (
         <button
           type="button"
@@ -567,12 +541,6 @@ export default function TaskDetailPanel({
               totalSeconds={row.total_seconds}
             />
           </span>
-          {row.blocked_by && (
-            <span className="tdp__card-waits" title={blockedReason(row) ?? undefined}>
-              <LowPriorityRoundedIcon sx={{ fontSize: 12 }} />
-              after &ldquo;{row.blocked_by.description}&rdquo;
-            </span>
-          )}
         </div>
 
         {canComment && threadOpen && (

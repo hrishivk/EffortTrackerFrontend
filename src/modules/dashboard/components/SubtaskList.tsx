@@ -4,7 +4,7 @@ import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 
 import { toLocalDate } from "../../../shared/utils/taskStatus";
-import { assigneeOf, blockedReason } from "../../../shared/utils/subtasks";
+import { assigneeOf } from "../../../shared/utils/subtasks";
 import { STATUS_ACCENT, PRIORITY_STYLE } from "./boardConstants";
 import TaskTimer from "./TaskTimer";
 import type { SubtaskBlocker, TaskUser } from "../../user/types";
@@ -110,7 +110,6 @@ export default function SubtaskList({
         const ran = runWindow(sub);
         const isDone = normalize(sub.status) === "completed";
         const who = assigneeOf(sub);
-        const waiting = blockedReason(sub);
 
         const open = onSelect && sub.id ? () => onSelect(sub.id!) : undefined;
 
@@ -231,26 +230,6 @@ export default function SubtaskList({
                   }}
                 >
                   {(sub.priority || "").toUpperCase()}
-                </span>
-              )}
-
-              {/* Not startable yet — the turn order, visible without opening
-                  the task. */}
-              {waiting && (
-                <span
-                  title={waiting}
-                  style={{
-                    padding: "1px 5px",
-                    borderRadius: 5,
-                    backgroundColor: "rgba(100, 116, 139, 0.12)",
-                    color: "#64748b",
-                    fontSize: dense ? 8.5 : 9.5,
-                    fontWeight: 700,
-                    whiteSpace: "nowrap",
-                    cursor: "help",
-                  }}
-                >
-                  WAITING
                 </span>
               )}
 
