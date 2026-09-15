@@ -6,13 +6,13 @@ import store, { persistor } from "../store/configureStore";
 import { PersistGate } from "redux-persist/integration/react";
 import { Suspense } from "react";
 import { HashRouter } from "react-router-dom";
-import SpinLoader from "../presentation/Loader";
+import RxSpinner from "../presentation/RxSpinner";
 function App() {
   return (
     <>
     <ThemeProvider>
     <HashRouter>
-    <Suspense fallback={<SpinLoader/>}>
+    <Suspense fallback={<RxSpinner size={110} color="#fff" />}>
       <Provider store={store}>
         <PersistGate loading={null} persistor={persistor}>
           <SnackbarProvider>

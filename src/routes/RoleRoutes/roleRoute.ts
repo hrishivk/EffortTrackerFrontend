@@ -12,6 +12,9 @@ const WorkspaceFlow=React.lazy(()=>import('../../modules/workspace/components/Wo
 const WorkspaceDetail=React.lazy(()=>import('../../modules/workspace/components/WorkspaceDetail'))
 const RoomDetail=React.lazy(()=>import('../../modules/workspace/components/RoomDetail'))
 const RoomMemberTasks=React.lazy(()=>import('../../modules/workspace/components/RoomMemberTasks'))
+// Preview only — see the note in the component. Remove with the route below
+// once the loader is settled.
+const RxSpinnerPreview=React.lazy(()=>import('../../presentation/RxSpinnerPreview'))
 const routes = [
   {
     path: '/sp/dashboard',
@@ -61,6 +64,14 @@ const routes = [
     path: '/:role/room-tasks',
     name: 'Room Member Tasks',
     element: RoomMemberTasks,
+    roles: ['SP', 'AM', 'USER', 'DEVLOPER'],
+  },
+  {
+    // A page to look at the loading spinner on. Not linked from anywhere —
+    // open it by typing the URL. Delete once the loader is settled.
+    path: '/:role/rxspinner',
+    name: 'RX Spinner',
+    element: RxSpinnerPreview,
     roles: ['SP', 'AM', 'USER', 'DEVLOPER'],
   },
   {

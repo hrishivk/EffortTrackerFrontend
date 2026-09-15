@@ -1,12 +1,26 @@
 import { useEffect, useState } from "react";
-import { Backdrop, CircularProgress } from "@mui/material";
+
+import RxSpinner from "./RxSpinner";
 
 interface LoaderBackdropProps {
   isLoading?: boolean;
   delay?: number;
+  label?: string;
 }
 
-export default function SpinLoader({ isLoading = false, delay = 300 }: LoaderBackdropProps) {
+/**
+ * The blocking loader every page uses.
+ *
+ * It is a thin gate around {@link RxSpinner}: the spinner draws the dimmed
+ * sheet and centres itself, this decides whether it should be on screen at all.
+ * The delay is the point — a load that finishes inside it never flashes a
+ * loader, which reads as faster than showing one for 80ms.
+ */
+export default function SpinLoader({
+  isLoading = false,
+  delay = 300,
+  label,
+}: LoaderBackdropProps) {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -18,20 +32,7 @@ export default function SpinLoader({ isLoading = false, delay = 300 }: LoaderBac
     return () => clearTimeout(timer);
   }, [isLoading, delay]);
 
-  return (
-    <Backdrop
-      sx={{
-        zIndex: (theme) => theme.zIndex.drawer + 1,
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
-        color: "#fff",
-      }}
-      open={show}
-    >
-      <CircularProgress
-        size={60}
-        thickness={4}
-        sx={{ color: "#fff" }}
-      />
-    </Backdrop>
-  );
+  if (!show) return null;
+
+  return <RxSpinner size={110} color="#fff" label={label} />;
 }

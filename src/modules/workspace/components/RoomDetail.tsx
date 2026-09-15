@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import CircularProgress from "@mui/material/CircularProgress";
+import SpinLoader from "../../../presentation/SpinLoader";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import AddIcon from "@mui/icons-material/Add";
@@ -308,15 +308,7 @@ export default function RoomDetail() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="cws">
-        <div className="cws__finished">
-          <CircularProgress size={26} sx={{ color: "#7c3aed" }} />
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <SpinLoader isLoading />;
 
   if (!room) {
     return (

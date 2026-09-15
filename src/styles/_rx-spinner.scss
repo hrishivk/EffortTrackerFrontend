@@ -1,0 +1,238 @@
+
+.rxs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  // Light black: dark enough to push the page back, sheer enough that the user
+  // can still see what they are waiting on.
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  animation: rxs-fade 0.22s ease-out both;
+}
+
+.rxs {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.rxs__dial {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+// A ring that leaves the dial and fades, on a long cycle so it stays a pulse
+// rather than a ripple machine.
+.rxs__halo {
+  position: absolute;
+  inset: 0;
+  border: 2px solid;
+  border-radius: 50%;
+  opacity: 0;
+  animation: rxs-halo 2.4s ease-out infinite;
+  pointer-events: none;
+}
+
+.rxs__halo--late {
+  animation-delay: 1.2s;
+}
+
+.rxs__ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  // The constant half of the motion. The arc's length breathes against this,
+  // so the gap never comes back round to the same place.
+  animation: rxs-turn 1.6s linear infinite;
+}
+
+.rxs__track,
+.rxs__arc {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.rxs__track {
+  stroke: currentColor;
+  opacity: 0.16;
+}
+
+.rxs__arc {
+  // 2πr for r=44, so the dash maths below is in units of the full circle.
+  stroke-dasharray: 60 276;
+  animation: rxs-draw 1.6s ease-in-out infinite;
+}
+
+// Inside the ring, with room to breathe — a mark that touches the stroke reads
+// as cramped at every size. The wrapper carries the motion so the sheen can be
+// clipped to the mark's box without inheriting its transform twice.
+.rxs__markWrap {
+  position: relative;
+  display: flex;
+  width: 52%;
+  height: 52%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 22%;
+  animation: rxs-breathe 1.6s ease-in-out infinite;
+}
+
+.rxs__mark {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  animation: rxs-glow 2.4s ease-in-out infinite;
+}
+
+// A band of light crossing the mark once per cycle.
+.rxs__sheen {
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(
+    100deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 62%
+  );
+  transform: translateX(-120%);
+  animation: rxs-sheen 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.rxs__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+// On the dimmed sheet the muted token is unreadable, so the label goes light.
+.rxs-overlay .rxs__label {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+@keyframes rxs-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rxs-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// The arc grows and shrinks, and drifts round as it does, which is what gives
+// the ring its variable speed without changing the rotation itself.
+@keyframes rxs-draw {
+  0% {
+    stroke-dasharray: 20 276;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 160 276;
+    stroke-dashoffset: -60;
+  }
+  100% {
+    stroke-dasharray: 20 276;
+    stroke-dashoffset: -276;
+  }
+}
+
+// Barely there — enough that the mark is alive, not enough to pulse at you.
+@keyframes rxs-breathe {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes rxs-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.45));
+  }
+}
+
+@keyframes rxs-sheen {
+  0%,
+  8% {
+    transform: translateX(-120%);
+  }
+  55%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes rxs-halo {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+// Someone who has asked for less motion gets the ring only, holding still at a
+// legible length, and a mark that does not move at all.
+@media (prefers-reduced-motion: reduce) {
+  .rxs-overlay {
+    animation: none;
+  }
+
+  .rxs__ring {
+    animation-duration: 3.2s;
+  }
+
+  .rxs__arc {
+    stroke-dasharray: 90 276;
+    animation: none;
+  }
+
+  .rxs__markWrap,
+  .rxs__mark,
+  .rxs__sheen,
+  .rxs__halo {
+    animation: none;
+  }
+
+  .rxs__markWrap {
+    opacity: 1;
+  }
+
+  .rxs__sheen,
+  .rxs__halo {
+    display: none;
+  }
+}

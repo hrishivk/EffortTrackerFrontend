@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import CircularProgress from "@mui/material/CircularProgress";
+import SpinLoader from "../../../presentation/SpinLoader";
 import Dialog from "@mui/material/Dialog";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -520,15 +521,7 @@ export default function WorkspaceDetail() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="wsd">
-        <div className="wsl__center">
-          <CircularProgress size={26} sx={{ color: "#7c3aed" }} />
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <SpinLoader isLoading />;
 
   if (!workspace) {
     return (
