@@ -430,27 +430,6 @@ export default function TaskDetailModal({
             Cancel
           </button>
 
-          {/* Why there is no Start button. Without this the footer just goes
-              quiet and it reads as a permissions problem. */}
-          {blocked && canStartTask && (
-            <span
-              title={blocked}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "10px 18px",
-                borderRadius: 12,
-                backgroundColor: "rgba(100, 116, 139, 0.12)",
-                color: "#64748b",
-                fontSize: 12.5,
-                fontWeight: 600,
-              }}
-            >
-              {blocked}
-            </span>
-          )}
-
           {actionLabel && (
             <button
               onClick={handleStatusUpdate}
