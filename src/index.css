@@ -26,9 +26,45 @@
   --pagination-active-bg: #111827;
   --pagination-active-border: #111827;
   --pagination-active-text: #ffffff;
+
+  /* Chart series.
+     Two categorical hues, validated on the #ffffff card surface: OKLCH
+     lightness band, chroma floor, deuteranope/tritanope separation
+     (worst pair dE 30.6) and 3:1 contrast all pass. The dark steps below are
+     chosen against #1a1a2e and validated separately - not an automatic flip,
+     which would drop both out of the dark lightness band. */
+  --chart-worked: #7c3aed;
+  --chart-completed: #16a34a;
+  /* The single-series trend chart. Its own token rather than borrowing
+     --chart-worked: the two happen to share a value, but the area chart plots
+     completions, and a future change to one should not silently move the
+     other. Same violet steps, so both are already validated. */
+  --chart-trend: #7c3aed;
+
+  /* Status split (donut): one violet ramp, light -> dark.
+     A status is ordered - Pending, then In Progress, then Completed - so it
+     takes a single-hue ramp rather than three separate hues, and the ramp runs
+     the same direction as the work: palest is least done, darkest is finished.
+     Validated as an ordinal ramp (lightness monotone, every adjacent gap
+     >= 0.06 L, single hue within 1 degree). The categorical CVD checks do not
+     apply to a ramp - by design it separates on lightness, not hue, which is
+     also why the donut carries a value and a proportion bar per row. */
+  --chart-pending: #a78bfa;
+  --chart-progress: #7c3aed;
+  --chart-done: #5b21b6;
 }
 
 .dark {
+  /* Re-stepped for the dark card surface, not lightened from the light pair. */
+  --chart-worked: #8b5cf6;
+  --chart-completed: #16a34a;
+  --chart-trend: #8b5cf6;
+  /* The same ramp, stepped up for the dark surface so the darkest end still
+     reads against it. Still monotone, still >= 0.06 L between steps. */
+  --chart-pending: #c4b5fd;
+  --chart-progress: #a78bfa;
+  --chart-done: #7c3aed;
+
   --bg-page: #0f0f11;
   --bg-card: #1a1a2e;
   --bg-surface: #1e1e30;
