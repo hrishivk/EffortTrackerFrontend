@@ -1912,8 +1912,8 @@ export default function MyTasksView({
         </div>
       </div>
 
-      {/* View Tabs + Date Picker + Active Projects Row */}
-      <div className="rounded-2xl shadow-sm px-3 sm:px-5 py-3 mb-4 sm:mb-5 flex flex-row justify-between items-center gap-2 sm:gap-3" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)", overflow: "hidden" }}>
+      {/* View Tabs + Date Picker + Active Projects, all on one row */}
+      <div className="rounded-2xl shadow-sm px-3 sm:px-5 py-3 mb-4 sm:mb-5 flex flex-row justify-between items-center gap-2 sm:gap-3" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}>
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {/* View Mode Toggle */}
           <div
@@ -2041,18 +2041,31 @@ export default function MyTasksView({
           )}
         </div>
 
+        {/*
+            The legend shares the controls' row and takes whatever width they
+            leave, scrolling inside it.
+
+            It used to be `flex-shrink-0`, which made it hold its full content
+            width and run past the end of the card — and because the card clips
+            its overflow, the last project came out sliced through the middle of
+            its name with nothing to say there were more. `min-w-0` is the fix:
+            a flex item will not shrink below its content without it, so
+            `overflow-x-auto` on its own did nothing.
+        */}
         {activeProjects.length > 0 && !isCompact && (
-          <div className="flex items-center gap-4 text-xs overflow-x-auto flex-shrink-0">
+          <div className="flex items-center gap-3 text-xs min-w-0 flex-1 justify-end">
             <span className="font-semibold uppercase tracking-wider flex-shrink-0" style={{ color: "var(--text-faint)" }}>Projects:</span>
-            {activeProjects.map((p, i) => {
-              const color = PROJECT_COLORS[i % PROJECT_COLORS.length].dot;
-              return (
-                <div key={p.id} className="flex items-center gap-1.5 flex-shrink-0">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                  <span className="font-medium" style={{ color: "var(--text-secondary)" }}>{p.name}</span>
-                </div>
-              );
-            })}
+            <div className="myt__legend flex items-center gap-4 flex-nowrap min-w-0 overflow-x-auto">
+              {activeProjects.map((p, i) => {
+                const color = PROJECT_COLORS[i % PROJECT_COLORS.length].dot;
+                return (
+                  <div key={p.id} className="flex items-center gap-1.5 flex-shrink-0" title={p.name}>
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="font-medium whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{p.name}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

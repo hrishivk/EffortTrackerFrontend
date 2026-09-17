@@ -1,0 +1,154 @@
+@use "variables" as *;
+
+/**
+ * The Settings page (Super Admin / Account Manager).
+ *
+ * One column of cards, each a group of related settings. Narrow on purpose —
+ * a settings row is a label and a control, and stretched across a 1400px page
+ * the two ends stop reading as one thing.
+ */
+
+.set-page {
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+
+  @include respond-below($bp-sm) {
+    padding: 0 10px 32px;
+  }
+}
+
+.set-head {
+  margin-bottom: 22px;
+}
+
+.set-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.set-sub {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+
+.set-card {
+  padding: 20px 22px 22px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  @include respond-below($bp-sm) {
+    padding: 16px;
+  }
+}
+
+.set-card__head {
+  margin-bottom: 16px;
+}
+
+.set-card__title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.set-card__note {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+// Two across where there is room, stacked where there is not. `1fr` rather than
+// a fixed width so the pair always fills the card evenly.
+.set-themes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+
+  @include respond-below($bp-sm) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.set-theme {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px 15px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.4);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+  }
+}
+
+// The chosen one carries the brand colour. Border and tick both, rather than
+// colour alone — the two options are otherwise near-identical shapes.
+.set-theme--on {
+  border-color: #7c3aed;
+  background-color: rgba(124, 58, 237, 0.06);
+}
+
+.set-theme__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
+
+.set-theme__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.set-theme__label {
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.set-theme__note {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.set-theme__tick {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background-color: #7c3aed;
+  color: #fff;
+}

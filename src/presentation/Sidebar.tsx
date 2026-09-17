@@ -12,6 +12,8 @@ import {
   FiPlus,
   FiHome,
   FiLock,
+  FiSettings,
+  FiBarChart2,
 } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppSelector } from "../store/configureStore";
@@ -36,6 +38,9 @@ interface NavItem {
   to: string;
   label: string;
   icon: React.ReactNode;
+  /** Rendered as a branch under this row, on the same guide line the
+   *  workspace tree uses. Ignored at rail width, where there is no room. */
+  children?: NavItem[];
 }
 
 interface NavSection {
@@ -86,6 +91,23 @@ const getSections = (role?: string): NavSection[] => {
           { to: "/sp/domain-project", label: "Departments & Projects", icon: icon(FiLayers) },
         ],
       },
+      {
+        title: "Settings",
+        items: [
+          {
+            to: "/sp/settings",
+            label: "Settings",
+            icon: icon(FiSettings),
+            children: [
+              {
+                to: "/sp/settings/task-reports",
+                label: "Task Reports",
+                icon: icon(FiBarChart2),
+              },
+            ],
+          },
+        ],
+      },
     ];
   }
 
@@ -103,6 +125,23 @@ const getSections = (role?: string): NavSection[] => {
         items: [
           { to: "/am/TeamManagement", label: "Team Management", icon: icon(FiUsers) },
           { to: "/am/domain-project", label: "Departments & Projects", icon: icon(FiLayers) },
+        ],
+      },
+      {
+        title: "Settings",
+        items: [
+          {
+            to: "/am/settings",
+            label: "Settings",
+            icon: icon(FiSettings),
+            children: [
+              {
+                to: "/am/settings/task-reports",
+                label: "Task Reports",
+                icon: icon(FiBarChart2),
+              },
+            ],
+          },
         ],
       },
     ];
@@ -226,6 +265,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const sections = getSections(role);
 
+  /*
+   * Which nav branches are expanded. Open by default: a branch that hides its
+   * only child until you find the caret is just a link with a decoration.
+   */
+  const [shutBranches, setShutBranches] = useState<Record<string, boolean>>({});
+
   const displayName = user?.fullName
     ? user.fullName.charAt(0).toUpperCase() + user.fullName.slice(1)
     : "User";
@@ -337,11 +382,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <div className="flex flex-col gap-0.5">
                       {section.items.map((item) => {
-                        const isActive = pathname
-                          .toLowerCase()
-                          .startsWith(item.to.toLowerCase());
+                        const kids = isCollapsed ? [] : item.children ?? [];
+                        /*
+                         * A branch matches its own path exactly. `startsWith`
+                         * would light the parent up whenever a child is open,
+                         * and then two rows in the same tree read as current.
+                         */
+                        const isActive = kids.length
+                          ? pathname.toLowerCase() === item.to.toLowerCase()
+                          : pathname.toLowerCase().startsWith(item.to.toLowerCase());
+                        const branchOpen = !shutBranches[item.to];
 
-                        return (
+                        const row = (
                           <Link
                             key={item.to}
                             to={item.to}
@@ -386,6 +438,87 @@ const Sidebar: React.FC<SidebarProps> = ({
                               <span className="sb-item__label">{item.label}</span>
                             )}
                           </Link>
+                        );
+
+                        if (!kids.length) return row;
+
+                        return (
+                          <div key={item.to} className="sb-branch">
+                            <div className="sb-branch__row">
+                              {row}
+                              <button
+                                type="button"
+                                className={`sb-branch__caret${
+                                  branchOpen ? " sb-branch__caret--open" : ""
+                                }`}
+                                title={branchOpen ? "Collapse" : "Expand"}
+                                onClick={() =>
+                                  setShutBranches((c) => ({
+                                    ...c,
+                                    [item.to]: !c[item.to],
+                                  }))
+                                }
+                              >
+                                <FiChevronDown size={11} />
+                              </button>
+                            </div>
+
+                            <AnimatePresence initial={false}>
+                              {branchOpen && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.18, ease: "easeOut" }}
+                                  style={{ overflow: "hidden" }}
+                                >
+                                  {/* The same guide line the workspace tree hangs off. */}
+                                  <div className="sb-tree__kids">
+                                    {kids.map((kid) => {
+                                      const on =
+                                        pathname.toLowerCase() === kid.to.toLowerCase();
+                                      return (
+                                        <Link
+                                          key={kid.to}
+                                          to={kid.to}
+                                          onClick={onClose}
+                                          className={`sb-tree__leaf${
+                                            on ? " sb-tree__leaf--active" : ""
+                                          }`}
+                                        >
+                                          {on && (
+                                            <motion.span
+                                              layoutId={pillId}
+                                              className="sb-tree__glow"
+                                              transition={TREE_SPRING}
+                                              /*
+                                               * Inline, not in the class.
+                                               *
+                                               * A shared `layoutId` moves the
+                                               * pill between rows by scaling
+                                               * it, and a scaled box has its
+                                               * corners squashed with it.
+                                               * Framer undoes that only for a
+                                               * `borderRadius` it can see as a
+                                               * style value — set in CSS it is
+                                               * invisible to the correction and
+                                               * the highlight lands square.
+                                               * 9px is what the nav rows above
+                                               * use, so the two match.
+                                               */
+                                              style={{ borderRadius: 9 }}
+                                            />
+                                          )}
+                                          {kid.icon}
+                                          {kid.label}
+                                        </Link>
+                                      );
+                                    })}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
                         );
                       })}
                     </div>
@@ -576,6 +709,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 layoutId={pillId}
                                 className="sb-tree__glow"
                                 transition={TREE_SPRING}
+                                style={{ borderRadius: 9 }}
                               />
                             )}
                             <FiHome size={13} />
@@ -637,6 +771,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             layoutId={pillId}
                                             className="sb-tree__glow"
                                             transition={TREE_SPRING}
+                                            style={{ borderRadius: 9 }}
                                           />
                                         )}
                                         <span className="sb-tree__dot" />

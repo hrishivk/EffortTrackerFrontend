@@ -8,6 +8,8 @@ const CreateProject=React.lazy(()=>import('../../modules/sp/components/Create/Cr
 const CreateUser=React.lazy(()=>import('../../modules/sp/components/Create/CreateUser'))
 const CreateDomain=React.lazy(()=>import('../../modules/sp/components/Create/CreateDomain'))
 const LeaveManagement=React.lazy(()=>import('../../modules/attendance/components/LeaveManagement'))
+const Settings=React.lazy(()=>import('../../modules/settings/components/Settings'))
+const TaskReports=React.lazy(()=>import('../../modules/settings/components/TaskReports'))
 const WorkspaceFlow=React.lazy(()=>import('../../modules/workspace/components/WorkspaceFlow'))
 const WorkspaceDetail=React.lazy(()=>import('../../modules/workspace/components/WorkspaceDetail'))
 const RoomDetail=React.lazy(()=>import('../../modules/workspace/components/RoomDetail'))
@@ -103,6 +105,18 @@ const routes = [
     name: 'User Dashboard',
     element: Dashboard,
     roles: ['USER', 'DEVLOPER'],
+  },
+  {
+    path: '/:role/settings/task-reports',
+    name: 'Task Reports',
+    element: TaskReports,
+    roles: ['SP', 'AM'],
+  },
+  {
+    path: '/:role/settings',
+    name: 'Settings',
+    element: Settings,
+    roles: ['SP', 'AM'],
   },
   {
     path: '/:role/attendance',

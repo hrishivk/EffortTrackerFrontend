@@ -155,6 +155,19 @@ export const fetchTaskGroups = async (assignedTo?: string) => {
   return response.data;
 };
 
+/**
+ * Every group the caller can see, as one flat array — not scoped to a single
+ * board the way `/task-groups` is.
+ *
+ * `/task-groups` answers "what lanes does this person's board have", which is
+ * what the board needs and the wrong question for a filter: a report that can
+ * cover a whole team has to offer every group any of them might be in.
+ */
+export const fetchAllTaskGroups = async (): Promise<{ id: string; name: string }[]> => {
+  const response = await userServiceMethood.getJson("/task-groups/all");
+  return response.data?.data ?? [];
+};
+
 // `assignedTo` is the board the lane is being added to, and it has to be the
 // same user the groups were fetched for: without it the API scopes the new row
 // to the caller, so a manager adding a lane to someone else's board gets it on

@@ -566,10 +566,16 @@
 
 // The sliding highlight itself. Sits behind the row's own content, which is
 // why the icon, dot and text are all lifted above it.
+// The sliding highlight behind an active tree leaf.
+//
+// The radius here is only the fallback — it is also set inline on the element,
+// because framer corrects a shared-layout element's corners for the scale it
+// applies only when the radius is a style value it can read. Keep the two the
+// same as the nav rows' 9px.
 .sb-tree__glow {
   position: absolute;
   inset: 0;
-  border-radius: 8px;
+  border-radius: 9px;
   background-color: rgba(124, 58, 237, 0.12);
 }
 
@@ -635,4 +641,51 @@
     border: 1px dashed rgba(124, 58, 237, 0.4);
     color: var(--sb-accent);
   }
+}
+
+/* ── Nav branches ─────────────────────────────────────────────────
+   A nav item that carries children: the row keeps its normal look and
+   gains a caret, and the children hang off the same guide line the
+   workspace tree uses (`.sb-tree__kids` / `.sb-tree__leaf`).            */
+
+.sb-branch__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  // The link still fills the row; the caret sits on top of its right end,
+  // so the whole row stays one target rather than splitting into two.
+  > a {
+    flex: 1;
+    min-width: 0;
+    padding-right: 26px !important;
+  }
+}
+
+.sb-branch__caret {
+  position: absolute;
+  right: 4px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  transform: rotate(-90deg);
+  transition: transform 0.18s ease, color 0.15s, background-color 0.15s;
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+.sb-branch__caret--open {
+  transform: rotate(0deg);
 }
