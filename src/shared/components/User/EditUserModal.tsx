@@ -5,7 +5,11 @@ import { FiCheck, FiChevronDown, FiInfo, FiLock, FiUser, FiX } from "react-icons
 import { Eye, EyeOff } from "lucide-react";
 import dayjs from "dayjs";
 
-import { edituser, fetchUserDetails } from "../../../core/actions/spAction";
+import {
+  edituser,
+  fetchExistDomains,
+  fetchUserDetails,
+} from "../../../core/actions/spAction";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
 import { useAppSelector } from "../../../store/configureStore";
 import {
@@ -14,6 +18,7 @@ import {
 } from "../../../utils/validation/Validation";
 import type { formUserData, UserDetails } from "../../types/User";
 import type { project } from "../../types/Project";
+import type { Domain } from "../../types/Domain";
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
@@ -89,6 +94,7 @@ const emptyForm = {
   joiningDate: "",
   projects: [] as string[],
   is_shared: false,
+  domains: [] as string[],
 };
 
 /**
@@ -126,6 +132,12 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   const { showSnackbar } = useSnackbar();
   const { user: currentUser } = useAppSelector((state) => state.user);
   const role = currentUser?.role?.toUpperCase();
+  /**
+   * Sharing is a department-level call, so a super admin and a manager may both
+   * flip it — someone created as a plain developer can be widened later without
+   * being recreated.
+   */
+  const canShare = role === "SP" || role === "AM";
 
   const [tab, setTab] = useState<Tab>("details");
   const [form, setForm] = useState(emptyForm);
@@ -133,6 +145,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
+  const [domainPickerOpen, setDomainPickerOpen] = useState(false);
+  const domainPickerRef = useRef<HTMLDivElement | null>(null);
+  const [domainList, setDomainList] = useState<Domain[]>([]);
+  const [domainsLoading, setDomainsLoading] = useState(false);
 
   const [passwords, setPasswords] = useState({ password: "", confirmPassword: "" });
   const [showPassword, setShowPassword] = useState(false);
@@ -163,6 +179,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
     setTab("details");
     setErrors({});
     setPickerOpen(false);
+    setDomainPickerOpen(false);
     setPasswords({ password: "", confirmPassword: "" });
     setShowPassword(false);
     setDetails(null);
@@ -175,6 +192,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
       jobTitle: user.jobTitle || "",
       projects: (user.projects || []).map((p) => String(p.id)),
       is_shared: Boolean(user.is_shared),
+      domains: (user.domains || []).map((d) => String(d.id)),
     });
 
     if (!user.id) return;
@@ -196,6 +214,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
           joiningDate: toDateInput(data.joiningDate),
           projects: (data.projects || []).map((p) => String(p.id)),
           is_shared: Boolean(data.is_shared),
+          domains: (data.domains || []).map((d) => String(d.id)),
         });
       })
       .catch((error: any) => {
@@ -240,15 +259,56 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [pickerOpen]);
 
+  useEffect(() => {
+    if (!domainPickerOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (domainPickerRef.current && !domainPickerRef.current.contains(e.target as Node)) {
+        setDomainPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [domainPickerOpen]);
+
+  /**
+   * Departments only matter while the user is shared, so the list is fetched
+   * the first time the toggle goes on and kept for the rest of the session.
+   * isShared=true widens it past the caller's own domains — the same call the
+   * create form makes.
+   */
+  useEffect(() => {
+    if (!open || !canShare || !form.is_shared || domainList.length > 0) return;
+    let cancelled = false;
+    setDomainsLoading(true);
+    fetchExistDomains(true)
+      .then((response) => {
+        if (!cancelled) setDomainList(response?.data || []);
+      })
+      .catch(() => {
+        // The picker falls back to its empty state; the rest still saves.
+      })
+      .finally(() => {
+        if (!cancelled) setDomainsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, canShare, form.is_shared, domainList.length]);
+
   /**
    * SP manages managers, AM manages its own team. The user's current role is
    * always listed so an existing value is never silently dropped on save.
    */
   const roleOptions = useMemo(() => {
-    const base = role === "SP" ? ["AM"] : ["USER", "DEVLOPER"];
+    // Shared staff work across departments, so they are never managers — but a
+    // shared developer stays a developer.
+    const base = form.is_shared || role !== "SP" ? ["USER", "DEVLOPER"] : ["AM"];
     const current = (user?.role || "").toUpperCase();
-    return current && !base.includes(current) ? [current, ...base] : base;
-  }, [role, user?.role]);
+    if (!current || base.includes(current)) return base;
+    // Keep an existing value listed so a save never silently drops it, except a
+    // manager role once sharing is on — the toggle has already cleared that.
+    return form.is_shared && current === "AM" ? base : [current, ...base];
+  }, [form.is_shared, role, user?.role]);
 
   const selectedProjects = useMemo(
     () =>
@@ -257,6 +317,19 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
         .filter((p): p is project => Boolean(p)),
     [form.projects, projects],
   );
+
+  /**
+   * Chips read off the fetched list, falling back to the names the profile
+   * carries — a user can already sit in a department this manager cannot list.
+   */
+  const selectedDomains = useMemo(() => {
+    const names = new Map<string, string>();
+    domainList.forEach((d) => names.set(String(d.id), d.name));
+    (details?.domains || []).forEach((d) => {
+      if (!names.has(String(d.id))) names.set(String(d.id), d.name);
+    });
+    return form.domains.map((id) => ({ id, name: names.get(id) || "Department" }));
+  }, [form.domains, domainList, details?.domains]);
 
   const setField = (field: keyof typeof form, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -275,6 +348,36 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
         ? prev.projects.filter((p) => p !== id)
         : [...prev.projects, id],
     }));
+
+  const toggleDomain = (id: string) =>
+    setForm((prev) => ({
+      ...prev,
+      domains: prev.domains.includes(id)
+        ? prev.domains.filter((d) => d !== id)
+        : [...prev.domains, id],
+    }));
+
+  /**
+   * Turning sharing on keeps the projects the user already has — a developer
+   * being widened does not lose current work, managers in the chosen
+   * departments simply gain them. Turning it off drops the departments.
+   */
+  const handleSharedToggle = (shared: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      is_shared: shared,
+      domains: shared ? prev.domains : [],
+      // A manager cannot be shared, so make the role an explicit choice again.
+      role: shared && prev.role === "AM" ? "" : prev.role,
+    }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.role;
+      delete next.domains;
+      return next;
+    });
+    if (!shared) setDomainPickerOpen(false);
+  };
 
   const sx = (field: string) => (errors[field] ? errorSx : inputSx);
 
@@ -307,6 +410,16 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
       return;
     }
 
+    if (canShare && form.is_shared && form.domains.length === 0) {
+      setErrors({ domains: "Pick at least one department." });
+      showSnackbar({
+        message:
+          "Pick at least one department — a shared user with no department is visible to nobody.",
+        severity: "error",
+      });
+      return;
+    }
+
     setErrors({});
     setSaving(true);
     try {
@@ -327,7 +440,13 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
         ...(details?.manager_id !== undefined
           ? { manager_id: details.manager_id }
           : {}),
-        ...(role === "SP" ? { is_shared: form.is_shared } : {}),
+        ...(canShare
+          ? {
+              is_shared: form.is_shared,
+              // Replaces the whole set; only meaningful while shared.
+              ...(form.is_shared ? { domain_ids: form.domains } : {}),
+            }
+          : {}),
       });
 
       showSnackbar({ message: "User updated successfully", severity: "success" });
@@ -678,47 +797,141 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Domains decide which managers see a shared user; they are
-                        assigned at creation and not editable here yet. */}
-                    {form.is_shared && (
-                      <div className="eu-field-full">
-                        <label className="eu-label">Departments</label>
-                        <div className="eu-readonly eu-readonly-chips">
-                          {details?.domains?.length ? (
-                            details.domains.map((d) => (
-                              <span key={d.id} className="eu-chip">
-                                {d.name}
+                    {/* Sharing is scoped by department: every manager in the
+                        departments picked below sees this user, whoever created
+                        them. Same flow as the create form. */}
+                    {canShare ? (
+                      <>
+                        <div className="eu-field-full">
+                          <div className="eu-toggle-row">
+                            <label htmlFor="eu-is-shared" style={{ margin: 0 }}>
+                              <strong>Shared across managers</strong>
+                              <span>
+                                For staff who work across departments (testers, QA,
+                                designers). Pick the departments below — every manager
+                                in them will see this user.
                               </span>
-                            ))
-                          ) : (
-                            <span>No departments assigned</span>
-                          )}
+                            </label>
+                            <Switch
+                              id="eu-is-shared"
+                              size="small"
+                              checked={form.is_shared}
+                              onChange={(e) => handleSharedToggle(e.target.checked)}
+                            />
+                          </div>
                         </div>
-                        <p className="eu-hint">
-                          Managers in these departments can see this shared user.
-                        </p>
-                      </div>
-                    )}
 
-                    {/* Only a super admin may flip sharing on an existing user. */}
-                    {role === "SP" && (
-                      <div className="eu-field-full">
-                        <div className="eu-toggle-row">
-                          <label htmlFor="eu-is-shared" style={{ margin: 0 }}>
-                            <strong>Shared across all managers</strong>
-                            <span>
-                              For staff who work across every project (testers, QA,
-                              designers).
-                            </span>
-                          </label>
-                          <Switch
-                            id="eu-is-shared"
-                            size="small"
-                            checked={form.is_shared}
-                            onChange={(e) => setField("is_shared", e.target.checked)}
-                          />
+                        {form.is_shared && (
+                          <div className="eu-field-full">
+                            <label className="eu-label">
+                              Departments<span className="eu-req">*</span>
+                            </label>
+                            <div className="eu-picker" ref={domainPickerRef}>
+                              <div
+                                className={`eu-picker-control ${domainPickerOpen ? "is-open" : ""}`}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setDomainPickerOpen((prev) => !prev)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setDomainPickerOpen((prev) => !prev);
+                                  }
+                                }}
+                              >
+                                {selectedDomains.length === 0 ? (
+                                  <span className="eu-picker-placeholder">
+                                    {domainsLoading
+                                      ? "Loading departments…"
+                                      : "No departments selected"}
+                                  </span>
+                                ) : (
+                                  <>
+                                    <span className="eu-chips">
+                                      {selectedDomains.slice(0, VISIBLE_CHIPS).map((d) => (
+                                        <span key={d.id} className="eu-chip">
+                                          {d.name}
+                                          <button
+                                            type="button"
+                                            aria-label={`Remove ${d.name}`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              toggleDomain(d.id);
+                                            }}
+                                          >
+                                            <FiX size={12} />
+                                          </button>
+                                        </span>
+                                      ))}
+                                    </span>
+                                    {selectedDomains.length > VISIBLE_CHIPS && (
+                                      <span className="eu-chip-more">
+                                        +{selectedDomains.length - VISIBLE_CHIPS}
+                                      </span>
+                                    )}
+                                  </>
+                                )}
+                                <FiChevronDown size={16} style={{ color: "var(--text-muted)" }} />
+                              </div>
+
+                              {domainPickerOpen && (
+                                <div className="eu-picker-menu">
+                                  {domainsLoading ? (
+                                    <p className="eu-picker-empty">Loading departments…</p>
+                                  ) : domainList.length === 0 ? (
+                                    <p className="eu-picker-empty">
+                                      No departments available — create one first.
+                                    </p>
+                                  ) : (
+                                    domainList.map((d) => {
+                                      const isActive = form.domains.includes(String(d.id));
+                                      return (
+                                        <button
+                                          key={d.id}
+                                          type="button"
+                                          className={`eu-picker-option ${isActive ? "is-active" : ""}`}
+                                          onClick={() => toggleDomain(String(d.id))}
+                                        >
+                                          <span>{d.name}</span>
+                                          {isActive && <FiCheck size={15} />}
+                                        </button>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            {errors.domains ? (
+                              <p className="eu-error">{errors.domains}</p>
+                            ) : (
+                              <p className="eu-hint">
+                                Managers in these departments see this user and can put
+                                them on their own projects.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      form.is_shared && (
+                        <div className="eu-field-full">
+                          <label className="eu-label">Departments</label>
+                          <div className="eu-readonly eu-readonly-chips">
+                            {selectedDomains.length ? (
+                              selectedDomains.map((d) => (
+                                <span key={d.id} className="eu-chip">
+                                  {d.name}
+                                </span>
+                              ))
+                            ) : (
+                              <span>No departments assigned</span>
+                            )}
+                          </div>
+                          <p className="eu-hint">
+                            Managers in these departments can see this shared user.
+                          </p>
                         </div>
-                      </div>
+                      )
                     )}
                   </div>
 

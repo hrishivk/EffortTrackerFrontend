@@ -11,8 +11,10 @@ export interface formUserData {
   isBlocked?: boolean;
   lastSeenAt: string | Date;
   manager_id?: string | number | null;
-  /** Visible to every manager, not just the one who created them. */
+  /** Visible to every manager who shares one of `domains` with them. */
   is_shared?: boolean;
+  /** Departments a shared user belongs to — only sent for shared users. */
+  domains?: { id: string; name: string }[];
   /** Profile fields — only present once list-users returns them. */
   contactNumber?: string;
   jobTitle?: string;

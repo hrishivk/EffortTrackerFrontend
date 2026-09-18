@@ -70,12 +70,13 @@ const CreateUser = () => {
 
   const { showSnackbar } = useSnackbar();
   /**
-   * Shared staff (testers, QA, designers) are always plain users — never
-   * managers — whoever creates them. Otherwise SP creates managers and AM
-   * creates its own team members.
+   * Shared staff (testers, QA, designers) work across departments, so they are
+   * never managers — but they can be developers, and the edit modal lets an
+   * existing developer be widened the same way. Otherwise SP creates managers
+   * and AM creates its own team members.
    */
   const roleOptionsFor = (shared: boolean) =>
-    shared ? ["USER"] : role === "SP" ? ["AM"] : ["USER", "DEVLOPER"];
+    shared ? ["USER", "DEVLOPER"] : role === "SP" ? ["AM"] : ["USER", "DEVLOPER"];
 
   const [form, setForm] = useState({
     fullName: "",
@@ -212,12 +213,8 @@ const CreateUser = () => {
       // domains assign the projects afterwards.
       projects: shared ? [] : prev.projects,
       domains: shared ? prev.domains : [],
-      // Force USER when shared; on unshare keep the role only if still offered.
-      role: shared
-        ? "USER"
-        : nextOptions.includes(prev.role)
-          ? prev.role
-          : "",
+      // Keep the role only while it is still offered — sharing drops AM.
+      role: nextOptions.includes(prev.role) ? prev.role : "",
     }));
     setErrors((prev) => {
       const next = { ...prev };
@@ -566,7 +563,7 @@ const CreateUser = () => {
             <ErrorText message={errors.role} />
             {form.is_shared && (
               <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "4px 0 0" }}>
-                Shared users are always created with the USER role.
+                Shared users are never managers.
               </p>
             )}
           </div>

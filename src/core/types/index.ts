@@ -10,6 +10,8 @@ export interface EditUserPayload {
   password?: string;
   manager_id?: string | number | null;
   is_shared?: boolean;
+  /** Departments of a shared user; replaces the whole set, omit to leave it. */
+  domain_ids?: string[];
   contactNumber?: string;
   jobTitle?: string;
   employeeId?: string;
