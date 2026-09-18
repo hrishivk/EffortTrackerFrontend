@@ -5,7 +5,11 @@ import { FiCheck, FiChevronDown, FiInfo, FiLock, FiUser, FiX } from "react-icons
 import { Eye, EyeOff } from "lucide-react";
 import dayjs from "dayjs";
 
-import { edituser, fetchUserDetails } from "../../../core/actions/spAction";
+import {
+  edituser,
+  fetchExistDomains,
+  fetchUserDetails,
+} from "../../../core/actions/spAction";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
 import { useAppSelector } from "../../../store/configureStore";
 import {
@@ -14,6 +18,7 @@ import {
 } from "../../../utils/validation/Validation";
 import type { formUserData, UserDetails } from "../../types/User";
 import type { project } from "../../types/Project";
+import type { Domain } from "../../types/Domain";
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
@@ -89,6 +94,7 @@ const emptyForm = {
   joiningDate: "",
   projects: [] as string[],
   is_shared: false,
+  domains: [] as string[],
 };
 
 /**
@@ -127,12 +133,31 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   const { user: currentUser } = useAppSelector((state) => state.user);
   const role = currentUser?.role?.toUpperCase();
 
+  /*
+   * Who may change sharing.
+   *
+   * The Create User form offers it to an AM — `canShare = isAM` there — so an
+   * AM is in fact the role that creates shared users. Gating the edit to SP
+   * alone left them unable to share someone they had just created, which is
+   * the common case: a developer taken on by a second department later.
+   */
+  const canShare = role === "SP" || role === "AM";
+
   const [tab, setTab] = useState<Tab>("details");
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Every department that can be shared into.
+   *
+   * Loaded with `isShared=true`, which is what widens the list past the
+   * caller's own departments — a shared user is precisely someone who belongs
+   * to departments their creator does not.
+   */
+  const [domainList, setDomainList] = useState<Domain[]>([]);
 
   const [passwords, setPasswords] = useState({ password: "", confirmPassword: "" });
   const [showPassword, setShowPassword] = useState(false);
@@ -196,6 +221,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
           joiningDate: toDateInput(data.joiningDate),
           projects: (data.projects || []).map((p) => String(p.id)),
           is_shared: Boolean(data.is_shared),
+          domains: (data.domains || []).map((d) => String(d.id)),
         });
       })
       .catch((error: any) => {
@@ -239,6 +265,50 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [pickerOpen]);
+
+  /*
+   * The departments, fetched only for the roles that may flip sharing —
+   * nobody else can use the list.
+   */
+  useEffect(() => {
+    if (!user || !canShare) return;
+    let alive = true;
+    fetchExistDomains(true)
+      .then((res) => {
+        if (alive) setDomainList(res?.data || []);
+      })
+      .catch(() => {
+        if (alive) setDomainList([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [user, canShare]);
+
+  /**
+   * Turning sharing on and off, the same way the Create User form does it.
+   *
+   * A shared user is scoped by department instead of by project — managers in
+   * those departments assign the projects afterwards — so the two lists are
+   * mutually exclusive, and leaving the old one populated would send a payload
+   * claiming both.
+   */
+  const setShared = (shared: boolean) =>
+    setForm((prev) => ({
+      ...prev,
+      is_shared: shared,
+      projects: shared ? [] : prev.projects,
+      domains: shared ? prev.domains : [],
+      role: shared ? "USER" : prev.role,
+    }));
+
+  const toggleDomain = (id: string) =>
+    setForm((prev) => ({
+      ...prev,
+      domains: prev.domains.includes(id)
+        ? prev.domains.filter((d) => d !== id)
+        : [...prev.domains, id],
+    }));
 
   /**
    * SP manages managers, AM manages its own team. The user's current role is
@@ -307,6 +377,17 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
       return;
     }
 
+    // A shared user in no department is visible to nobody, which is not a
+    // state worth saving — the same check the Create User form makes.
+    if (canShare && form.is_shared && form.domains.length === 0) {
+      setErrors({ domains: "Pick at least one department" });
+      showSnackbar({
+        message: "Pick at least one department — a shared user with no department is visible to nobody.",
+        severity: "error",
+      });
+      return;
+    }
+
     setErrors({});
     setSaving(true);
     try {
@@ -327,7 +408,15 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
         ...(details?.manager_id !== undefined
           ? { manager_id: details.manager_id }
           : {}),
-        ...(role === "SP" ? { is_shared: form.is_shared } : {}),
+        ...(canShare
+          ? {
+              is_shared: form.is_shared,
+              // Only meaningful while shared; an unshared user's departments
+              // are cleared by `setShared`, so this sends an empty list and
+              // the server drops the rows.
+              domain_ids: form.domains,
+            }
+          : {}),
       });
 
       showSnackbar({ message: "User updated successfully", severity: "success" });
@@ -607,6 +696,9 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
 
                   <p className="eu-section-title">Projects &amp; Access</p>
                   <div className="eu-grid">
+                    {/* A shared user is scoped by department, so the project
+                        picker has nothing to say about them. */}
+                    {!form.is_shared && (
                     <div className="eu-field-full">
                       <label className="eu-label">Projects</label>
                       <div className="eu-picker" ref={pickerRef}>
@@ -677,31 +769,71 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                         )}
                       </div>
                     </div>
+                    )}
 
-                    {/* Domains decide which managers see a shared user; they are
-                        assigned at creation and not editable here yet. */}
+                    {/*
+                        Departments decide which managers can see a shared user.
+                        Editable for a super admin — the only role that may flip
+                        sharing at all — and read-only for everyone else, who
+                        should still be able to see the answer.
+                    */}
                     {form.is_shared && (
                       <div className="eu-field-full">
-                        <label className="eu-label">Departments</label>
-                        <div className="eu-readonly eu-readonly-chips">
-                          {details?.domains?.length ? (
-                            details.domains.map((d) => (
-                              <span key={d.id} className="eu-chip">
-                                {d.name}
-                              </span>
-                            ))
-                          ) : (
-                            <span>No departments assigned</span>
-                          )}
-                        </div>
+                        <label className="eu-label">
+                          Departments<span className="eu-req">*</span>
+                        </label>
+
+                        {!canShare ? (
+                          <div className="eu-readonly eu-readonly-chips">
+                            {details?.domains?.length ? (
+                              details.domains.map((d) => (
+                                <span key={d.id} className="eu-chip">
+                                  {d.name}
+                                </span>
+                              ))
+                            ) : (
+                              <span>No departments assigned</span>
+                            )}
+                          </div>
+                        ) : domainList.length === 0 ? (
+                          <div className="eu-readonly">No departments available</div>
+                        ) : (
+                          <>
+                            <div className="eu-domains">
+                              {domainList.map((d) => {
+                                const id = String(d.id);
+                                const on = form.domains.includes(id);
+                                return (
+                                  <button
+                                    type="button"
+                                    key={id}
+                                    className={`eu-domain${on ? " is-on" : ""}`}
+                                    onClick={() => toggleDomain(id)}
+                                    aria-pressed={on}
+                                  >
+                                    <span className="eu-domain__box">
+                                      {on && <FiCheck size={11} />}
+                                    </span>
+                                    <span className="eu-domain__text">
+                                      <b>{d.name}</b>
+                                      <span>{d.description || "Department"}</span>
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {errors.domains && <p className="eu-error">{errors.domains}</p>}
+                          </>
+                        )}
+
                         <p className="eu-hint">
                           Managers in these departments can see this shared user.
                         </p>
                       </div>
                     )}
 
-                    {/* Only a super admin may flip sharing on an existing user. */}
-                    {role === "SP" && (
+                    {/* Managers and super admins both; see `canShare`. */}
+                    {canShare && (
                       <div className="eu-field-full">
                         <div className="eu-toggle-row">
                           <label htmlFor="eu-is-shared" style={{ margin: 0 }}>
@@ -715,7 +847,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                             id="eu-is-shared"
                             size="small"
                             checked={form.is_shared}
-                            onChange={(e) => setField("is_shared", e.target.checked)}
+                            onChange={(e) => setShared(e.target.checked)}
                           />
                         </div>
                       </div>

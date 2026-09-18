@@ -1,25 +1,11 @@
-// Sidebar — collapsed icon rail and expanded panel.
-//
-// Hover and focus states live here rather than inline: they need real pseudo
-// classes, and the sidebar has enough of them that inline handlers would be
-// noise.
 
-// Declared on :root, not on .sb — the panel is an ancestor of .sb, and custom
-// properties only inherit downward. Scoping them to .sb left `--sb-gap`
-// undefined on .sb-panel, which broke its height calc and collapsed the card to
-// its content height.
 :root {
   --sb-accent: #7c3aed;
   --sb-accent-soft: rgba(124, 58, 237, 0.1);
-  /* Inset around the floating panel. AppLayout offsets content by width + 2x this. */
   --sb-gap: 12px;
 }
 
-// The panel floats as its own card with an even gutter on all three open sides.
-// It runs the full height of the viewport and sits *above* the header in the
-// stack: the header is transparent, so there is no white bar to cover, and
-// keeping the panel on top means its brand row stays clickable underneath the
-// header's full-width strip.
+
 .sb-panel {
   position: fixed;
   top: var(--sb-gap);
@@ -33,7 +19,7 @@
   transition: width 0.3s;
 }
 
-// ─── Nav item ───────────────────────────────────────────────────
+
 .sb-item {
   position: relative;
   display: flex;
@@ -70,7 +56,7 @@
     transition: color 0.15s;
   }
 
-  // Expanded: a soft lavender pill with accent text.
+ 
   &--active {
     .sb-item__icon,
     .sb-item__label {
@@ -82,8 +68,7 @@
     }
   }
 
-  // Expanded active rows also get a bar on the panel's inner edge, which is what
-  // marks the current section at a glance without reading the label.
+
   &--active:not(&--active-rail)::before {
     content: "";
     position: absolute;
@@ -97,7 +82,7 @@
     background-color: var(--sb-accent);
   }
 
-  // Collapsed: a solid accent square, so it still reads at 62px wide.
+
   &--active-rail {
     .sb-item__icon {
       color: #fff;
@@ -105,7 +90,7 @@
   }
 }
 
-// ─── Section caption ────────────────────────────────────────────
+
 .sb-caption {
   display: flex;
   align-items: center;
@@ -138,7 +123,7 @@
   }
 }
 
-// ─── Floating expand handle on the rail's edge ──────────────────
+
 .sb-handle {
   position: absolute;
   top: 50%;
@@ -236,7 +221,7 @@
     white-space: nowrap;
   }
 
-  // Rail width: the avatar alone, centred.
+ 
   &--rail {
     justify-content: center;
     padding: 6px 0;
@@ -244,11 +229,7 @@
     background: none;
   }
 }
-
-// ─── Header ─────────────────────────────────────────────────────
-// Reads as transparent by sitting at the page colour, but kept slightly opaque
-// with a blur behind it: the main content scrolls underneath a fixed header, and
-// a fully transparent bar would let that text slide visibly behind the icons.
+    
 .app-header {
   background-color: rgba(246, 247, 251, 0.72);
   backdrop-filter: blur(12px);
@@ -259,10 +240,6 @@
   background-color: rgba(15, 15, 17, 0.72);
 }
 
-// ─── Workspace tree ─────────────────────────────────────────────
-// One workspace expands at a time to reveal its sections, and Rooms unfolds
-// again into the rooms themselves. The branches hang off a guide line so the
-// nesting reads without indentation alone carrying it.
 .sb-tree {
   padding: 0 6px;
 }

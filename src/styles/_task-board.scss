@@ -131,35 +131,3 @@
     cursor: not-allowed;
   }
 }
-
-/**
- * The Projects legend on the My Tasks toolbar.
- *
- * One line, always. It scrolls rather than wrapping because a legend that grows
- * the card by a line every time somebody adds a project pushes the view tabs
- * and the date picker down the page with it.
- *
- * The bar stays invisible until the strip is hovered — a permanent grey trough
- * across the top of the toolbar reads as damage.
- */
-.myt__legend {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background-color: transparent;
-  }
-
-  &:hover {
-    scrollbar-color: var(--border-light) transparent;
-
-    &::-webkit-scrollbar-thumb {
-      background-color: var(--border-light);
-    }
-  }
-}

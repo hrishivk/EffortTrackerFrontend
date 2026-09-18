@@ -1,11 +1,12 @@
 import { FiCheck, FiMoon, FiSun } from "react-icons/fi";
 
 import { useTheme } from "../../../contexts/ThemeContext";
+import BoardLanes from "./BoardLanes";
 
 /**
  * Settings, for Super Admin and Account Manager.
  *
- * Appearance only for now. The theme has always been reachable — a moon icon in
+ * Appearance, then the board's lanes. The theme has always been reachable — a moon icon in
  * the header and a row in the account panel — but neither says what it does
  * until you press it, and neither shows you which of the two you are on. Here
  * both options are on screen at once with the current one marked, which is the
@@ -78,6 +79,8 @@ export default function Settings() {
           })}
         </div>
       </section>
+
+      <BoardLanes />
     </div>
   );
 }

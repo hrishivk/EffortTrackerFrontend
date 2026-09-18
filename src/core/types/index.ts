@@ -10,6 +10,11 @@ export interface EditUserPayload {
   password?: string;
   manager_id?: string | number | null;
   is_shared?: boolean;
+  /**
+   * Which departments a shared user belongs to. Only meaningful with
+   * `is_shared`, and the same shape `add-user` takes.
+   */
+  domain_ids?: string[];
   contactNumber?: string;
   jobTitle?: string;
   employeeId?: string;

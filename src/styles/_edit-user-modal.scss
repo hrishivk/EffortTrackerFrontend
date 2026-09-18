@@ -480,3 +480,84 @@
   align-items: center;
   gap: 6px;
 }
+
+/* ── Department picker (shared users) ──────────────────────────────
+   Editable here for a super admin. Two across where the modal allows it,
+   stacked where it does not — a department name plus its description does
+   not survive a third column.                                           */
+
+.eu-domains {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 2px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.eu-domain {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-card);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+
+  &:hover { border-color: rgba(124, 58, 237, 0.4); }
+
+  &.is-on {
+    border-color: #7c3aed;
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+}
+
+// A box rather than a native checkbox: the whole row is the target, and a real
+// checkbox inside a button is a control inside a control.
+.eu-domain__box {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 5px;
+  background-color: var(--bg-surface);
+  color: #fff;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.eu-domain.is-on .eu-domain__box {
+  border-color: #7c3aed;
+  background-color: #7c3aed;
+}
+
+.eu-domain__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  b {
+    color: var(--text-primary);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  span {
+    overflow: hidden;
+    color: var(--text-faint);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
