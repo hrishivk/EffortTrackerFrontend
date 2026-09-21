@@ -127,7 +127,7 @@ export const getUserColumns = ({
     render: (u) => (
       <button
         className="btn btn-sm um-view-tasks-btn"
-        onClick={() => onViewTasks(u.id!)}
+        onClick={() => onViewTasks(u.id!, u.fullName)}
       >
         View Tasks
       </button>

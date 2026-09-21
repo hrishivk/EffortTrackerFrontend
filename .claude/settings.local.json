@@ -8,7 +8,9 @@
       "Bash(python -)",
       "Bash(git push *)",
       "Bash(git ls-remote *)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(npx eslint *)",
+      "Bash(npm run *)"
     ]
   }
 }

@@ -332,12 +332,18 @@ a {
   font-size: 13px;
   color: var(--text-secondary);
   background: var(--bg-card);
+  cursor: pointer;
 }
 
 .pagination .page-item.active .page-link {
   background-color: var(--pagination-active-bg);
   border-color: var(--pagination-active-border);
   color: var(--pagination-active-text);
+  cursor: default;
+}
+
+.pagination .page-item.disabled .page-link {
+  cursor: not-allowed;
 }
 
 .pagination .page-link:focus {

@@ -129,6 +129,67 @@ export type CreateTaskPayload = Omit<taskList, "subtasks"> & {
   subtasks?: SubtaskInput[];
 };
 
+/**
+ * What `PATCH /updateTask` will change on a task that already exists. Works on
+ * a main task or on one of its subtasks.
+ *
+ * Only the keys actually edited are sent, and the distinction matters: an
+ * absent key leaves the column alone, while `null` on a date *clears* it. So an
+ * edit form has to tell "not touched" from "emptied", which is why the dates
+ * are `string | null | undefined` rather than just `string`.
+ *
+ * `sequential` orders a parent's children, so the API only takes it on a main
+ * task. `assigned_to` is not editable through this yet — reassigning is still
+ * out of reach from the edit form.
+ */
+export type TaskEditFields = {
+  /** The task's name. Cannot be blank. */
+  description?: string;
+  /** Low / Medium / High — the API does not care about the case. */
+  priority?: string;
+  start_date?: string | null;
+  due_date?: string | null;
+  tags?: string[];
+  sequential?: boolean;
+};
+
+/**
+ * What came back from `DELETE /task?id=`.
+ *
+ * Deleting a main task takes its subtasks with it — including ones assigned to
+ * other people — so the count is worth reporting rather than swallowing.
+ */
+export type DeleteTaskResult = {
+  id: string;
+  parent_id: string | null;
+  /** Gone along with it. `[]` when a subtask was deleted. */
+  deleted_subtask_ids: string[];
+  deleted_subtasks: number;
+  /**
+   * The recomputed parent, when a subtask was deleted — its siblings'
+   * `is_blocked` / `blocked_by` shift when one disappears. Null for a main task.
+   */
+  parent?: taskList | null;
+};
+
+/**
+ * A child added to a task that already exists, via `POST /task/subtask`.
+ *
+ * `project_id`, `room_id` and `status` are deliberately absent: the server
+ * takes all three from the parent and ignores anything sent for them. So is
+ * `position` — left out, the new child goes last, which is where a just-added
+ * one belongs; sending it wrong files the subtask above the existing ones.
+ */
+export type AddSubtaskInput = {
+  description: string;
+  /** A room member. Omitted, the child inherits the parent's assignee. */
+  assigned_to?: string;
+  priority?: string;
+  start_date?: string;
+  due_date?: string;
+  tags?: string[];
+};
+
 
 /**
  * Where a workspace is in its life.

@@ -70,6 +70,24 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
     });
   },
 
+  /** Query param, not a body — DELETE bodies are dropped by some proxies. */
+  deleteTask: (url: string) => {
+    return apiservice.delete(url, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+
+  /**
+   * One child added to a task that already exists. Separate from `createTask`
+   * because the body is different in kind: the server reads the project, the
+   * room and the status off the parent, so only the child's own fields go up.
+   */
+  createSubtask: (url: string, data: Record<string, unknown>) => {
+    return apiservice.post(url, data, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+
 
   /**
    * Task comments. There is no GET — a task's thread arrives inside

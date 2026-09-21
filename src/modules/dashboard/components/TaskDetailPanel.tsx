@@ -24,9 +24,16 @@ import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
 import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
 import LowPriorityRoundedIcon from "@mui/icons-material/LowPriorityRounded";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
 
-import type { taskList } from "../../user/types";
-import { toLocalDate } from "../../../shared/utils/taskStatus";
+import type {
+  taskList,
+  TaskEditFields,
+  AddSubtaskInput,
+} from "../../user/types";
+import { toDateValue, toLocalDate } from "../../../shared/utils/taskStatus";
 import { isTaskRunning } from "../../../shared/utils/taskTime";
 import {
   assigneeIdOf,
@@ -35,6 +42,9 @@ import {
 import { STATUS_ACCENT, PRIORITY_STYLE } from "./boardConstants";
 import TaskTimer from "./TaskTimer";
 import TaskComments from "./TaskComments";
+import TaskEditForm, { AddSubtasksForm } from "./TaskEditForm";
+import type { SubtaskAssignee } from "./CreateTaskModal";
+import Dialoge from "../../../presentation/Dialog";
 
 /**
  * One spring for the whole tab strip, so the pill, the tap and the icon pop all
@@ -208,6 +218,44 @@ interface TaskDetailPanelProps {
   onCommentAdd?: (taskId: string, body: string) => Promise<void>;
   onCommentEdit?: (taskId: string, commentId: string, body: string) => Promise<void>;
   onCommentDelete?: (taskId: string, commentId: string) => Promise<void>;
+  /**
+   * Save an edit to one row — the task itself or any of its subtasks. Rejects
+   * when the API refuses, which is what keeps the form open with the typing
+   * still in it rather than throwing the edit away.
+   *
+   * Omitted, no row offers an edit control at all.
+   */
+  onTaskEdit?: (taskId: string, fields: TaskEditFields) => Promise<void>;
+  /**
+   * Add children to this task — several at a time, in the order given, and
+   * `sequential` alongside them when the composer's order toggle was changed.
+   *
+   * Resolves with how many rows were actually taken: each subtask is its own
+   * request, so a run can stop half way, and the composer keeps what is left.
+   *
+   * Omitted, the Add subtask control is hidden.
+   */
+  onSubtaskAdd?: (
+    parentId: string,
+    rows: AddSubtaskInput[],
+    sequential?: boolean
+  ) => Promise<number>;
+  /**
+   * Delete one row — this task, or one of its subtasks. Rejects when the API
+   * refuses; the caller reports it.
+   *
+   * Deleting the task the panel is about closes the panel, since there is
+   * nothing left for it to show.
+   */
+  onTaskDelete?: (taskId: string) => Promise<void>;
+  /**
+   * Whether this viewer may delete that row. Narrower than editing it — being
+   * able to see a task on a room board deliberately does not mean being able to
+   * destroy it — so it is decided by the caller, which knows the viewer's role.
+   */
+  canDelete?: (row: taskList) => boolean;
+  /** The room's roster, so a new subtask can be handed to one of them. */
+  roomMembers?: SubtaskAssignee[];
   projectColorMap: Record<string, { bg: string; text: string }>;
 }
 
@@ -225,6 +273,11 @@ export default function TaskDetailPanel({
   onCommentAdd,
   onCommentEdit,
   onCommentDelete,
+  onTaskEdit,
+  onSubtaskAdd,
+  onTaskDelete,
+  canDelete,
+  roomMembers = [],
   projectColorMap,
 }: TaskDetailPanelProps) {
   const [tab, setTab] = useState<TabKey>("subtasks");
@@ -232,15 +285,28 @@ export default function TaskDetailPanel({
   const [openRows, setOpenRows] = useState<Record<string, boolean>>({});
   /** Which cards have their comment thread showing. */
   const [openThreads, setOpenThreads] = useState<Record<string, boolean>>({});
+  /** The one row being edited. One at a time, task or subtask. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  /** The composer for a new child, under the list it will join. */
+  const [addingChild, setAddingChild] = useState(false);
+  /** A save or an add in flight. Either way only one form is open. */
+  const [saving, setSaving] = useState(false);
+  /** The row a delete has been asked for, held until it is confirmed. */
+  const [pendingDelete, setPendingDelete] = useState<taskList | null>(null);
 
   const subs = useMemo(() => task?.subtasks ?? [], [task]);
 
   useEffect(() => {
     if (!open) return;
-    // A task with children opens on them; one without has nothing there to see.
-    setTab(subs.length ? "subtasks" : "details");
+    // The work is what the panel is for — its pieces if it has any, and if it
+    // has none, the one card plus the control that breaks it into some.
+    setTab("subtasks");
     setOpenRows({});
     setOpenThreads({});
+    // A form left open would reopen against whatever task is shown next.
+    setEditingId(null);
+    setAddingChild(false);
+    setPendingDelete(null);
   }, [open, task?.id, subs.length]);
 
   /**
@@ -313,6 +379,113 @@ export default function TaskDetailPanel({
   const percent = total ? Math.round((tally.completed / total) * 100) : 0;
 
   const canComment = !!onCommentAdd && !!onCommentEdit && !!onCommentDelete;
+
+  const me = String(currentUserId ?? "");
+  const creatorId = String(task.created_by ?? task.dailyLog?.created_by ?? "");
+
+  /**
+   * Who may change a row.
+   *
+   * Whoever holds it, and whoever raised the task — a manager who created work
+   * for somebody else still has to be able to correct its dates or its wording.
+   * Ownership is read per row, exactly as the start/complete control is: on a
+   * shared task three people see the same panel and each holds one card.
+   *
+   * The server enforces this too; this only decides whether to offer the
+   * control, so a refusal still arrives as a message rather than a surprise.
+   */
+  const mayEdit = (row: taskList): boolean => {
+    if (!onTaskEdit || !me) return false;
+    const who = assigneeIdOf(row);
+    if (who) return who === me || creatorId === me;
+    return creatorId ? creatorId === me : owns;
+  };
+
+  /**
+   * Both writes swallow the rejection on purpose: the caller has already put
+   * the API's message on screen, and what matters here is that the form stays
+   * open with the typing in it so it can be fixed and sent again.
+   */
+  const saveEdit = async (rowId: string, fields: TaskEditFields) => {
+    if (!onTaskEdit) return;
+    setSaving(true);
+    try {
+      await onTaskEdit(rowId, fields);
+      setEditingId(null);
+    } catch {
+      /* reported by the caller — leave the form standing */
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * What is actually about to be destroyed, said plainly.
+   *
+   * A main task takes its children with it, and the hours banked on all of them
+   * — which the reports read from the same rows — so the prompt names the task
+   * and counts what goes with it rather than asking "are you sure?".
+   */
+  const deletePrompt = (row: taskList | null): string => {
+    if (!row) return "";
+    const name = `“${row.description}”`;
+    if (row.parent_id) {
+      return `${name} will be deleted, along with the time tracked against it. The task it belongs to and its other subtasks are not affected. This cannot be undone.`;
+    }
+    const kids = row.subtask_count ?? row.subtasks?.length ?? 0;
+    if (!kids) {
+      return `${name} will be deleted, along with the time tracked against it — the reports read the same figures. This cannot be undone.`;
+    }
+    return `${name} and its ${kids} subtask${kids === 1 ? "" : "s"} will be deleted, including any assigned to other people, along with the time tracked against them — the reports read the same figures. This cannot be undone.`;
+  };
+
+  /**
+   * Delete, once it has been confirmed.
+   *
+   * Nothing is removed from the screen here: the caller reloads, and the row
+   * this panel shows is derived from that. What does happen here is closing —
+   * a panel about a task that no longer exists has nothing to render.
+   */
+  const removeRow = async (row: taskList) => {
+    if (!onTaskDelete) return;
+    setSaving(true);
+    try {
+      await onTaskDelete(String(row.id));
+      setPendingDelete(null);
+      if (String(row.id) === String(task.id)) onClose();
+    } catch {
+      /* reported by the caller — leave the prompt up */
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * `sequential` only goes up when the toggle actually moved. It is a property
+   * of the parent, not of the children being added, so re-sending what is
+   * already stored would be a second write for nothing.
+   */
+  const addChildren = async (
+    rows: AddSubtaskInput[],
+    sequential: boolean
+  ): Promise<number> => {
+    if (!onSubtaskAdd) return 0;
+    setSaving(true);
+    try {
+      const added = await onSubtaskAdd(
+        String(task.id),
+        rows,
+        sequential === !!task.sequential ? undefined : sequential
+      );
+      if (added >= rows.length) setAddingChild(false);
+      return added;
+    } catch {
+      /* reported by the caller — leave the form standing */
+      return 0;
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const commentBox = (row: taskList) => (
     <TaskComments
@@ -428,6 +601,33 @@ export default function TaskDetailPanel({
     const from = showShort(row.start_date ?? row.start_time);
     const to = showShort(row.due_date ?? row.end_time);
     const running = isTaskRunning(row);
+    const editing = editingId === id;
+
+    /*
+     * Editing swaps the card's own face for the form and leaves everything
+     * under it alone — a task's children stay listed while its dates are being
+     * corrected, which is usually exactly what they are being corrected
+     * against.
+     */
+    if (editing) {
+      return (
+        <div key={id} className={`tdp__card${isMain ? " tdp__card--main" : ""}`}>
+          <TaskEditForm
+            task={row}
+            isMain={isMain}
+            saving={saving}
+            onCancel={() => setEditingId(null)}
+            onSave={(fields) => saveEdit(id, fields)}
+          />
+
+          {expanded && kids.length > 0 && (
+            <div className="tdp__card-kids">
+              {kids.map((kid) => renderCard(kid))}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
       <div key={id} className={`tdp__card${isMain ? " tdp__card--main" : ""}`}>
@@ -508,6 +708,35 @@ export default function TaskDetailPanel({
               >
                 <ChatBubbleOutlineIcon sx={{ fontSize: 12 }} />
                 {threadCount > 0 && threadCount}
+              </button>
+            )}
+
+            {mayEdit(row) && (
+              <button
+                type="button"
+                className="tdp__comment-btn"
+                title={isMain ? "Edit this task" : "Edit this subtask"}
+                onClick={() => {
+                  setAddingChild(false);
+                  setEditingId(id);
+                }}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 12 }} />
+              </button>
+            )}
+
+            {onTaskDelete && canDelete?.(row) && (
+              <button
+                type="button"
+                className="tdp__comment-btn tdp__comment-btn--danger"
+                title={isMain ? "Delete this task" : "Delete this subtask"}
+                onClick={() => {
+                  setEditingId(null);
+                  setAddingChild(false);
+                  setPendingDelete(row);
+                }}
+              >
+                <DeleteOutlineIcon sx={{ fontSize: 12 }} />
               </button>
             )}
 
@@ -802,6 +1031,20 @@ export default function TaskDetailPanel({
                   <h4 className="tdp__panel-title">
                     Work ({(task.subtask_count ?? subs.length) + 1})
                   </h4>
+
+                  {onSubtaskAdd && mayEdit(task) && !addingChild && (
+                    <button
+                      type="button"
+                      className="tdp__head-btn"
+                      onClick={() => {
+                        setEditingId(null);
+                        setAddingChild(true);
+                      }}
+                    >
+                      <AddRoundedIcon sx={{ fontSize: 15 }} />
+                      {subs.length ? "Add subtasks" : "Break into subtasks"}
+                    </button>
+                  )}
                 </div>
 
                 {/*
@@ -816,7 +1059,23 @@ export default function TaskDetailPanel({
                   </motion.div>
                 </div>
 
-                {subs.length === 0 && (
+                {addingChild && (
+                  <div className="tdp__add-slot">
+                    <AddSubtasksForm
+                      roomMembers={roomMembers}
+                      // The parent's window, so a child starts inside it rather
+                      // than at whatever today happens to be.
+                      defaultStartDate={toDateValue(task.start_date)}
+                      defaultDueDate={toDateValue(task.due_date)}
+                      sequential={!!task.sequential}
+                      saving={saving}
+                      onCancel={() => setAddingChild(false)}
+                      onAdd={addChildren}
+                    />
+                  </div>
+                )}
+
+                {subs.length === 0 && !addingChild && (
                   <p className="tdp__note">No subtasks — this task is tracked on its own.</p>
                 )}
               </div>
@@ -827,8 +1086,32 @@ export default function TaskDetailPanel({
                 <div className="tdp__panel-head">
                   <ArticleOutlinedIcon sx={{ fontSize: 18, color: "#7c3aed" }} />
                   <h4 className="tdp__panel-title">Details</h4>
+
+                  {mayEdit(task) && editingId !== String(task.id) && (
+                    <button
+                      type="button"
+                      className="tdp__head-btn"
+                      onClick={() => {
+                        setAddingChild(false);
+                        setEditingId(String(task.id));
+                      }}
+                    >
+                      <EditOutlinedIcon sx={{ fontSize: 14 }} />
+                      Edit
+                    </button>
+                  )}
                 </div>
 
+                {editingId === String(task.id) ? (
+                  <TaskEditForm
+                    task={task}
+                    isMain
+                    saving={saving}
+                    onCancel={() => setEditingId(null)}
+                    onSave={(fields) => saveEdit(String(task.id), fields)}
+                  />
+                ) : (
+                <>
                 {/*
                  * `description` is this API's task *name* — there is no separate
                  * long-form field, so there is no body text to render here and
@@ -874,6 +1157,8 @@ export default function TaskDetailPanel({
                     </motion.div>
                   ))}
                 </div>
+                </>
+                )}
               </div>
             )}
 
@@ -977,6 +1262,19 @@ export default function TaskDetailPanel({
           </aside>
         </div>
       </div>
+
+      <Dialoge
+        open={pendingDelete !== null}
+        data="delete"
+        busy={saving}
+        title={pendingDelete?.parent_id ? "Delete this subtask?" : "Delete this task?"}
+        message={deletePrompt(pendingDelete)}
+        confirmLabel="Yes, delete"
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) void removeRow(pendingDelete);
+        }}
+      />
     </Dialog>
   );
 }

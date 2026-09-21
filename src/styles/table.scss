@@ -197,3 +197,53 @@
     font-size: 12px;
   }
 }
+
+/**
+ * The pencil on a task row in the List view — the way into its detail panel,
+ * where it is edited and where it is broken into subtasks.
+ *
+ * That way in used to be the subtask progress bar in the Action column, which
+ * only a task with children has: a task on its own could not be opened at all,
+ * which is exactly the task most likely to need splitting.
+ *
+ * It sits quiet until the row is hovered, so a table of twenty tasks is not
+ * twenty purple icons — but it stays visible on touch, where there is no hover
+ * to reveal it with.
+ */
+.task-edit-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-faint);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+
+  tr:hover &,
+  &:focus-visible {
+    opacity: 1;
+  }
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.4);
+    color: #7c3aed;
+  }
+
+  // Delete. Red only under the cursor: a row of red icons would read as an
+  // alert about the tasks rather than a thing you can do to them.
+  &--danger:hover {
+    border-color: rgba(220, 38, 38, 0.4);
+    color: #dc2626;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+}

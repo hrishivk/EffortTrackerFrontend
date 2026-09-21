@@ -101,7 +101,11 @@ const UserManagement: React.FC = () => {
 
   const roles = useMemo(() => ["AM", "USER", "DEVLOPER"], []);
 
-  const onViewTasks = (id: string) => navigate(`/sp/dashboard?viewUser=${id}`);
+  const onViewTasks = (id: string, fullName?: string) =>
+    navigate(
+      `/sp/dashboard?viewUser=${id}` +
+        (fullName ? `&viewUserName=${encodeURIComponent(fullName)}` : "")
+    );
   const onEditUser = (user: formUserData) => setEditUser(user);
   const onDeleteUser = (id: string) => setDeleteUserId(id);
 

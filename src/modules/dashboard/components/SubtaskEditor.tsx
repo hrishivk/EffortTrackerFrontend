@@ -8,12 +8,12 @@ import CloseIcon from "@mui/icons-material/Close";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
-import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import LowPriorityRoundedIcon from "@mui/icons-material/LowPriority";
 
 import { PRIORITIES, PRIORITY_COLORS, miniSelectSx } from "./boardConstants";
+import MentionPicker from "../../../shared/components/User/MentionPicker";
 import type { SubtaskAssignee, SubtaskDraft } from "./CreateTaskModal";
 
 /**
@@ -279,44 +279,21 @@ export default function SubtaskEditor({
                 {open && (
                   <div className="ste__detail">
                     {roomMembers.length > 0 && (
-                      <label className="ste__field">
+                      /*
+                       * A div, not a label: the picker's menu is made of
+                       * buttons, and clicking one inside a label would be a
+                       * click on the label as well.
+                       */
+                      <div className="ste__field">
                         <span className="ste__label">Assignee</span>
-                        <FormControl fullWidth size="small" sx={miniSelectSx}>
-                          <Select
-                            displayEmpty
-                            value={sub.assignee}
-                            onChange={(e) => edit(i, { assignee: String(e.target.value) })}
-                            MenuProps={menuProps}
-                            startAdornment={
-                              <InputAdornment position="start" sx={{ marginRight: 0.5 }}>
-                                <PersonOutlineIcon
-                                  sx={{ fontSize: 13, color: "var(--text-faint)" }}
-                                />
-                              </InputAdornment>
-                            }
-                            renderValue={(v) =>
-                              v ? (
-                                roomMembers.find((m) => m.id === String(v))?.name ?? (
-                                  <span style={{ color: "var(--text-faint)" }}>
-                                    Unknown member
-                                  </span>
-                                )
-                              ) : (
-                                <span style={{ color: "var(--text-faint)" }}>
-                                  Same as task owner
-                                </span>
-                              )
-                            }
-                          >
-                            <MenuItem value="">Same as task owner</MenuItem>
-                            {roomMembers.map((m) => (
-                              <MenuItem key={m.id} value={m.id}>
-                                {m.name}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </label>
+                        <MentionPicker
+                          people={roomMembers}
+                          value={sub.assignee}
+                          onChange={(id) => edit(i, { assignee: id })}
+                          emptyLabel="Same as task owner"
+                          placeholder="@ to search the room…"
+                        />
+                      </div>
                     )}
 
                     <label className="ste__field">

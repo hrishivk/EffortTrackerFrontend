@@ -117,6 +117,19 @@ export const toDateInput = (date: Date): string => {
   return `${date.getFullYear()}-${month}-${day}`;
 };
 
+/**
+ * A stored `start_date` / `due_date` as the `YYYY-MM-DD` an `<input type="date">`
+ * wants, or "" when there is none — which is what an empty picker reads back as,
+ * so a form can compare the two directly.
+ *
+ * Both arrive as bare calendar days, but nothing stops the API sending a
+ * timestamp, so the value goes through `toLocalDate` first.
+ */
+export const toDateValue = (value?: string | null): string => {
+  const d = toLocalDate(value);
+  return d ? toDateInput(d) : "";
+};
+
 /** True when the value is a bare calendar day rather than a timestamp. */
 export const isPlainDate = (value?: string | null): boolean =>
   !!value && /^\d{4}-\d{2}-\d{2}$/.test(value.trim());

@@ -14,13 +14,17 @@ import CloseIcon from "@mui/icons-material/Close";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiActivity, FiGrid, FiLayers, FiUsers } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 
 import { useAppSelector } from "../../../store/configureStore";
 import {
+  addSubtask,
   addTask,
+  deleteTask,
   addTaskComment,
   createTaskGroup,
   deleteTaskGroup,
@@ -28,6 +32,7 @@ import {
   fetchTask,
   fetchTaskGroups,
   removeTaskComment,
+  updateTask,
   updateTaskGroup,
   updateTaskLane,
 } from "../../../core/actions/action";
@@ -40,7 +45,12 @@ import { useSnackbar } from "../../../contexts/SnackbarContext";
 import TableList from "../../../shared/components/Table/Table";
 import type { Column } from "../../../shared/components/Table/types";
 import type { formUserData } from "../../../shared/types/User";
-import type { taskList, CreateTaskPayload } from "../../user/types";
+import type {
+  taskList,
+  CreateTaskPayload,
+  TaskEditFields,
+  AddSubtaskInput,
+} from "../../user/types";
 import TaskGanttChart from "./TaskGanttChart";
 import TaskBoardView from "./TaskBoardView";
 import TaskTimer from "./TaskTimer";
@@ -52,6 +62,7 @@ import {
 } from "../../../shared/utils/subtasks";
 import TaskActionCell from "./TaskActionCell";
 import TaskDetailPanel from "./TaskDetailPanel";
+import Dialoge from "../../../presentation/Dialog";
 import SubtaskEditor from "./SubtaskEditor";
 import SubtaskProgress from "./SubtaskProgress";
 import CreateTaskModal, {
@@ -474,6 +485,9 @@ export default function MyTasksView({
    * update without being closed and reopened.
    */
   const [panelTaskId, setPanelTaskId] = useState<string | null>(null);
+  /** The List row a delete has been asked for, held until it is confirmed. */
+  const [pendingRowDelete, setPendingRowDelete] = useState<GroupedTask | null>(null);
+  const [deletingRow, setDeletingRow] = useState(false);
   const [assignToSelf, setAssignToSelf] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -806,6 +820,36 @@ export default function MyTasksView({
     return u?.fullName || "Unknown";
   };
 
+  /**
+   * Who this page is about, asked in the order the answer is actually reliable.
+   *
+   * 1. What the caller passed. Whoever linked here — a team table row, a room's
+   *    member list — already knew the name.
+   * 2. The name on the tasks themselves: every task and subtask carries its
+   *    assignee, so once the list lands the answer is in it.
+   * 3. `users`, which this view fetches itself.
+   *
+   * That third one used to be the only one, and it is the weakest: it is empty
+   * until `loadInitialData` resolves, and stays empty for good if that request
+   * failed or if the viewer's list does not cover this person. So the header
+   * read "Unknown's Tasks" for the whole time the fetch was in flight — a race,
+   * which is why it only showed up sometimes.
+   */
+  const viewedPersonName = (() => {
+    if (!viewUserId) return "";
+    if (viewUserName) return viewUserName;
+    const target = String(viewUserId);
+    for (const t of tasks) {
+      for (const row of [t, ...(t.subtasks ?? [])]) {
+        if (assigneeIdOf(row) === target) {
+          const name = assigneeNameOf(row);
+          if (name) return name;
+        }
+      }
+    }
+    return users.find((u) => String(u.id) === target)?.fullName || "";
+  })();
+
 
   const filterableUsers = (() => {
     if (role === "SP") return users.filter((u) => (u.role || "").toUpperCase() === "AM");
@@ -1059,6 +1103,36 @@ export default function MyTasksView({
             }}>
               {row.description}
             </span>
+
+            {/*
+              * The way into the task's own panel.
+              *
+              * That used to be the subtask progress bar in the Action column,
+              * which only a task with children has — so a task on its own could
+              * not be opened at all, and the panel is where it is edited and
+              * where it gets its first subtasks.
+              */}
+            {mayEditRow(row) && (
+              <button
+                type="button"
+                className="task-edit-btn"
+                title="Edit this task, or break it into subtasks"
+                onClick={() => setPanelTaskId(String(row.tasks[0]?.id ?? ""))}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 14 }} />
+              </button>
+            )}
+
+            {mayDeleteRow(row) && (
+              <button
+                type="button"
+                className="task-edit-btn task-edit-btn--danger"
+                title="Delete this task"
+                onClick={() => setPendingRowDelete(row)}
+              >
+                <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+              </button>
+            )}
           </div>
         );
       },
@@ -1418,6 +1492,60 @@ export default function MyTasksView({
   const ownsAllTasks = (row: GroupedTask) =>
     row.tasks.every((t) => assigneeIdOf(t) === String(userId));
 
+  /**
+   * Who gets the pencil on a row: whoever holds any part of the task, and
+   * whoever raised it — a manager has to be able to correct work they set.
+   *
+   * The same rule the detail panel applies card by card. Both only decide
+   * whether to offer the way in; the API decides what is actually allowed.
+   */
+  /**
+   * Who may destroy one row.
+   *
+   * Deliberately narrower than who may see it: on a room board everybody can
+   * read a shared task, and that must not mean everybody can delete it. The
+   * API enforces the same list and answers a `403` with a message; this only
+   * decides whether to offer the control.
+   *
+   * An AM qualifies "over that person's board", which here means the assignee
+   * is one of the users their own list covers — that list is exactly the team
+   * they manage.
+   */
+  const mayDeleteTask = (row: taskList): boolean => {
+    if (!userId) return false;
+    const me = String(userId);
+    if (role === "SP") return true;
+    if (String(row.created_by ?? row.dailyLog?.created_by ?? "") === me) return true;
+    if (assigneeIdOf(row) === me) return true;
+
+    // A subtask may also be deleted by whoever raised the task it belongs to.
+    if (row.parent_id) {
+      const parent = findTaskById(viewMode === "board" ? boardTasks : tasks, String(row.parent_id));
+      if (parent && String(parent.created_by ?? parent.dailyLog?.created_by ?? "") === me) {
+        return true;
+      }
+    }
+
+    if (role === "AM") {
+      const who = assigneeIdOf(row);
+      return !!who && users.some((u) => String(u.id) === who);
+    }
+    return false;
+  };
+
+  /** The same question for a List row, which may be several people's copies. */
+  const mayDeleteRow = (row: GroupedTask) => row.tasks.every(mayDeleteTask);
+
+  const mayEditRow = (row: GroupedTask) => {
+    if (!userId) return false;
+    const me = String(userId);
+    return row.tasks.some(
+      (t) =>
+        isOnTask(t, me) ||
+        String(t.created_by ?? t.dailyLog?.created_by ?? "") === me
+    );
+  };
+
   const dragBlockedReason = (row: GroupedTask): string | null => {
     if (!ownsAllTasks(row)) return "Only the assignee can move this task";
     return null;
@@ -1702,6 +1830,167 @@ export default function MyTasksView({
     }
   };
 
+  // ─── Editing work that already exists ─────────────────────────────
+  //
+  // Both rethrow. The panel keeps its form open on a rejection, so an edit the
+  // API refused can be corrected and sent again rather than being thrown away
+  // with only a snackbar to show for it.
+  //
+  // Both also reload rather than splicing the response in. The edit comes back
+  // as the whole card and the add comes back as the decorated parent, either of
+  // which could be swapped straight into `tasks` — but every other write in
+  // this view reloads, and the row on screen is derived from that list by id.
+
+  const handleTaskEdit = async (taskId: string, fields: TaskEditFields) => {
+    try {
+      await updateTask(taskId, fields);
+      showSnackbar({ message: "Task updated", severity: "success" });
+      await reloadTasks();
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to update task"), severity: "error" });
+      throw error;
+    }
+  };
+
+  /**
+   * Add children to a task that already exists.
+   *
+   * One request per subtask, in listed order and strictly one after another:
+   * the endpoint appends, so the order they are sent in is the order they end
+   * up in — and with "Run in order" on, that order is the plan. Firing them in
+   * parallel would shuffle it.
+   *
+   * That makes a partial failure possible, so this reports what actually
+   * happened and resolves with the count. The composer keeps whatever was not
+   * taken, so the third row can be fixed without retyping the first two.
+   */
+  /**
+   * Delete a task or one subtask.
+   *
+   * Rethrows so the panel keeps its prompt up on a refusal — a `403` here is
+   * worth reading rather than dismissing, since it means the control was
+   * offered to somebody who should not have had it.
+   *
+   * The response carries `deleted_subtask_ids` for removing the rows by hand;
+   * the list is reloaded instead, as everywhere else in this view. The count is
+   * used only to say what happened.
+   */
+  const handleTaskDelete = async (taskId: string) => {
+    try {
+      const res = await deleteTask(taskId);
+      const kids = res?.deleted_subtasks ?? 0;
+      showSnackbar({
+        message: kids
+          ? `Task deleted, with its ${kids} subtask${kids === 1 ? "" : "s"}`
+          : "Task deleted",
+        severity: "success",
+      });
+      await reloadTasks();
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to delete task"), severity: "error" });
+      throw error;
+    }
+  };
+
+  /**
+   * Delete a List row.
+   *
+   * A manager's row can be one piece of work assigned to several people — one
+   * row, several task rows — so it is several deletes, run one after another,
+   * and one message at the end. A run that stops half way says how far it got.
+   */
+  const handleRowDelete = async (row: GroupedTask) => {
+    setDeletingRow(true);
+    let gone = 0;
+    let kids = 0;
+    try {
+      for (const t of row.tasks) {
+        const res = await deleteTask(String(t.id));
+        gone += 1;
+        kids += res?.deleted_subtasks ?? 0;
+      }
+      showSnackbar({
+        message: kids
+          ? `Task deleted, with its ${kids} subtask${kids === 1 ? "" : "s"}`
+          : "Task deleted",
+        severity: "success",
+      });
+    } catch (error: unknown) {
+      showSnackbar({
+        message: gone
+          ? `Deleted ${gone} of ${row.tasks.length} — ${apiMessage(error, "the rest were refused")}`
+          : apiMessage(error, "Failed to delete task"),
+        severity: "error",
+      });
+    } finally {
+      setDeletingRow(false);
+      setPendingRowDelete(null);
+      await reloadTasks();
+    }
+  };
+
+  /** What that row is about to take with it. */
+  const rowDeletePrompt = (row: GroupedTask | null): string => {
+    if (!row) return "";
+    const name = `“${row.description}”`;
+    const kids = row.subtask_count ?? row.subtasks?.length ?? 0;
+    const copies = row.tasks.length;
+    const shared =
+      copies > 1 ? ` It is assigned to ${copies} people, and every copy goes.` : "";
+    if (!kids) {
+      return `${name} will be deleted, along with the time tracked against it — the reports read the same figures.${shared} This cannot be undone.`;
+    }
+    return `${name} and its ${kids} subtask${kids === 1 ? "" : "s"} will be deleted, including any assigned to other people, along with the time tracked against them — the reports read the same figures.${shared} This cannot be undone.`;
+  };
+
+  const handleSubtasksAdd = async (
+    parentId: string,
+    rows: AddSubtaskInput[],
+    sequential?: boolean
+  ): Promise<number> => {
+    let added = 0;
+    try {
+      for (const row of rows) {
+        await addSubtask(parentId, row);
+        added += 1;
+      }
+    } catch (error: unknown) {
+      showSnackbar({
+        message: added
+          ? `Added ${added} of ${rows.length} — ${apiMessage(error, "the rest were refused")}`
+          : apiMessage(error, "Failed to add subtask"),
+        severity: "error",
+      });
+      if (added) await reloadTasks();
+      return added;
+    }
+
+    /*
+     * The order flag last, and only if the composer moved it: it orders a list
+     * that has to exist first, and it is a `PATCH` on the parent rather than
+     * part of any child.
+     */
+    let orderFailed = "";
+    if (sequential !== undefined) {
+      try {
+        await updateTask(parentId, { sequential });
+      } catch (error: unknown) {
+        orderFailed = apiMessage(error, "the order setting did not save");
+      }
+    }
+
+    showSnackbar(
+      orderFailed
+        ? { message: `Subtasks added, but ${orderFailed}`, severity: "warning" }
+        : {
+            message: added === 1 ? "Subtask added" : `${added} subtasks added`,
+            severity: "success",
+          }
+    );
+    await reloadTasks();
+    return added;
+  };
+
   /*
    * Same rule as the modal: a task has to outlast its subtasks, so the last day
    * any of them runs to is the floor for its own due date. `YYYY-MM-DD` compares
@@ -1866,14 +2155,16 @@ export default function MyTasksView({
         <div>
           <h2 className="fw-bold mb-1" style={{ fontSize: "clamp(1.15rem, 4vw, 1.65rem)" }}>
             {viewUserId
-              ? `${viewUserName || getUserName(viewUserId)}'s Tasks`
+              ? viewedPersonName
+                ? `${viewedPersonName}'s Tasks`
+                : "Tasks"
               : "My Tasks"}
           </h2>
           <p className="text-muted mt-1 mb-0" style={{ fontSize: "clamp(0.8rem, 2.5vw, 0.95rem)" }}>
             {viewUserId
-              ? `Viewing tasks assigned to ${
-                  viewUserName || getUserName(viewUserId)
-                }`
+              ? viewedPersonName
+                ? `Viewing tasks assigned to ${viewedPersonName}`
+                : "Viewing one person's tasks"
               : "Manage and track your daily activities"}
           </p>
         </div>
@@ -2573,6 +2864,11 @@ export default function MyTasksView({
         onCommentAdd={handleCommentAdd}
         onCommentEdit={handleCommentEdit}
         onCommentDelete={handleCommentDelete}
+        onTaskEdit={handleTaskEdit}
+        onSubtaskAdd={handleSubtasksAdd}
+        onTaskDelete={handleTaskDelete}
+        canDelete={mayDeleteTask}
+        roomMembers={roomMembers}
         projectColorMap={projectColorMap}
       />
 
@@ -2585,13 +2881,28 @@ export default function MyTasksView({
         startLane={findGroupForStatus(boardGroups, "yet_to_start")}
         fixedProject={lockedProject}
         defaultAssignee={
-          viewUserId ? { id: viewUserId, name: getUserName(viewUserId) } : undefined
+          viewUserId
+            ? { id: viewUserId, name: viewedPersonName || getUserName(viewUserId) }
+            : undefined
         }
         isUserOrDev={isUserOrDev}
         currentUserName={user?.fullName}
         roomMembers={roomMembers}
         submitting={submitting}
         onSubmit={handleModalCreate}
+      />
+
+      <Dialoge
+        open={pendingRowDelete !== null}
+        data="delete"
+        busy={deletingRow}
+        title="Delete this task?"
+        message={rowDeletePrompt(pendingRowDelete)}
+        confirmLabel="Yes, delete"
+        onClose={() => setPendingRowDelete(null)}
+        onConfirm={() => {
+          if (pendingRowDelete) void handleRowDelete(pendingRowDelete);
+        }}
       />
 
       {/* Filter Tasks panel */}

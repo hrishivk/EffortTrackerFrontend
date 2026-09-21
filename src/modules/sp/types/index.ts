@@ -1,5 +1,11 @@
 export type ColumnHandlers = {
-  onViewTasks: (id: string) => void;
+  /**
+   * `fullName` travels with the id because the tasks page has no cheap way to
+   * look it up: it resolves names out of a user list it fetches itself, so
+   * until that lands the header reads "Unknown's Tasks". The row already knows
+   * who this is — there is no reason to make the next page find out again.
+   */
+  onViewTasks: (id: string, fullName?: string) => void;
   onEditUser: (user: import("../../../shared/types/User").formUserData) => void;
   onDeleteUser: (id: string) => void;
 };

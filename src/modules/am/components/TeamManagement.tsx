@@ -99,7 +99,11 @@ const TeamManagement: React.FC = () => {
     loadProjects();
   }, [loadProjects]);
 
-  const onViewTasks = (id: string) => navigate(`/am/dashboard?viewUser=${id}`);
+  const onViewTasks = (id: string, fullName?: string) =>
+    navigate(
+      `/am/dashboard?viewUser=${id}` +
+        (fullName ? `&viewUserName=${encodeURIComponent(fullName)}` : "")
+    );
   const onEditUser = (row: formUserData) => setEditUser(row);
   const onDeleteUser = (id: string) => setDeleteUserId(id);
 

@@ -2,7 +2,12 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { apiserviceMethood } from "../services/apiService";
 import { spserviceMethood } from "../services/spService";
 import { userServiceMethood, type TaskListFilters } from "../services/userService";
-import type { CreateTaskPayload } from "../../modules/user/types";
+import type {
+  CreateTaskPayload,
+  TaskEditFields,
+  AddSubtaskInput,
+  DeleteTaskResult,
+} from "../../modules/user/types";
 
 export const login = createAsyncThunk(
   "auth/login",
@@ -110,6 +115,94 @@ export const updateTaskLane = async (
   if (lane.groupId !== undefined) payload.group_id = lane.groupId;
   const response = await userServiceMethood.patchTask(`/updateTask?id=${taskId}`, payload);
   return response.data;
+};
+
+/**
+ * Edit a task that already exists.
+ *
+ * The same `PATCH /updateTask` a lane move uses — there is no separate "edit
+ * task" endpoint; it simply takes the task's own fields as well now. It works
+ * on a main task or on a subtask, and `status` / `group_id` still behave
+ * exactly as they do through `updateTaskLane`.
+ *
+ * Only the keys present on `fields` are sent, because that is the contract: an
+ * absent key leaves the column alone and `null` on a date clears it. An empty
+ * body is a `400` ("Nothing to update: …"), so a form with nothing changed
+ * should not call this at all.
+ *
+ * Editing a main task resolves to the whole card with its subtasks, in the same
+ * shape `/task-list` returns, so the row can be swapped in without a refetch.
+ * Bad input comes back as a `400` whose message is written to be shown as-is.
+ */
+export const updateTask = async (taskId: string, fields: TaskEditFields) => {
+  const payload: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    // `null` is a real instruction here (clear the date); only `undefined`
+    // means "leave it alone", so it is the one thing filtered out.
+    if (value !== undefined) payload[key] = value;
+  }
+  const response = await userServiceMethood.patchTask(
+    `/updateTask?id=${encodeURIComponent(taskId)}`,
+    payload
+  );
+  return response.data;
+};
+
+/**
+ * Add one child to a task that already exists.
+ *
+ * Only `parent_id` and `description` are required; everything else is the
+ * child's own and optional. Nothing is sent for `project_id`, `room_id`,
+ * `status` or `position` — the server derives the first three from the parent,
+ * and an omitted position files the subtask last, which is where a new one
+ * belongs.
+ *
+ * Resolves with the decorated parent (`data.subtasks` holds the new child), so
+ * the expanded row is redrawn whole rather than patched.
+ *
+ * Errors: `404` parent not found, `423` the task is locked, `400` for the rest
+ * — a bad assignee, a subtask of a subtask, an unparseable date. All carry a
+ * message meant for the user.
+ */
+export const addSubtask = async (parentId: string, input: AddSubtaskInput) => {
+  const payload: Record<string, unknown> = {
+    parent_id: parentId,
+    description: input.description,
+  };
+  if (input.assigned_to) payload.assigned_to = input.assigned_to;
+  if (input.priority) payload.priority = input.priority;
+  if (input.start_date) payload.start_date = input.start_date;
+  if (input.due_date) payload.due_date = input.due_date;
+  if (input.tags?.length) payload.tags = input.tags;
+
+  const response = await userServiceMethood.createSubtask("/task/subtask", payload);
+  return response.data;
+};
+
+/**
+ * Delete a task, or one subtask.
+ *
+ * Deleting a **main task** takes every subtask with it, including ones assigned
+ * to other people. Deleting a **subtask** takes only that row; its parent and
+ * siblings are left alone.
+ *
+ * Irreversible — there is no soft delete and no undo. The time banked on the
+ * rows goes too, and the reports read the same table, so this rewrites
+ * somebody's past numbers. Never call it without asking first.
+ *
+ * Who may is narrower than who may see: SP, the creator, the assignee, an AM
+ * over that person's board, and for a subtask the parent's creator. Anyone else
+ * gets a `403`. Other codes: `400` no id, `404` gone already, `423` locked.
+ */
+export const deleteTask = async (taskId: string): Promise<DeleteTaskResult> => {
+  const response = await userServiceMethood.deleteTask(
+    `/task?id=${encodeURIComponent(taskId)}`
+  );
+  // The result is the payload itself on this route, but every other write here
+  // answers inside a `{ success, message, data }` wrapper — so take whichever
+  // came back rather than depending on which one it turned out to be.
+  const body = response.data;
+  return (body?.data ?? body) as DeleteTaskResult;
 };
 
 // ─── Task comments ────────────────────────────────────────────────

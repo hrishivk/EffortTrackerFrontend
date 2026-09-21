@@ -44,6 +44,8 @@ const UserDashboard = () => {
   const id = user?.id;
   const [searchParams, setSearchParams] = useSearchParams();
   const viewUserId = searchParams.get("viewUser") || "";
+  /** Sent along by whoever linked here, so the header has a name on first paint. */
+  const viewUserName = searchParams.get("viewUserName") || "";
   const viewProject = searchParams.get("viewProject") || "";
   const viewTab = searchParams.get("tab") || "";
   /** A task to open on arrival — how a notification reaches its task. */
@@ -139,6 +141,7 @@ const UserDashboard = () => {
                   setActiveTab(tab.key);
                   if (tab.key === "overview") {
                     if (viewUserId) searchParams.delete("viewUser");
+                    if (viewUserName) searchParams.delete("viewUserName");
                     if (viewProject) searchParams.delete("viewProject");
                     if (viewTab) searchParams.delete("tab");
                     if (viewUserId || viewProject || viewTab) {
@@ -185,6 +188,7 @@ const UserDashboard = () => {
         ) : currentTab === "myTasks" ? (
           <MyTasksView
             viewUserId={viewUserId}
+            viewUserName={viewUserName}
             viewProject={viewProject}
             viewTab={viewTab}
             focusTaskId={focusTaskId}
