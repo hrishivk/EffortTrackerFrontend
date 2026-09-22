@@ -7,68 +7,119 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  InputAdornment,
-  TextField,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 
 import {
-  fetchAllUsers,
+  fetchProject,
   fetchUsers,
   assignProjectMembers,
   removeProjectMembers,
 } from "../../../../core/actions/spAction";
 import { useSnackbar } from "../../../../contexts/SnackbarContext";
 import SpinLoader from "../../../../presentation/SpinLoader";
-import { selectSx } from "./constants";
-import { pdGetInitials, isUserInProject } from "./utils";
+import { pdGetInitials } from "./utils";
 import type { ProjectRow } from "../../types";
 import type { formUserData } from "../../../../shared/types/User";
 import Dialoge from "../../../../presentation/Dialog";
+
+/** Candidates per request, and per press of Next. */
+const ROSTER_PAGE = 10;
 
 const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: () => void }) => {
   const { showSnackbar } = useSnackbar();
   const loggedInRole = useSelector((state: any) => state.user.user.role);
   const isSP = loggedInRole?.toUpperCase() === "SP";
-  const [users, setUsers] = useState<formUserData[]>([]);
+  /** Who is on the project, answered by the project itself. */
+  const [assignedMembers, setAssignedMembers] = useState<formUserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [removeTarget, setRemoveTarget] = useState<formUserData | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
-  const [userSearch, setUserSearch] = useState("");
 
-  const loadUsers = useCallback(async () => {
+  /**
+   * Candidates, a page at a time and only once the dialog is open.
+   *
+   * The whole roster used to be pulled the moment a row was expanded — a
+   * request for every project you glance at, to fill a list most of those
+   * glances never open. It is asked for when somebody actually goes to assign
+   * somebody, and then a page at a time, the way the report's picker does it.
+   */
+  const [candidates, setCandidates] = useState<formUserData[]>([]);
+  const [rosterPage, setRosterPage] = useState(1);
+  const [rosterPages, setRosterPages] = useState(1);
+  const [rosterLoading, setRosterLoading] = useState(false);
+
+
+  /**
+   * The project answers "who is on it" directly now. It used to be worked out
+   * by fetching every user and filtering on their own `projects[]`, which is a
+   * lot of rows to read to list three names.
+   */
+  const loadMembers = useCallback(async () => {
     setLoading(true);
     try {
-      if (isSP) {
-        const res = await fetchUsers({ role: "AM" });
-        setUsers(res.users || []);
-      } else {
-        const res = await fetchAllUsers();
-        const allUsers: formUserData[] = res.data || [];
-        setUsers(allUsers.filter((u) => u.role === "USER" || u.role === "DEVLOPER"));
-      }
+      const project = await fetchProject(row.id);
+      setAssignedMembers((project?.members ?? []) as unknown as formUserData[]);
     } catch {
-      showSnackbar({ message: "Failed to load users", severity: "error" });
+      showSnackbar({ message: "Failed to load the team", severity: "error" });
+      setAssignedMembers([]);
     } finally {
       setLoading(false);
     }
-  }, [showSnackbar, isSP]);
+    // showSnackbar is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row.id]);
 
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    loadMembers();
+  }, [loadMembers]);
 
-  const assignedMembers = users.filter((u) => isUserInProject(u, row.id));
-  const availableMembers = users.filter((u) => !isUserInProject(u, row.id));
+  /**
+   * One page of candidates, replacing the page before it.
+   *
+   * An SP staffs projects with managers, an AM with its own team. The API
+   * filters on one role and an AM needs two, so their pages are narrowed here
+   * afterwards — which, together with dropping whoever is already on the
+   * project, means a page can render short. Harmless when Next is right there.
+   */
+  const loadCandidates = useCallback(
+    async (page: number) => {
+      setRosterLoading(true);
+      try {
+        const res = await fetchUsers({
+          page,
+          limit: ROSTER_PAGE,
+          ...(isSP ? { role: "AM" } : {}),
+        });
+        const here = new Set(assignedMembers.map((m) => String(m.id)));
+        setCandidates(
+          (res?.users ?? []).filter((u) => {
+            if (here.has(String(u.id))) return false;
+            if (isSP) return true;
+            const r = String(u.role ?? "").toUpperCase();
+            return r === "USER" || r === "DEVLOPER";
+          })
+        );
+        setRosterPage(page);
+        setRosterPages(res?.totalPages || 1);
+      } catch {
+        showSnackbar({ message: "Failed to load users", severity: "error" });
+      } finally {
+        setRosterLoading(false);
+      }
+    },
+    // showSnackbar is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isSP, assignedMembers]
+  );
 
   const handleRemoveConfirm = async () => {
     if (!removeTarget) return;
     try {
       await removeProjectMembers(String(row.id), [String(removeTarget.id)]);
       showSnackbar({ message: `${removeTarget.fullName} removed`, severity: "success" });
-      await loadUsers();
+      await loadMembers();
       onRefresh?.();
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Failed to remove member";
@@ -81,7 +132,7 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
   const handleOpenAssign = () => {
     setAssignOpen(true);
     setSelectedUserIds([]);
-    setUserSearch("");
+    void loadCandidates(1);
   };
 
   const handleAssignSubmit = async () => {
@@ -91,7 +142,7 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
       await assignProjectMembers(String(row.id), selectedUserIds);
       showSnackbar({ message: `${selectedUserIds.length} member(s) assigned`, severity: "success" });
       setAssignOpen(false);
-      await loadUsers();
+      await loadMembers();
       onRefresh?.();
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Failed to assign members";
@@ -106,12 +157,6 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
   };
-
-  const filteredAvailable = availableMembers.filter(
-    (u) =>
-      u.fullName.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.role.toLowerCase().includes(userSearch.toLowerCase())
-  );
 
   if (loading) {
     return <SpinLoader isLoading />;
@@ -217,25 +262,8 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
           {isSP ? "Assign Managers (AM)" : "Assign Members"} to {row.name}
         </DialogTitle>
         <DialogContent>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Search users..."
-            value={userSearch}
-            onChange={(e) => setUserSearch(e.target.value)}
-            sx={{ mb: 2, mt: 1, ...selectSx }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: "#9ca3af", fontSize: 18 }} />
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-          <div style={{ maxHeight: 300, overflowY: "auto" }}>
-            {filteredAvailable.map((user) => {
+          <div style={{ maxHeight: 300, overflowY: "auto", marginTop: 8 }}>
+            {candidates.map((user) => {
               const uid = String(user.id);
               const isSelected = selectedUserIds.includes(uid);
               return (
@@ -276,12 +304,43 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
                 </div>
               );
             })}
-            {filteredAvailable.length === 0 && (
+            {candidates.length === 0 && !rosterLoading && (
               <p className="text-center py-3" style={{ fontSize: 13, color: "#9ca3af" }}>
                 No available users to assign.
               </p>
             )}
           </div>
+
+          {/*
+            * One page at a time, with the way back beside the way on — the
+            * same control the report's team picker uses.
+            */}
+          {rosterPages > 1 && (
+            <div
+              className="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2"
+              style={{ borderTop: "1px solid var(--border-light)" }}
+            >
+              <Button
+                size="small"
+                disabled={rosterLoading || rosterPage <= 1}
+                onClick={() => void loadCandidates(rosterPage - 1)}
+                sx={{ textTransform: "none", color: "#7c3aed", fontWeight: 600 }}
+              >
+                Previous
+              </Button>
+              <span style={{ fontSize: 11.5, color: "var(--text-faint)" }}>
+                {rosterLoading ? "Loading…" : `${rosterPage} of ${rosterPages}`}
+              </span>
+              <Button
+                size="small"
+                disabled={rosterLoading || rosterPage >= rosterPages}
+                onClick={() => void loadCandidates(rosterPage + 1)}
+                sx={{ textTransform: "none", color: "#7c3aed", fontWeight: 600 }}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setAssignOpen(false)} sx={{ color: "#6b7280", textTransform: "none" }}>
