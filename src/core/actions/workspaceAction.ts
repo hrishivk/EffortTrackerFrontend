@@ -11,13 +11,7 @@ export const fetchWorkspaces = async () => {
   return response.data.data as Workspace[];
 };
 
-/**
- * One page of workspaces, for the managers' list.
- *
- * Separate from `fetchWorkspaces` on purpose: the sidebar tree wants every
- * workspace it may show and has no pager to drive, while the page asks the
- * server for exactly the rows it is about to draw.
- */
+
 export const fetchWorkspacePage = async (pagination?: {
   page?: number;
   limit?: number;
@@ -26,11 +20,7 @@ export const fetchWorkspacePage = async (pagination?: {
   const body = response.data ?? {};
   const rows = (body.data ?? []) as Workspace[];
 
-  /*
-   * `totalPages` is what `/task-list` answers with; a bare `total` is the other
-   * shape a paged route might take. Falling back to a single page keeps the
-   * pager honest while the route is still returning everything at once.
-   */
+ 
   const limit = pagination?.limit || rows.length || 1;
   const totalPages =
     body.totalPages ??
@@ -39,7 +29,6 @@ export const fetchWorkspacePage = async (pagination?: {
   return { data: rows, totalPages: Math.max(1, Number(totalPages) || 1) };
 };
 
-/** One workspace with its full tree — `project` and `rooms[].members[]`. */
 export const fetchWorkspace = async (id: string) => {
   const response = await userServiceMethood.listWorkspaces(
     `/workspaces?id=${encodeURIComponent(id)}`
@@ -150,7 +139,7 @@ export const fetchNotifyTargets = async (): Promise<NotifyTarget[]> => {
     "/workspaces/notify-targets"
   );
 
-  const body = response.data;
+  const body = response.data;    
   const rows = [body?.data, body?.data?.targets, body?.data?.users, body].find(
     (candidate) => Array.isArray(candidate)
   );

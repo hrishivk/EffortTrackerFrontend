@@ -51,32 +51,27 @@ import {
   type TeamMemberRow,
 } from "../../../core/actions/reportAction";
 import { fetchAllTaskGroups } from "../../../core/actions/action";
-import { fetchAllUsers } from "../../../core/actions/spAction";
+import { fetchUsers } from "../../../core/actions/spAction";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
 import { useAppSelector } from "../../../store/configureStore";
+import MentionPicker from "../../../shared/components/User/MentionPicker";
 import { deltaPct, fmtDay, fmtDayLong, fmtDuration, toKey } from "../data/reportMetrics";
 
-/**
- * Task Reports — time and completion figures for a person or a whole team.
- *
- * Every number comes from `/reports/user` or `/reports/team`. Nothing is
- * derived here beyond the period deltas, which compare `totals` against
- * `previous` in the same response.
- *
- * Which prefix those routes are called under follows the signed-in role, and
- * the server enforces the same rule again: an AM reading outside their team is
- * a `403`, not an empty report.
- */
 
 interface Proj {
   id: string;
   name: string;
 }
 
+/** Team members per roster request, and per press of Load more. */
+const PEOPLE_PAGE = 10;
+
 interface Person {
   id?: string | number;
   fullName?: string;
   email?: string;
+  /** Shown beside the name in the picker, where two people share a first name. */
+  role?: string;
   /** What this person is assigned to. `/list-users` nests it on every row. */
   projects?: Proj[];
 }
@@ -244,16 +239,36 @@ export default function TaskReports() {
 
   const upperRole = String(role ?? "").toUpperCase();
   const canSeeOthers = upperRole === "SP" || upperRole === "AM";
+  const isAM = upperRole === "AM";
 
-  /*
-   * Team first for anyone who has one.
-   *
-   * An admin opening this page wants the shape of the whole team before one
-   * person's figures; Individual is the drill-down from it. Anyone without a
-   * team only has their own report, so they start — and stay — there.
-   */
+ 
+  const reportable = useCallback(
+    (rows: Person[]) =>
+      rows.filter((p) => {
+        if (String(p.id) === String(user?.id ?? "")) return false;
+        if (!isAM) return true;
+        const r = String(p.role ?? "").toUpperCase();
+        return r === "USER" || r === "DEVLOPER";
+      }),
+    [isAM, user?.id]
+  );
+
+  
   const [scope, setScope] = useState<Scope>(canSeeOthers ? "team" : "user");
   const [people, setPeople] = useState<Person[]>([]);
+  
+  const [peoplePage, setPeoplePage] = useState(1);
+  const [peoplePages, setPeoplePages] = useState(1);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [peopleSearch, setPeopleSearch] = useState("");
+  
+  const peopleLoaded = useRef(false);
+  
+  const [selectedPerson, setSelectedPerson] = useState<{
+    id: string;
+    name: string;
+    role?: string;
+  } | null>(null);
   const [memberId, setMemberId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [groups, setGroups] = useState<Group[]>([]);
@@ -319,21 +334,17 @@ export default function TaskReports() {
     (async () => {
       try {
         /*
-         * No projects call: `/list-users` nests each person's `projects` on
-         * their row, so fetching the full project list as well would be a
-         * second request for a superset of what the picker can offer.
+         * The roster is not fetched here. It is a list nobody reads until they
+         * reach for the member field, so it waits for that — see
+         * `openPeople` below. Only the groups are needed to draw the page.
+         *
+         * Every group the caller can see, not one board's lanes: a team report
+         * spans people whose boards do not have the same columns.
          */
-        const [u, g] = await Promise.all([
-          canSeeOthers ? fetchAllUsers() : Promise.resolve({ data: [] }),
-          // Every group the caller can see, not one board's lanes — a team
-          // report spans people whose boards do not have the same columns.
-          fetchAllTaskGroups(),
-        ]);
+        const g = await fetchAllTaskGroups();
         if (!alive) return;
-        const list: Person[] = u?.data || [];
-        setPeople(list);
         setGroups(g || []);
-        setMemberId((cur) => cur || String(user?.id ?? list[0]?.id ?? ""));
+        setMemberId((cur) => cur || (canSeeOthers ? "" : String(user?.id ?? "")));
       } catch {
         if (alive) {
           showSnackbar({ message: "Could not load the report filters", severity: "error" });
@@ -509,7 +520,82 @@ export default function TaskReports() {
 
   const active = activeSlice === null ? null : statusSplit[activeSlice] ?? null;
 
-  const memberName = people.find((p) => String(p.id) === memberId)?.fullName || "—";
+  const memberName =
+    people.find((p) => String(p.id) === memberId)?.fullName ||
+    selectedPerson?.name ||
+    "—";
+
+  /**
+   * One page of the roster, replacing the page before it.
+   *
+   * A page at a time rather than a growing pile: you read down ten names, do
+   * not see the one you want, and go to the next ten. Previous brings back the
+   * page you just read, and the request is the same either way.
+   */
+  const loadPeoplePage = useCallback(
+    async (page: number, search = peopleSearch) => {
+      if (!canSeeOthers) return;
+      setPeopleLoading(true);
+      try {
+        const res = await fetchUsers({
+          page,
+          limit: PEOPLE_PAGE,
+          ...(search ? { search } : {}),
+        });
+        setPeople(reportable(res?.users ?? []));
+        setPeoplePage(page);
+        setPeoplePages(res?.totalPages || 1);
+      } catch {
+        showSnackbar({ message: "Could not load the team list", severity: "error" });
+      } finally {
+        setPeopleLoading(false);
+      }
+    },
+    // showSnackbar is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [canSeeOthers, peopleSearch, reportable]
+  );
+
+  /**
+   * The first page, the first time somebody opens the field.
+   *
+   * Nothing is fetched to draw this page: the roster only matters once you go
+   * looking for a name in it, so that is when it is asked for.
+   */
+  const openPeople = useCallback(() => {
+    if (peopleLoaded.current || peopleLoading) return;
+    peopleLoaded.current = true;
+    void loadPeoplePage(1).catch(() => {
+      // Let the next open try again.
+      peopleLoaded.current = false;
+    });
+  }, [peopleLoading, loadPeoplePage]);
+
+  /**
+   * A search starts again at page one, because the match may be on a page
+   * nobody has opened — a picker that only searched the ten in hand would say
+   * "no such person" about somebody who is right there.
+   */
+  const searchPeople = useCallback(
+    (query: string) => {
+      if (query === peopleSearch) return;
+      setPeopleSearch(query);
+      peopleLoaded.current = true;
+      void loadPeoplePage(1, query);
+    },
+    [peopleSearch, loadPeoplePage]
+  );
+
+  /** The roster as the picker wants it: a name to search and a role to show. */
+  const pickablePeople = useMemo(
+    () =>
+      people.map((p) => ({
+        id: String(p.id),
+        name: p.fullName || p.email || "Unknown",
+        role: p.role,
+      })),
+    [people]
+  );
   const projectName = projects.find((p) => p.id === projectId)?.name || "All Projects";
   const onExport = async () => {
     setExporting(true);
@@ -762,27 +848,31 @@ export default function TaskReports() {
                 Select team member
                 <span className="tr-field__count">
                   <FiUsers size={11} />
-                  {people.length} team members
+                  {people.length} loaded
                 </span>
               </span>
-              <FormControl fullWidth size="small" sx={inputSx}>
-                <Select
-                  displayEmpty
-                  value={memberId}
-                  onChange={(e) => setMemberId(String(e.target.value))}
-                  renderValue={(v) =>
-                    (v && people.find((p) => String(p.id) === v)?.fullName) ||
-                    "Select Team Member"
-                  }
-                  sx={valueSx(!!memberId)}
-                >
-                  {people.map((p) => (
-                    <MenuItem key={String(p.id)} value={String(p.id)}>
-                      {p.fullName || p.email}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {/*
+                * Searched, not scrolled. A dropdown is fine for five options
+                * and unusable at two hundred — and this list is the whole
+                * roster, so the name you want is faster typed than found.
+                */}
+              <MentionPicker
+                people={pickablePeople}
+                value={memberId}
+                onChange={(id) => {
+                  setMemberId(id);
+                  setSelectedPerson(pickablePeople.find((p) => p.id === id) ?? null);
+                }}
+                allowEmpty={false}
+                placeholder="Type a name to search…"
+                onOpen={openPeople}
+                onSearch={searchPeople}
+                page={peoplePage}
+                pageCount={peoplePages}
+                onPageChange={loadPeoplePage}
+                loading={peopleLoading}
+                selected={selectedPerson}
+              />
             </label>
           )}
 

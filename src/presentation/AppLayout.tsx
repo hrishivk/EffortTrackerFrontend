@@ -14,6 +14,28 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
+/**
+ * Where the sidebar's width is remembered.
+ *
+ * It has to be remembered somewhere outside the component: `<Routes>` is keyed
+ * on the pathname so the page can animate between routes, which remounts
+ * everything under it on every navigation — including this layout. A collapsed
+ * sidebar would spring back open the moment you clicked a nav row.
+ *
+ * Storage also makes it survive a reload, which is what anyone who narrows a
+ * sidebar expects of it anyway.
+ */
+const SIDEBAR_KEY = "krew:sidebar-collapsed";
+
+const readCollapsed = () => {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === "1";
+  } catch {
+    // Private windows and blocked site data: the sidebar simply opens wide.
+    return false;
+  }
+};
+
 const DASHBOARD_PATHS: Record<string, string> = {
   SP: "/sp/dashboard",
   AM: "/am/dashboard",
@@ -23,7 +45,9 @@ const DASHBOARD_PATHS: Record<string, string> = {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Read at mount, not in an effect, so a remount paints at the right width
+  // rather than opening wide and snapping shut.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readCollapsed);
   const { user } = useAppSelector((state) => state.user);
   const { theme, toggleTheme } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
@@ -52,6 +76,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   }, []);
 
   useEffect(() => setMenuOpen(false), [pathname, search]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed ? "1" : "0");
+    } catch {
+      // Nothing to do: the preference just does not outlive this page.
+    }
+  }, [sidebarCollapsed]);
 
   const handleLogout = async () => {
     try {

@@ -12,9 +12,18 @@ import {
   CPagination,
   CPaginationItem,
 } from "@coreui/react";
+import { AnimatePresence, motion } from "framer-motion";
 import { FiChevronDown } from "react-icons/fi";
 import type { TableListProps } from "./types";
 import { usePagination } from "../../hooks/usePagination";
+
+/**
+ * How an expanded row opens and shuts.
+ *
+ * The same easing the panels elsewhere use, and slow enough to be read as the
+ * row growing rather than a second row appearing under it.
+ */
+const EXPAND_EASE = [0.22, 1, 0.3, 1] as const;
 
 function TableList<T>({
   columns,
@@ -111,11 +120,18 @@ function TableList<T>({
                               className="chevron-cell"
                               onClick={() => toggleRow(idx)}
                             >
-                              <FiChevronDown
-                                className={`chevron ${
-                                  isExpanded ? "rotate" : ""
-                                }`}
-                              />
+                              <motion.span
+                                className="chevron"
+                                style={{ display: "inline-flex" }}
+                                animate={{ rotate: isExpanded ? 180 : 0 }}
+                                transition={{
+                                  type: "spring",
+                                  stiffness: 420,
+                                  damping: 32,
+                                }}
+                              >
+                                <FiChevronDown />
+                              </motion.span>
                             </CTableDataCell>
                           )}
 
@@ -126,17 +142,42 @@ function TableList<T>({
                           ))}
                         </CTableRow>
 
-                        {expandable && isExpanded && (
-                          <CTableRow className="expanded-row">
-                            <CTableDataCell
-                              colSpan={columns.length + (expandable ? 1 : 0)}
+                        <AnimatePresence initial={false}>
+                          {expandable && isExpanded && (
+                            <motion.tr
+                              key="expanded"
+                              className="expanded-row"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.16 }}
                             >
-                              <div className="expanded-content">
-                                {expandable.renderExpandedRow(row)}
-                              </div>
-                            </CTableDataCell>
-                          </CTableRow>
-                        )}
+                              {/*
+                                * The cell gives up its padding so the row can
+                                * close to nothing; the same spacing is put back
+                                * inside, where it collapses with the content.
+                                */}
+                              <td
+                                colSpan={columns.length + (expandable ? 1 : 0)}
+                                style={{ padding: 0 }}
+                              >
+                                <motion.div
+                                  initial={{ height: 0 }}
+                                  animate={{ height: "auto" }}
+                                  exit={{ height: 0 }}
+                                  transition={{ duration: 0.26, ease: EXPAND_EASE }}
+                                  style={{ overflow: "hidden" }}
+                                >
+                                  <div style={{ padding: "18px 20px" }}>
+                                    <div className="expanded-content">
+                                      {expandable.renderExpandedRow(row)}
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              </td>
+                            </motion.tr>
+                          )}
+                        </AnimatePresence>
                       </React.Fragment>
                     );
                   })

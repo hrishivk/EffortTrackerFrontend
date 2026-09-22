@@ -12,9 +12,19 @@ import { useSnackbar } from "../../../contexts/SnackbarContext";
 import type { formUserData } from "../../../shared/types/User";
 import type { project } from "../../../shared/types/Project";
 import { useAppSelector } from "../../../store/configureStore";
+import { FiLayers, FiUserCheck, FiUsers } from "react-icons/fi";
+import FilterPanel, {
+  FilterTrigger,
+  countActiveFilters,
+  type FilterCategory,
+  type FilterValues,
+} from "../../../shared/components/FilterPanel/FilterPanel";
 
 
 const ITEMS_PER_PAGE = 10;
+
+/** What an AM's team is made of — the only two roles they can hold. */
+const TEAM_ROLES = ["USER", "DEVLOPER"];
 
 const searchSx = {
   "& .MuiOutlinedInput-root": {
@@ -49,6 +59,8 @@ const TeamManagement: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [filters, setFilters] = useState<FilterValues>({ projectId: "", role: "" });
+  const [filterOpen, setFilterOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [editUser, setEditUser] = useState<formUserData | null>(null);
 
@@ -57,14 +69,17 @@ const TeamManagement: React.FC = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // A narrowed list is shorter than the page you were reading.
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, filters]);
 
   const loadUsers = useCallback(async () => {
     try {
       const result = await fetchUsers({
         search: debouncedSearch,
+        role: filters.role,
+        project_id: filters.projectId,
         page,
         limit: ITEMS_PER_PAGE,
       });
@@ -74,7 +89,7 @@ const TeamManagement: React.FC = () => {
     } catch (error) {
       console.error("Error fetching team users:", error);
     }
-  }, [debouncedSearch, page]);
+  }, [debouncedSearch, page, filters]);
 
   useEffect(() => {
     loadUsers();
@@ -121,6 +136,42 @@ const TeamManagement: React.FC = () => {
   };
 
   const columns = getUserColumns({ onViewTasks, onEditUser, onDeleteUser });
+  const activeFilterCount = countActiveFilters(filters);
+
+  /**
+   * The two questions worth asking of a team list: who is on which project, and
+   * who does what. Both are server-side filters on `/list-users`, so the pager
+   * below stays honest — a client-side narrowing would leave pages short.
+   *
+   * The projects offered are the AM's own, the same ones the page already
+   * loaded; a project they do not run has nobody of theirs on it.
+   */
+  const filterCategories: FilterCategory[] = [
+    {
+      key: "team",
+      label: "Projects & Roles",
+      icon: <FiUsers size={16} />,
+      caption: "Narrow the team by what they are on and what they do",
+      fields: [
+        {
+          key: "projectId",
+          label: "Project",
+          placeholder: "Select project",
+          emptyText: "You have no projects yet",
+          icon: <FiLayers size={15} />,
+          options: projects.map((p) => ({ value: String(p.id), label: p.name })),
+        },
+        {
+          key: "role",
+          label: "Role",
+          placeholder: "Select role",
+          emptyText: "No roles available",
+          icon: <FiUserCheck size={15} />,
+          options: TEAM_ROLES.map((r) => ({ value: r, label: r })),
+        },
+      ],
+    },
+  ];
 
   return (
     <div className="min-h-screen px-3 py-4 sm:px-6 md:px-8" style={{ backgroundColor: "var(--bg-page)" }}>
@@ -153,6 +204,11 @@ const TeamManagement: React.FC = () => {
                   ),
                 },
               }}
+            />
+
+            <FilterTrigger
+              count={activeFilterCount}
+              onClick={() => setFilterOpen(true)}
             />
 
             <button
@@ -190,7 +246,16 @@ const TeamManagement: React.FC = () => {
           onSaved={loadUsers}
         />
 
-        <Dialoge
+        <FilterPanel
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          title="Filter Team"
+          categories={filterCategories}
+          values={filters}
+          onApply={setFilters}
+        />
+
+      <Dialoge
           open={!!deleteUserId}
           data="delete"
           onClose={() => setDeleteUserId(null)}

@@ -8,8 +8,15 @@ import {
   DialogContent,
   DialogTitle,
 } from "@mui/material";
-import { motion } from "framer-motion";
-import { LayoutGrid, FolderTree } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  LayoutGrid,
+  FolderTree,
+  FolderKanban,
+  PauseCircle,
+  Target,
+  UsersRound,
+} from "lucide-react";
 
 import TableList from "../../../../shared/components/Table/Table";
 import GanttChart from "../../../../shared/components/GanttChart/GanttChart";
@@ -36,6 +43,13 @@ import EditProjectModal from "./EditProjectModal";
 import { allTabs, PROJECT_STATUS_OPTIONS } from "./constants";
 import type { DomainTab, ProjectRow, PhaseItem, CriticalUpdate } from "../../types";
 import type { Domain } from "../../../../shared/types/Domain";
+
+const TAB_SPRING = { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.7 };
+
+const LIST_VIEWS = [
+  { key: "projects" as const, label: "Projects", icon: LayoutGrid },
+  { key: "domains" as const, label: "Departments", icon: FolderTree },
+];
 
 const DomainProject = () => {
   const navigate = useNavigate();
@@ -346,7 +360,7 @@ const DomainProject = () => {
               value={stats?.projects.active ?? 0}
               subtitle={`${stats?.projects.total ?? 0} total projects`}
               accentColor="#7c3aed"
-              icon={<span>&#9989;</span>}
+              icon={<FolderKanban size={18} strokeWidth={2.1} />}
             />
           </div>
           <div style={{ minWidth: 200, flex: "1 0 auto" }}>
@@ -355,7 +369,7 @@ const DomainProject = () => {
               value={stats?.projects.on_hold ?? 0}
               subtitle="Awaiting feedback"
               accentColor="#f59e0b"
-              icon={<span>&#9208;&#65039;</span>}
+              icon={<PauseCircle size={18} strokeWidth={2.1} />}
             />
           </div>
           <div style={{ minWidth: 200, flex: "1 0 auto" }}>
@@ -364,7 +378,7 @@ const DomainProject = () => {
               value={stats && stats.totalTasks > 0 ? `${Math.round((stats.completedTasks / stats.totalTasks) * 100)}%` : "0%"}
               progress={stats && stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}
               accentColor="#10b981"
-              icon={<span>&#128202;</span>}
+              icon={<Target size={18} strokeWidth={2.1} />}
             />
           </div>
           <div style={{ minWidth: 200, flex: "1 0 auto" }}>
@@ -373,7 +387,7 @@ const DomainProject = () => {
               value={stats?.activeResources ?? 0}
               subtitle="Allocated across teams"
               accentColor="#6366f1"
-              icon={<span>&#128101;</span>}
+              icon={<UsersRound size={18} strokeWidth={2.1} />}
             />
           </div>
         </div>
@@ -407,54 +421,87 @@ const DomainProject = () => {
           className="mb-3"
           style={{
             display: "inline-flex",
-            borderRadius: 12,
+            gap: 2,
+            padding: 4,
+            borderRadius: 14,
             border: "1px solid var(--border-light)",
-            overflow: "hidden",
             backgroundColor: "var(--bg-hover)",
           }}
         >
-          <button
-            onClick={() => setListView("projects")}
-            className="d-flex align-items-center gap-1"
-            style={{
-              backgroundColor: listView === "projects" ? "#7c3aed" : "transparent",
-              color: listView === "projects" ? "#fff" : "var(--text-muted)",
-              borderRadius: 0,
-              fontSize: 12,
-              fontWeight: 600,
-              padding: "7px 14px",
-              whiteSpace: "nowrap",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-          >
-            <LayoutGrid size={14} />
-            Projects
-          </button>
-          <button
-            onClick={() => setListView("domains")}
-            className="d-flex align-items-center gap-1"
-            style={{
-              backgroundColor: listView === "domains" ? "#7c3aed" : "transparent",
-              color: listView === "domains" ? "#fff" : "var(--text-muted)",
-              borderRadius: 0,
-              fontSize: 12,
-              fontWeight: 600,
-              padding: "7px 14px",
-              whiteSpace: "nowrap",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-          >
-            <FolderTree size={14} />
-            Departments
-          </button>
+          {LIST_VIEWS.map((view) => {
+            const Icon = view.icon;
+            const active = listView === view.key;
+            return (
+              <motion.button
+                key={view.key}
+                onClick={() => setListView(view.key)}
+                whileTap={{ scale: 0.94 }}
+                transition={TAB_SPRING}
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  backgroundColor: "transparent",
+                  color: active ? "#fff" : "var(--text-muted)",
+                  borderRadius: 10,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  padding: "7px 14px",
+                  whiteSpace: "nowrap",
+                  border: "none",
+                  cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
+                  transition: "color 0.2s",
+                }}
+              >
+                {/* One element shared across both buttons, so framer slides it
+                    from the old one to the new rather than fading two. */}
+                {active && (
+                  <motion.span
+                    layoutId="listViewPill"
+                    transition={TAB_SPRING}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      borderRadius: 10,
+                      background: "linear-gradient(135deg, #7c3aed, #a855f7)",
+                      boxShadow: "0 2px 10px rgba(124, 58, 237, 0.35)",
+                      zIndex: 0,
+                    }}
+                  />
+                )}
+                <motion.span
+                  animate={{ scale: active ? 1.12 : 1 }}
+                  transition={TAB_SPRING}
+                  style={{ position: "relative", zIndex: 1, display: "inline-flex" }}
+                >
+                  <Icon size={14} />
+                </motion.span>
+                <span style={{ position: "relative", zIndex: 1 }}>{view.label}</span>
+              </motion.button>
+            );
+          })}
         </div>
       )}
 
-      {activeTab === "overview" && listView === "projects" && (() => {
+      {/*
+        * Projects and Departments are two readings of the same page, so they
+        * change over the way the task views do — the outgoing table leaves
+        * upward as the incoming one arrives from below, rather than one
+        * snapping into the other's place.
+        */}
+      {activeTab === "overview" && (
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={listView}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            {listView === "projects" ? (
+              (() => {
         const handleManageMembers = (projectId: number) => {
           const idx = projects.findIndex((p) => p.id === projectId);
           setExpandedIndex(expandedIndex === idx ? null : idx);
@@ -514,19 +561,21 @@ const DomainProject = () => {
             }}
           />
         );
-      })()}
-
-      {activeTab === "overview" && listView === "domains" && (
-        <TableList
-          columns={getDomainColumns((id) => setDeleteDomainId(id))}
-          data={domains}
-          pagination={{
-            currentPage: domainPage,
-            totalPages: domainTotalPages,
-            onPageChange: setDomainPage,
-          }}
-          emptyMessage="No departments found"
-        />
+      })()
+            ) : (
+              <TableList
+                columns={getDomainColumns((id) => setDeleteDomainId(id))}
+                data={domains}
+                pagination={{
+                  currentPage: domainPage,
+                  totalPages: domainTotalPages,
+                  onPageChange: setDomainPage,
+                }}
+                emptyMessage="No departments found"
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       )}
 
       {activeTab === "overview" && (

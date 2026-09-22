@@ -47,17 +47,23 @@ const StatCard = ({
           </div>
         )}
       </div>
+      {/*
+        * A tinted tile rather than a bare glyph: the measure's own colour, held
+        * in a wash of itself with a hairline of the same hue, so four cards in
+        * a row read as one set of four rather than four loose marks.
+        */}
       <div
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          backgroundColor: accentColor + "18",
+          width: 38,
+          height: 38,
+          flexShrink: 0,
+          borderRadius: 12,
+          background: `linear-gradient(140deg, ${accentColor}1f, ${accentColor}0d)`,
+          border: `1px solid ${accentColor}2e`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           color: accentColor,
-          fontSize: 16,
         }}
       >
         {icon}

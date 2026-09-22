@@ -290,11 +290,27 @@ a {
 }
 
 
+/*
+ * The cell is the target, not the 16px arrow inside it — so the cursor and the
+ * colour change belong to the cell, and the whole square answers the pointer.
+ */
+.chevron-cell {
+  cursor: pointer;
+  width: 60px;
+  text-align: center;
+}
+
 .chevron {
   font-size: 16px;
   color: var(--text-muted);
+  transition: color 0.15s;
 }
 
+.chevron-cell:hover .chevron {
+  color: #7c3aed;
+}
+
+/* The turn is animated in the component now; this is the no-JS resting state. */
 .chevron.rotate {
   transform: rotate(180deg);
 }

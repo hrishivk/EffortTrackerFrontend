@@ -32,7 +32,7 @@ export interface MentionPerson {
 }
 
 /** Kept in step with `.mnp__menu`'s max-height, for the flip-up decision. */
-const MENU_MAX_H = 208;
+const MENU_MAX_H = 320;
 
 const initialsOf = (name: string) =>
   name
@@ -54,8 +54,40 @@ interface MentionPickerProps {
    * own rather than only reachable by clearing the field.
    */
   emptyLabel?: string;
+  /**
+   * Whether picking nobody is a choice at all. False where the field has to
+   * hold somebody — a report about no one is not a report — and the row is
+   * left off rather than offered and then refused.
+   */
+  allowEmpty?: boolean;
   placeholder?: string;
   disabled?: boolean;
+
+  // ─── For a roster that arrives a page at a time ───────────────────
+  /**
+   * Given, the query goes to the server as well — otherwise a search could
+   * only ever find the page that happens to be loaded.
+   */
+  onSearch?: (query: string) => void;
+  /**
+   * Fired the first time the menu opens, and on each open after. Where the
+   * roster is fetched, so nothing is asked for until somebody actually reaches
+   * for the field.
+   */
+  onOpen?: () => void;
+  /**
+   * A pager under the menu: one page of the roster at a time, with a way back
+   * to the one before. Given `pageCount` above 1, the footer appears.
+   */
+  page?: number;
+  pageCount?: number;
+  onPageChange?: (page: number) => void;
+  loading?: boolean;
+  /**
+   * The chosen person, for when they are not on the page being shown. Without
+   * it, paging away from somebody's row empties the field that names them.
+   */
+  selected?: MentionPerson | null;
 }
 
 export default function MentionPicker({
@@ -63,8 +95,16 @@ export default function MentionPicker({
   value,
   onChange,
   emptyLabel = "Nobody",
+  allowEmpty = true,
   placeholder = "Type @ to search people…",
   disabled = false,
+  onSearch,
+  onOpen,
+  page = 1,
+  pageCount = 1,
+  onPageChange,
+  loading = false,
+  selected = null,
 }: MentionPickerProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -76,9 +116,16 @@ export default function MentionPicker({
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const chosen = people.find((p) => String(p.id) === String(value)) ?? null;
+  const chosen =
+    people.find((p) => String(p.id) === String(value)) ??
+    (selected && String(selected.id) === String(value) ? selected : null);
 
   const matches = useMemo(() => {
+    // Searching server-side: what came back is already the answer, and
+    // filtering it again here would hide a match found on a field we cannot
+    // see.
+    if (onSearch) return people;
+
     const q = query.replace(/^@+/, "").trim().toLowerCase();
     const list = q
       ? people.filter(
@@ -90,7 +137,7 @@ export default function MentionPicker({
     // Long enough to scan, short enough not to become the scrolling list this
     // is here to replace.
     return list.slice(0, 8);
-  }, [people, query]);
+  }, [people, query, onSearch]);
 
   // Clicking anywhere else is a decision not to pick.
   useEffect(() => {
@@ -141,6 +188,25 @@ export default function MentionPicker({
   // A new query is a new list, so the highlight goes back to the top of it.
   useEffect(() => setActive(0), [query, open]);
 
+  /**
+   * Hand the query to whoever is loading the roster, once the typing settles.
+   * Debounced, because for them this is a request rather than a filter.
+   */
+  useEffect(() => {
+    if (!onSearch || !open) return;
+    const term = query.replace(/^@+/, "").trim();
+    const id = window.setTimeout(() => onSearch(term), 300);
+    return () => window.clearTimeout(id);
+    // Re-running on `onSearch`'s identity would fire a request per render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, open]);
+
+  const reveal = () => {
+    if (open) return;
+    setOpen(true);
+    onOpen?.();
+  };
+
   const pick = (id: string) => {
     onChange(id);
     setQuery("");
@@ -156,13 +222,13 @@ export default function MentionPicker({
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Backspace on an empty box takes the chip off, as it does in every
     // recipient field people already use.
-    if (e.key === "Backspace" && !query && chosen) {
+    if (e.key === "Backspace" && !query && chosen && allowEmpty) {
       e.preventDefault();
       clear();
       return;
     }
     if (!open) {
-      if (e.key === "ArrowDown" || e.key === "@") setOpen(true);
+      if (e.key === "ArrowDown" || e.key === "@") reveal();
       return;
     }
     if (e.key === "ArrowDown") {
@@ -193,7 +259,7 @@ export default function MentionPicker({
         }`}
         onClick={() => {
           if (disabled) return;
-          setOpen(true);
+          reveal();
           inputRef.current?.focus();
         }}
       >
@@ -201,18 +267,20 @@ export default function MentionPicker({
           <span className="mnp__chip">
             <span className="mnp__avatar">{initialsOf(chosen.name)}</span>
             <span className="mnp__chip-name">{chosen.name}</span>
-            <button
-              type="button"
-              className="mnp__x"
-              title={`Remove ${chosen.name}`}
-              disabled={disabled}
-              onClick={(e) => {
-                e.stopPropagation();
-                clear();
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 11 }} />
-            </button>
+            {allowEmpty && (
+              <button
+                type="button"
+                className="mnp__x"
+                title={`Remove ${chosen.name}`}
+                disabled={disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clear();
+                }}
+              >
+                <CloseIcon sx={{ fontSize: 11 }} />
+              </button>
+            )}
           </span>
         ) : (
           <PersonOutlineIcon sx={{ fontSize: 13 }} />
@@ -226,9 +294,9 @@ export default function MentionPicker({
           placeholder={chosen ? "" : placeholder}
           onChange={(e) => {
             setQuery(e.target.value);
-            setOpen(true);
+            reveal();
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={reveal}
           // Tabbing out of the field should not leave a menu floating over the
           // form. Clicking the menu never gets here: it holds the focus itself
           // (see the menu's mousedown below).
@@ -252,7 +320,7 @@ export default function MentionPicker({
             // nothing left to land on.
             onMouseDown={(e) => e.preventDefault()}
           >
-            {matches.length === 0 ? (
+            {matches.length === 0 && !loading ? (
               <p className="mnp__none">
                 Nobody here matches “{query.replace(/^@+/, "").trim()}”
               </p>
@@ -276,15 +344,42 @@ export default function MentionPicker({
 
             {/* Unassigning is a choice of its own, so it is a row rather than
                 something you have to know to reach with Backspace. */}
-            <button
-              type="button"
-              className={`mnp__opt mnp__opt--empty${!value ? " mnp__opt--picked" : ""}`}
-              // A row of the menu, so choosing it closes the menu — unlike the
-              // chip's ×, which clears in order to pick somebody else.
-              onClick={() => pick("")}
-            >
-              {emptyLabel}
-            </button>
+            {/*
+              * One page at a time, with a way back to the last one. A roster
+              * is read in passes — you look down a page, do not see the name,
+              * and go to the next — so the control that moves you says which
+              * page you are on and lets you return to it.
+              */}
+            {onPageChange && pageCount > 1 && (
+              <div className="mnp__pager">
+                <button
+                  type="button"
+                  disabled={loading || page <= 1}
+                  onClick={() => onPageChange(page - 1)}
+                >
+                  Previous
+                </button>
+                <span>{loading ? "Loading…" : `${page} of ${pageCount}`}</span>
+                <button
+                  type="button"
+                  disabled={loading || page >= pageCount}
+                  onClick={() => onPageChange(page + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+            {allowEmpty && (
+              <button
+                type="button"
+                className={`mnp__opt mnp__opt--empty${!value ? " mnp__opt--picked" : ""}`}
+                // A row of the menu, so choosing it closes the menu — unlike
+                // the chip's ×, which clears in order to pick somebody else.
+                onClick={() => pick("")}
+              >
+                {emptyLabel}
+              </button>
+            )}
           </div>,
           document.body
         )}

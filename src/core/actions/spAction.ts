@@ -33,14 +33,7 @@ export const deleteDomain = async (id: string) => {
   }
 };
 
-/**
- * Departments.
- *
- * `pagination` is for the list page, which draws ten at a time and has a pager
- * to feed. The callers that fill a dropdown pass nothing and keep getting the
- * whole set, because a picker missing half its options is worse than a long
- * one.
- */
+
 export const fetchExistDomains=async(
   isShared?: boolean,
   pagination?: { page?: number; limit?: number }
@@ -93,6 +86,13 @@ export const fetchUserDetails=async(id:string)=>{
     throw error
   }
 }
+/**
+ * One page of the roster.
+ *
+ * `/list-users` pages, so this is the first page and nothing more — the
+ * callers that need to page through it do so themselves, on the reader's say-so
+ * rather than by pulling the whole organisation down on open.
+ */
 export const fetchAllUsers=async()=>{
   try {
     const repsonse=await spserviceMethood.listUser("/list-users")
@@ -152,18 +152,7 @@ export const addProject=async(data:{[key:string]:string|number})=>{
   }
 }
 
-/**
- * One project, whole, by id.
- *
- * What the edit form opens on. Before this it was built out of whatever row the
- * list happened to be holding, which stopped working the moment that list was
- * paged: a project on page two was not in memory to edit. The response also
- * carries `members`, which is what retires the old way of answering "who is on
- * this project" — fetch every user and filter on their `projects[]`.
- *
- * `404` covers both an unknown id and one this caller has no claim on: a `403`
- * would confirm the project exists, and no screen acts on the difference.
- */
+
 export const fetchProject=async(projectId:string|number)=>{
   const url = `/project?id=${encodeURIComponent(String(projectId))}`
   const response = isAmRole()
@@ -200,7 +189,6 @@ export const Deletetuser=async(id:string)=>{
 }
 export const UnblockUser=async(id:string)=>{
   try {
-    console.log("unblock")
     const response=await spserviceMethood.unBlock(`/unBlock-user?id=${id}`,)
     return response.data
   } catch (error) {
@@ -210,7 +198,6 @@ export const UnblockUser=async(id:string)=>{
 }
 export const BlockUser=async(id:string)=>{
   try {
-       console.log("block")
     const response=await spserviceMethood.Block(`/block-user?id=${id}`,)
     return response.data
   } catch (error) {
