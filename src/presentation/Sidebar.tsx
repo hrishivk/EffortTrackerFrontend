@@ -9,11 +9,11 @@ import {
   FiChevronDown,
   FiChevronRight,
   FiChevronsLeft,
-  FiPlus,
   FiHome,
   FiLock,
   FiSettings,
   FiBarChart2,
+  FiBriefcase,
 } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppSelector } from "../store/configureStore";
@@ -89,6 +89,7 @@ const getSections = (role?: string): NavSection[] => {
         items: [
           { to: "/sp/userMangement", label: "User Management", icon: icon(FiUsers) },
           { to: "/sp/domain-project", label: "Departments & Projects", icon: icon(FiLayers) },
+          { to: "/sp/workspaces", label: "Workspaces", icon: icon(FiBriefcase) },
         ],
       },
       {
@@ -125,6 +126,7 @@ const getSections = (role?: string): NavSection[] => {
         items: [
           { to: "/am/TeamManagement", label: "Team Management", icon: icon(FiUsers) },
           { to: "/am/domain-project", label: "Departments & Projects", icon: icon(FiLayers) },
+          { to: "/am/workspaces", label: "Workspaces", icon: icon(FiBriefcase) },
         ],
       },
       {
@@ -172,6 +174,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { showSnackbar } = useSnackbar();
   // Creating a workspace is a manager's job, so the + is theirs.
   const canCreate = user?.role === "SP" || user?.role === "AM";
+  /**
+   * The tree is a member's navigation: two or three workspaces, each one
+   * somewhere they work. A manager has every workspace there is, or every one
+   * they raised — a list without a limit, which reads as a table and has a page
+   * of its own under Manage. So they get the row, not the branch.
+   */
+  const treeInSidebar = !canCreate;
   const role = user?.role;
   const { pathname, search } = useLocation();
   /** Sections the user has folded away, by title. */
@@ -278,7 +287,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const roleLabel = ROLE_LABELS[role ?? ""] ?? "Member";
   const profilePath = `${DASHBOARD_PATHS[role ?? ""] ?? "/"}?tab=profile`;
   const rolePath = `/${(role ?? "").toLowerCase()}`;
-  const setupPath = `${rolePath}/workspace-setup`;
   const workspacePath = (id: string) =>
     `${rolePath}/workspace?ws=${encodeURIComponent(id)}`;
   const roomPath = (wsId: string, roomId: string) =>
@@ -530,45 +538,22 @@ const Sidebar: React.FC<SidebarProps> = ({
         })}
 
         {/*
-         * Workspaces — a tree. One workspace expands at a time to show its
-         * sections and, under Rooms, the rooms themselves. Collapsed by
-         * default so the sidebar stays navigation first.
+         * Workspaces — a tree, and a member's only one. One expands at a time
+         * to show its sections and, under Rooms, the rooms themselves.
+         * Collapsed by default so the sidebar stays navigation first.
+         *
+         * There is no + here any more: raising a workspace is a manager's job,
+         * and a manager's workspaces are on their own page now.
          */}
-        {!isCollapsed && (
-          <div className="sb-heading">
-            Workspaces
-            {canCreate && (
-              <Link
-                to={setupPath}
-                onClick={onClose}
-                className="sb-add"
-                title="New workspace"
-              >
-                <FiPlus size={13} />
-              </Link>
-            )}
-          </div>
+        {!isCollapsed && treeInSidebar && (
+          <div className="sb-heading">Workspaces</div>
         )}
 
-        {isCollapsed ? (
-          /*
-           * Collapsed, only the + survives: the tree needs the full width to
-           * read, and there is no list page left for a rail icon to open.
-           * Expanding the sidebar is how a workspace is reached.
-           */
-          canCreate && (
-            <div className="space-y-1 px-1">
-              <Link
-                to={setupPath}
-                onClick={onClose}
-                className="sb-add sb-add--rail"
-                title="New workspace"
-              >
-                <FiPlus size={15} />
-              </Link>
-            </div>
-          )
-        ) : (
+        {/*
+         * At rail width the tree is simply absent — it needs the full width to
+         * read, and expanding the sidebar is how a member reaches a workspace.
+         */}
+        {!treeInSidebar || isCollapsed ? null : (
           <div className="sb-tree">
             {visibleWorkspaces(workspaces, user ?? undefined).map((ws) => {
               const open = openWs === ws.id;

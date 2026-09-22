@@ -12,6 +12,7 @@ const Settings=React.lazy(()=>import('../../modules/settings/components/Settings
 const TaskReports=React.lazy(()=>import('../../modules/settings/components/TaskReports'))
 const WorkspaceFlow=React.lazy(()=>import('../../modules/workspace/components/WorkspaceFlow'))
 const WorkspaceDetail=React.lazy(()=>import('../../modules/workspace/components/WorkspaceDetail'))
+const WorkspaceList=React.lazy(()=>import('../../modules/workspace/components/WorkspaceList'))
 const RoomDetail=React.lazy(()=>import('../../modules/workspace/components/RoomDetail'))
 const RoomMemberTasks=React.lazy(()=>import('../../modules/workspace/components/RoomMemberTasks'))
 // Preview only — see the note in the component. Remove with the route below
@@ -41,6 +42,15 @@ const routes = [
     name: 'Team Management',
     element: TeamManagement,
     roles: ['AM'],
+  },
+  {
+    // Managers reach workspaces through a list rather than the sidebar tree:
+    // they have every workspace, or every one they raised, which is a table.
+    // Members keep the tree, so this page is not theirs.
+    path: '/:role/workspaces',
+    name: 'Workspaces',
+    element: WorkspaceList,
+    roles: ['SP', 'AM'],
   },
   {
     path: '/:role/workspace-setup',

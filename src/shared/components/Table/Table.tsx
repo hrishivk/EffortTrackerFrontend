@@ -42,7 +42,6 @@ function TableList<T>({
   const displayData = pagination ? data : internal.paginatedData;
 
   const [internalExpanded, setInternalExpanded] = useState<number[]>([]);
-  const [selectedRows, setSelectedRows] = useState<number[]>([]);
 
   const isControlled = expandable?.expandedIndex !== undefined;
   const expandedRows = isControlled
@@ -65,20 +64,6 @@ function TableList<T>({
     }
   };
 
-  const toggleSelectRow = (index: number) => {
-    setSelectedRows((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index],
-    );
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedRows.length === displayData.length) {
-      setSelectedRows([]);
-    } else {
-      setSelectedRows(displayData.map((_, i) => i));
-    }
-  };
-
   return (
     <div className="advanced-table-wrapper">
       <CCard className="advanced-card">
@@ -94,18 +79,6 @@ function TableList<T>({
             <CTable responsive className="advanced-table mb-0">
               <CTableHead>
                 <CTableRow className="advanced-header-row">
-                  {/* Select All */}
-                  <CTableHeaderCell style={{ width: 50 }}>
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedRows.length === displayData.length &&
-                        displayData.length > 0
-                      }
-                      onChange={toggleSelectAll}
-                    />
-                  </CTableHeaderCell>
-
                   {expandable && <CTableHeaderCell style={{ width: 60 }} />}
 
                   {columns.map((col) => (
@@ -125,26 +98,14 @@ function TableList<T>({
                 {displayData.length > 0 ? (
                   displayData.map((row, idx) => {
                     const isExpanded = expandedRows.includes(idx);
-                    const isSelected = selectedRows.includes(idx);
 
                     return (
                       <React.Fragment key={idx}>
                         <CTableRow
-                          className={`table-row ${
-                            isSelected ? "row-selected" : ""
-                          }`}
+                          className="table-row"
                           onClick={() => onRowClick?.(row)}
                           style={onRowClick ? { cursor: "pointer" } : undefined}
                         >
-                          {/* Checkbox */}
-                          <CTableDataCell>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleSelectRow(idx)}
-                            />
-                          </CTableDataCell>
-
                           {expandable && (
                             <CTableDataCell
                               className="chevron-cell"
@@ -168,9 +129,7 @@ function TableList<T>({
                         {expandable && isExpanded && (
                           <CTableRow className="expanded-row">
                             <CTableDataCell
-                              colSpan={
-                                columns.length + 2 + (expandable ? 1 : 0)
-                              }
+                              colSpan={columns.length + (expandable ? 1 : 0)}
                             >
                               <div className="expanded-content">
                                 {expandable.renderExpandedRow(row)}
@@ -184,7 +143,7 @@ function TableList<T>({
                 ) : (
                   <CTableRow>
                     <CTableDataCell
-                      colSpan={columns.length + 2}
+                      colSpan={columns.length + 1}
                       className="empty-state"
                     >
                       {emptyMessage}

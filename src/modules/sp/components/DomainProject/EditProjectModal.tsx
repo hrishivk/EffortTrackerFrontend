@@ -1,20 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSelector } from "react-redux";
 import { AnimatePresence, motion } from "framer-motion";
 import { CircularProgress, MenuItem, Select, TextField } from "@mui/material";
 import { FiCheck, FiCalendar, FiEdit2, FiUsers, FiX } from "react-icons/fi";
 
 import {
   assignProjectMembers,
+  fetchUsers,
   removeProjectMembers,
   updateProject,
 } from "../../../../core/actions/spAction";
 import { useSnackbar } from "../../../../contexts/SnackbarContext";
-import { pdGetInitials, isUserInProject } from "./utils";
+import { pdGetInitials } from "./utils";
 import { PROJECT_CATEGORIES } from "./constants";
-import type { Domain } from "../../../../shared/types/Domain";
 import type { formUserData } from "../../../../shared/types/User";
 
 const NAME_MAX = 100;
+
+/** Rows per roster request. Two screens' worth, so scrolling rarely waits. */
+const ROSTER_PAGE_SIZE = 20;
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
@@ -70,16 +74,17 @@ const toDateTimeInput = (value?: string | null) => {
 
 export interface EditProjectModalProps {
   open: boolean;
-  /** The raw project record from list-projects, not the mapped table row. */
-  project: any | null;
-  domains: Domain[];
   /**
-   * The assignable roster, owned and cached by the parent screen. The table row
-   * cannot stand in for it: its `teamAssigned` drops the user ids, and it lists
-   * only current members, not everyone who could be added.
+   * The project as `GET /project?id=` returns it — not a row out of the list.
+   *
+   * Two versions of the record arrive on it. The top level is the table's:
+   * `dueDate`, `startDate`, a shouty `status: "ACTIVE"`. `editValues` is the
+   * write body, field for field, in the casing the columns store. This form
+   * reads `editValues` and submits those names back, because filling it from
+   * the display twins is how a form posts "ON HOLD" into a column that takes
+   * `on_hold`.
    */
-  users: formUserData[];
-  usersLoading: boolean;
+  project: any | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -87,58 +92,111 @@ export interface EditProjectModalProps {
 const EditProjectModal = ({
   open,
   project,
-  domains,
-  users,
-  usersLoading,
   onClose,
   onSaved,
 }: EditProjectModalProps) => {
   const { showSnackbar } = useSnackbar();
+  const role = useSelector((state: any) => state.user.user.role);
+  const isAM = String(role || "").toUpperCase() === "AM";
+
+  /**
+   * Who this account may put on a project: an SP staffs managers, an AM staffs
+   * its own team. So an AM never sees another manager in here — not among the
+   * people they could add, and not among the ones already on the project.
+   *
+   * The same rule governs the seeded membership below, so the count beside the
+   * heading matches the rows underneath it, and a save can never add or drop
+   * somebody this account was not shown.
+   */
+  const canAssign = useCallback(
+    (who?: { role?: string | null }) => {
+      const r = String(who?.role || "").toUpperCase();
+      return isAM ? r === "USER" || r === "DEVLOPER" : r === "AM";
+    },
+    [isAM]
+  );
 
   const [form, setForm] = useState({
     name: "",
-    domainId: "",
     category: "",
     endDate: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  /**
+   * Who could be added, a page at a time.
+   *
+   * The whole roster used to be pulled in one go and cached on the screen
+   * behind this. On an organisation of any size that is a long wait for a list
+   * you scroll a third of — so it arrives as pages, and the next one is asked
+   * for as you reach the bottom of the one you are reading.
+   */
+  const [roster, setRoster] = useState<formUserData[]>([]);
+  const [rosterPage, setRosterPage] = useState(0);
+  const [rosterPages, setRosterPages] = useState(1);
+  const [rosterLoading, setRosterLoading] = useState(false);
+
   // Members have their own endpoints, so they are tracked as a diff against
   // what the project started with and applied separately on save.
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const initialMemberIds = useRef<string[]>([]);
-  /** Guards against re-seeding over the manager's toggles if `users` arrives late. */
+  /** Guards against re-seeding over the manager's own toggles. */
   const membersSeeded = useRef(false);
 
-  // Every field comes off the record we were handed, so this is synchronous.
+  /**
+   * Everything comes off `editValues`, and the top-level fields are only a
+   * fallback for a caller still handing over a list row.
+   *
+   * `client_department` is the column. The form labels it "category" and there
+   * is no `project_category` column to write to, despite the name.
+   */
   useEffect(() => {
     if (!open || !project) {
       membersSeeded.current = false;
       return;
     }
+    const edit = project.editValues ?? {};
     setErrors({});
     setForm({
-      name: project.name || "",
-      domainId: String(project.domain_id ?? project.domain?.id ?? ""),
-      category: project.project_category || project.client_department || "",
-      endDate: toDateTimeInput(project.end_date || project.dueDate),
+      name: edit.name ?? project.name ?? "",
+      category: edit.client_department ?? project.client_department ?? "",
+      endDate: toDateTimeInput(edit.end_date ?? project.end_date ?? project.dueDate),
     });
     membersSeeded.current = false;
     setMemberIds([]);
   }, [open, project]);
 
-  // Who is already on the project comes from each user's projects[], so it can
-  // only be worked out once the roster is in. Seeded once per open.
+  /**
+   * Who is on it already.
+   *
+   * The read answers this directly now, straight off the join. The fallback
+   * below is the old way — fetch every user and filter on their `projects[]` —
+   * kept only for a caller that opened this on a list row, and it still has to
+   * wait for that roster to arrive before it can say anything.
+   */
   useEffect(() => {
-    if (!open || !project || usersLoading || membersSeeded.current) return;
-    const assigned = users
-      .filter((u) => isUserInProject(u, project.id))
-      .map((u) => String(u.id));
-    setMemberIds(assigned);
-    initialMemberIds.current = assigned;
+    if (!open || !project || membersSeeded.current) return;
+
+    if (Array.isArray(project.members)) {
+      const assigned = project.members
+        .filter(canAssign)
+        .map((m: { id: string | number }) => String(m.id));
+      setMemberIds(assigned);
+      initialMemberIds.current = assigned;
+      membersSeeded.current = true;
+      return;
+    }
+
+    // Nothing to seed from: an older payload without `members` leaves the
+    // picker empty rather than guessing at who is on the project.
+    setMemberIds([]);
+    initialMemberIds.current = [];
     membersSeeded.current = true;
-  }, [open, project, users, usersLoading]);
+    // `canAssign` is derived from the signed-in role, which does not change
+    // while a modal is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, project]);
 
   useEffect(() => {
     if (!open) return;
@@ -165,11 +223,91 @@ const EditProjectModal = ({
     );
 
   /** Assigned first, so the current team is always what you see without scrolling. */
+  /**
+   * The project's own members lead, then everyone else as they page in.
+   *
+   * Members come off the project read rather than being found in the roster,
+   * which matters now that the roster arrives in pieces: somebody already on
+   * the project would otherwise be missing from this list until you happened to
+   * scroll far enough to load them.
+   */
   const visibleUsers = useMemo(() => {
-    const assigned = users.filter((u) => memberIds.includes(String(u.id)));
-    const rest = users.filter((u) => !memberIds.includes(String(u.id)));
+    const members: formUserData[] = Array.isArray(project?.members)
+      ? project.members.filter(canAssign)
+      : [];
+    const byId = new Map<string, formUserData>();
+    for (const u of [...members, ...roster]) {
+      const id = String(u.id);
+      if (!byId.has(id)) byId.set(id, u);
+    }
+    const all = [...byId.values()];
+    const assigned = all.filter((u) => memberIds.includes(String(u.id)));
+    const rest = all.filter((u) => !memberIds.includes(String(u.id)));
     return [...assigned, ...rest];
-  }, [users, memberIds]);
+  }, [project, roster, memberIds, canAssign]);
+
+  /**
+   * An SP staffs projects with managers; an AM staffs its own team onto them.
+   *
+   * The API filters on one role, and an AM needs two, so their pages are
+   * narrowed here afterwards — which means a page can render short. Harmless
+   * for a list you scroll (unlike a numbered pager, you simply scroll on), but
+   * it is why the count below is the server's and not this array's length.
+   */
+  const loadRoster = useCallback(
+    async (next: number) => {
+      if (rosterLoading) return;
+      setRosterLoading(true);
+      try {
+        const res = await fetchUsers({
+          page: next,
+          limit: ROSTER_PAGE_SIZE,
+          ...(isAM ? {} : { role: "AM" }),
+        });
+        const rows = (res?.users ?? []).filter(canAssign);
+        setRoster((prev) => {
+          // Pages can overlap as people are added or removed underneath us.
+          const seen = new Set(prev.map((u) => String(u.id)));
+          return [...prev, ...rows.filter((u) => !seen.has(String(u.id)))];
+        });
+        setRosterPage(next);
+        setRosterPages(res?.totalPages || 1);
+      } catch {
+        showSnackbar({ message: "Failed to load the team list", severity: "error" });
+        // Stop asking: another page would fail the same way.
+        setRosterPages(next);
+        setRosterPage(next);
+      } finally {
+        setRosterLoading(false);
+      }
+    },
+    // showSnackbar is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isAM, rosterLoading, canAssign]
+  );
+
+  useEffect(() => {
+    if (!open) {
+      setRoster([]);
+      setRosterPage(0);
+      setRosterPages(1);
+      return;
+    }
+    void loadRoster(1);
+    // Only on open: `loadRoster` changes identity as it runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, project?.id]);
+
+  const rosterHasMore = rosterPage < rosterPages;
+
+  /** Within a row of the bottom, ask for the next page. */
+  const onRosterScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!rosterHasMore || rosterLoading) return;
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 72) {
+      void loadRoster(rosterPage + 1);
+    }
+  };
 
   /** An older project may carry a category no longer on the list; keep it selectable. */
   const categoryOptions = useMemo(
@@ -187,7 +325,6 @@ const EditProjectModal = ({
     if (!form.name.trim()) next.name = "Project name is required";
     else if (form.name.trim().length > NAME_MAX)
       next.name = `Project name must be ${NAME_MAX} characters or fewer`;
-    if (!form.domainId) next.domainId = "Department is required";
     if (!form.category) next.category = "Project category is required";
     if (!form.endDate) next.endDate = "Due date is required";
     setErrors(next);
@@ -206,11 +343,12 @@ const EditProjectModal = ({
 
     setSaving(true);
     try {
+      // The API's own field names, as `editValues` hands them over. There is
+      // no `project_category` column — "category" writes `client_department`.
+      // The department a project sits under is not edited here — it is left
+      // alone by being left out, which is what a partial write is for.
       await updateProject(project.id, {
         name: form.name.trim(),
-        domain_id: form.domainId,
-        // add-project writes the category to both columns; kept in step with it.
-        project_category: form.category,
         client_department: form.category,
         end_date: new Date(form.endDate).toISOString(),
       });
@@ -303,43 +441,9 @@ const EditProjectModal = ({
                         )}
                       </div>
 
+                      {/* Category and due date read as one line: what kind of
+                          work it is, and when it is due. */}
                       <div className="ep-grid">
-                        <div>
-                          <label className="ep-label">
-                            Department<span className="ep-req">*</span>
-                          </label>
-                          <Select
-                            fullWidth
-                            size="small"
-                            displayEmpty
-                            sx={sx("domainId")}
-                            value={form.domainId}
-                            onChange={(e) => setField("domainId", e.target.value)}
-                            renderValue={(value) =>
-                              value ? (
-                                domains.find((d) => String(d.id) === value)?.name || "—"
-                              ) : (
-                                <span style={{ color: "var(--text-faint)" }}>Select</span>
-                              )
-                            }
-                          >
-                            {domains.map((d) => (
-                              <MenuItem
-                                key={d.id}
-                                value={String(d.id)}
-                                sx={{ fontSize: 13 }}
-                              >
-                                {d.name}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                          {errors.domainId ? (
-                            <p className="ep-error">{errors.domainId}</p>
-                          ) : (
-                            <p className="ep-hint">The department this project sits under</p>
-                          )}
-                        </div>
-
                         <div>
                           <label className="ep-label">
                             Project Category<span className="ep-req">*</span>
@@ -367,44 +471,42 @@ const EditProjectModal = ({
                               </MenuItem>
                             ))}
                           </Select>
-                          {errors.category ? (
+                          {errors.category && (
                             <p className="ep-error">{errors.category}</p>
-                          ) : (
-                            <p className="ep-hint">Shown as Client / Department</p>
                           )}
                         </div>
-                      </div>
 
-                      <div className="ep-field">
-                        <label className="ep-label">
-                          Due Date<span className="ep-req">*</span>
-                        </label>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          type="datetime-local"
-                          sx={sx("endDate")}
-                          value={form.endDate}
-                          onChange={(e) => setField("endDate", e.target.value)}
-                          slotProps={{
-                            input: {
-                              startAdornment: (
-                                <FiCalendar
-                                  size={15}
-                                  style={{
-                                    marginRight: 10,
-                                    color: "var(--text-muted)",
-                                  }}
-                                />
-                              ),
-                            },
-                          }}
-                        />
-                        {errors.endDate ? (
-                          <p className="ep-error">{errors.endDate}</p>
-                        ) : (
-                          <p className="ep-hint">Select project due date and time</p>
-                        )}
+                        <div>
+                          <label className="ep-label">
+                            Due Date<span className="ep-req">*</span>
+                          </label>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            type="datetime-local"
+                            sx={sx("endDate")}
+                            value={form.endDate}
+                            onChange={(e) => setField("endDate", e.target.value)}
+                            slotProps={{
+                              input: {
+                                startAdornment: (
+                                  <FiCalendar
+                                    size={15}
+                                    style={{
+                                      marginRight: 10,
+                                      color: "var(--text-muted)",
+                                    }}
+                                  />
+                                ),
+                              },
+                            }}
+                          />
+                          {errors.endDate ? (
+                            <p className="ep-error">{errors.endDate}</p>
+                          ) : (
+                            <p className="ep-hint">Select project due date and time</p>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -420,7 +522,7 @@ const EditProjectModal = ({
                         Tap a row to add or remove them from this project.
                       </p>
 
-                      {usersLoading ? (
+                      {rosterLoading && roster.length === 0 ? (
                         <div className="ep-team-loading">
                           <CircularProgress size={22} thickness={4} sx={{ color: "#7c3aed" }} />
                           <span>Loading team…</span>
@@ -430,7 +532,7 @@ const EditProjectModal = ({
                           No one is available to assign yet.
                         </div>
                       ) : (
-                        <div className="ep-team-list">
+                        <div className="ep-team-list" onScroll={onRosterScroll}>
                           {visibleUsers.map((user) => {
                             const uid = String(user.id);
                             const assigned = memberIds.includes(uid);
@@ -462,6 +564,17 @@ const EditProjectModal = ({
                               </button>
                             );
                           })}
+
+                          {rosterLoading && (
+                            <div className="ep-team-more">
+                              <CircularProgress
+                                size={14}
+                                thickness={5}
+                                sx={{ color: "#7c3aed" }}
+                              />
+                              <span>Loading more…</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -483,8 +596,7 @@ const EditProjectModal = ({
                   <button
                     type="button"
                     className="ep-btn-save"
-                    disabled={saving || usersLoading}
-                    title={usersLoading ? "Waiting for the team list to load" : undefined}
+                    disabled={saving}
                     onClick={handleSave}
                   >
                     <FiCheck size={15} />

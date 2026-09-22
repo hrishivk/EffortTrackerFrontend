@@ -158,6 +158,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       >
         {children}
       </main>
+
+      {/*
+        * The presence dock — the bubble in the bottom-right corner and the
+        * roster it opens. Parked at the user's request until they say
+        * otherwise: uncomment the line below to put it back, nothing else.
+        *
+        * <PresenceDock />
+        */}
     </div>
   );
 };

@@ -206,8 +206,12 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
   },
 
   // Workspaces, rooms and room members
-  listWorkspaces: (url: string) => {
+  listWorkspaces: (url: string, pagination?: { page?: number; limit?: number }) => {
     return apiservice.get(url, {
+      params: {
+        ...(pagination?.page ? { page: pagination.page } : {}),
+        ...(pagination?.limit ? { limit: pagination.limit } : {}),
+      },
       headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
     });
   },

@@ -21,7 +21,19 @@ apiservice.interceptors.request.use((config) => {
 
 export const amServiceMethood = {
     listAllUsers:(url:string)=>{return apiservice.get(url)},
-    listAllDomain:(url:string)=>{return apiservice.get(url)},
+    getProject:(url:string)=>{
+      return apiservice.get(url, {
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+      });
+    },
+    listAllDomain:(url:string, pagination?: { page?: number; limit?: number })=>{
+      return apiservice.get(url, {
+        params: {
+          ...(pagination?.page ? { page: pagination.page } : {}),
+          ...(pagination?.limit ? { limit: pagination.limit } : {}),
+        },
+      });
+    },
     addDomain:(url:string,data:{[key:string]:string|number|string[]|undefined})=>{return apiservice.post(url,data)},
     deleteDomain:(url:string)=>{return apiservice.delete(url)},
     getJson: (url: string, params?: Record<string, any>) => {

@@ -2,7 +2,12 @@ import { spserviceMethood } from "../services/spService";
 import { amServiceMethood } from "../services/amService";
 import { userServiceMethood } from "../services/userService";
 import { store } from "../../store/configureStore";
-import type { EditProjectPayload, EditUserPayload, UserData } from "../types";
+import type {
+  EditProjectPayload,
+  EditUserPayload,
+  ProjectDetail,
+  UserData,
+} from "../types";
 
 const isAmRole = () =>
   store.getState()?.user?.user?.role?.toUpperCase() === "AM";
@@ -28,12 +33,23 @@ export const deleteDomain = async (id: string) => {
   }
 };
 
-export const fetchExistDomains=async(isShared?: boolean)=>{
+/**
+ * Departments.
+ *
+ * `pagination` is for the list page, which draws ten at a time and has a pager
+ * to feed. The callers that fill a dropdown pass nothing and keep getting the
+ * whole set, because a picker missing half its options is worse than a long
+ * one.
+ */
+export const fetchExistDomains=async(
+  isShared?: boolean,
+  pagination?: { page?: number; limit?: number }
+)=>{
   try {
     const url = isShared ? "/list-domains?isShared=true" : "/list-domains"
     const repsonse = isAmRole()
-      ? await amServiceMethood.listAllDomain(url)
-      : await spserviceMethood.listAllDomain(url)
+      ? await amServiceMethood.listAllDomain(url, pagination)
+      : await spserviceMethood.listAllDomain(url, pagination)
     return repsonse.data
   } catch (error) {
      console.log(error)
@@ -134,6 +150,26 @@ export const addProject=async(data:{[key:string]:string|number})=>{
    throw error
     
   }
+}
+
+/**
+ * One project, whole, by id.
+ *
+ * What the edit form opens on. Before this it was built out of whatever row the
+ * list happened to be holding, which stopped working the moment that list was
+ * paged: a project on page two was not in memory to edit. The response also
+ * carries `members`, which is what retires the old way of answering "who is on
+ * this project" — fetch every user and filter on their `projects[]`.
+ *
+ * `404` covers both an unknown id and one this caller has no claim on: a `403`
+ * would confirm the project exists, and no screen acts on the difference.
+ */
+export const fetchProject=async(projectId:string|number)=>{
+  const url = `/project?id=${encodeURIComponent(String(projectId))}`
+  const response = isAmRole()
+    ? await amServiceMethood.getProject(url)
+    : await spserviceMethood.getProject(url)
+  return response.data?.data as ProjectDetail
 }
 
 export const updateProject=async(projectId:string|number,data:EditProjectPayload)=>{

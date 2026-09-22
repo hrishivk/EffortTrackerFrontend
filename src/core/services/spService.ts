@@ -26,8 +26,12 @@ export const spserviceMethood = {
     },
   });
 },
-  listAllDomain:(url:string)=>{
+  listAllDomain:(url:string, pagination?: { page?: number; limit?: number })=>{
     return apiservice.get(url,{
+    params: {
+      ...(pagination?.page ? { page: pagination.page } : {}),
+      ...(pagination?.limit ? { limit: pagination.limit } : {}),
+    },
     headers: {
       "Content-Type": "application/json",
     },
@@ -101,6 +105,12 @@ export const spserviceMethood = {
   addUser:(url:string,data:any)=>{return apiservice.post(url,data,{
     headers: {
       "Content-Type": "application/json",
+    },
+  })},
+  getProject:(url:string)=>{return apiservice.get(url,{
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-cache",
     },
   })},
   getProjectMembers:(url:string)=>{return apiservice.get(url,{

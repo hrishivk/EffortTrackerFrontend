@@ -232,13 +232,26 @@ export type RoomMember = {
   role: string;
 };
 
+/**
+ * A room inside a workspace.
+ *
+ * `GET /workspaces` now nests these, but lightly: a room from the **list** has
+ * its name, its position and its two tallies and nothing else — `workspace_id`,
+ * `project_id` and `members` are filled only by the single-workspace read
+ * (`?id=`). Read members off a workspace you fetched by id, never off one that
+ * came out of the list.
+ */
 export type WorkspaceRoom = {
   id: string;
   workspace_id: string;
   project_id: string | null;
   name: string;
+  description?: string | null;
   position: number;
   members: RoomMember[];
+  /** Work filed in this room, and how much of it is finished. */
+  task_count?: number;
+  done_count?: number;
 }
 export type Workspace = {
   id: string;
@@ -263,4 +276,27 @@ export type Workspace = {
   updated_at: string;
   project?: { id: string; name: string } | null;
   rooms?: WorkspaceRoom[];
+
+  // ─── Tallies and flags the list carries ───────────────────────────
+  /**
+   * Whether this caller may manage this workspace — rename it, add rooms, move
+   * people. Answered per row by the server, which is the only thing that knows;
+   * the local `canManageWorkspace` guess (SP, or the creator) predates it.
+   */
+  can_manage?: boolean;
+  room_count?: number;
+  /** Distinct people across all of its rooms, not the sum of the rooms. */
+  member_count?: number;
+  /** Every task in the workspace, and how many are finished. */
+  task_count?: number;
+  done_count?: number;
+
+  // ─── Finishing ────────────────────────────────────────────────────
+  completed_at?: string | null;
+  completed_by?: string | null;
+  completedBy?: TaskUser | null;
+  /** When its managers were told it was finished. Null until announced. */
+  announced_at?: string | null;
+  /** The announcement itself, when there is one. Shape not relied on here. */
+  completion_notice?: unknown;
 };

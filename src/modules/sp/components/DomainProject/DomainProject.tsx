@@ -17,11 +17,10 @@ import { fetchTasksByProject } from "../../../../core/actions/action";
 import {
   fetchAllExistProjects,
   updateProjectStatus,
+  fetchProject,
   fetchProjectStats,
   fetchExistDomains,
   deleteDomain,
-  fetchUsers,
-  fetchAllUsers,
 } from "../../../../core/actions/spAction";
 import { getProjectColumns } from "./domainProjectColumns";
 import { getDomainColumns } from "./domainColumns";
@@ -37,7 +36,6 @@ import EditProjectModal from "./EditProjectModal";
 import { allTabs, PROJECT_STATUS_OPTIONS } from "./constants";
 import type { DomainTab, ProjectRow, PhaseItem, CriticalUpdate } from "../../types";
 import type { Domain } from "../../../../shared/types/Domain";
-import type { formUserData } from "../../../../shared/types/User";
 
 const DomainProject = () => {
   const navigate = useNavigate();
@@ -70,12 +68,14 @@ const DomainProject = () => {
   const [deleteDomainId, setDeleteDomainId] = useState<number | null>(null);
   const [listView, setListView] = useState<"projects" | "domains">("projects");
   const [editProject, setEditProject] = useState<any | null>(null);
+  /** A project read in flight, so a second click cannot start a second one. */
+  const editProjectLoading = useRef(false);
   // The assignable roster is the same for every project on this screen, so it is
   // fetched once on first need and reused. Opening a second row costs no request.
-  const [projectUsers, setProjectUsers] = useState<formUserData[]>([]);
-  const [projectUsersLoading, setProjectUsersLoading] = useState(false);
-  const projectUsersLoaded = useRef(false);
   const itemsPerPage = 10;
+  /** The departments table pages against the server, as the projects one does. */
+  const [domainPage, setDomainPage] = useState(1);
+  const [domainTotalPages, setDomainTotalPages] = useState(1);
 
   useEffect(() => {
     const timer = setTimeout(() => { setDebouncedSearch(search); setCurrentPage(1); }, 400);
@@ -88,19 +88,22 @@ const DomainProject = () => {
       .catch(() => {});
   }, []);
 
-  const fetchDomains = useCallback(async () => {
+  const fetchDomains = useCallback(async (page: number) => {
     try {
-      const response = await fetchExistDomains();
+      const response = await fetchExistDomains(undefined, { page, limit: itemsPerPage });
       const list = response?.data;
       setDomains(Array.isArray(list) ? list : []);
+      // Only when the route answers with one — until it does, a single page is
+      // the honest count for whatever came back.
+      setDomainTotalPages(response?.totalPages ? Number(response.totalPages) : 1);
     } catch (error) {
       console.log(error);
     }
   }, []);
 
   useEffect(() => {
-    fetchDomains();
-  }, [fetchDomains]);
+    fetchDomains(domainPage);
+  }, [fetchDomains, domainPage]);
 
   const confirmDeleteDomain = async () => {
     if (!deleteDomainId) return;
@@ -109,7 +112,7 @@ const DomainProject = () => {
       showSnackbar({ message: "Department deleted successfully", severity: "success" });
       // Domain delete cascades to its projects, so refresh domains, projects, and stats
       await Promise.all([
-        fetchDomains(),
+        fetchDomains(domainPage),
         fetchData(currentPage),
         fetchProjectStats()
           .then((res) => setStats(res?.data || null))
@@ -123,29 +126,6 @@ const DomainProject = () => {
     }
   };
 
-  /** SP staffs projects with managers; an AM staffs its own team onto them. */
-  const loadProjectUsers = useCallback(async () => {
-    if (projectUsersLoaded.current) return;
-    setProjectUsersLoading(true);
-    try {
-      if (isAM) {
-        const res = await fetchAllUsers();
-        const all: formUserData[] = res.data || [];
-        setProjectUsers(all.filter((u) => u.role === "USER" || u.role === "DEVLOPER"));
-      } else {
-        const res = await fetchUsers({ role: "AM" });
-        setProjectUsers(res.users || []);
-      }
-      projectUsersLoaded.current = true;
-    } catch {
-      showSnackbar({ message: "Failed to load the team list", severity: "error" });
-      setProjectUsers([]);
-    } finally {
-      setProjectUsersLoading(false);
-    }
-    // showSnackbar is stable.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAM]);
 
   const fetchData = useCallback(async (page?: number) => {
     try {
@@ -479,13 +459,31 @@ const DomainProject = () => {
           const idx = projects.findIndex((p) => p.id === projectId);
           setExpandedIndex(expandedIndex === idx ? null : idx);
         };
-        const handleEditProject = (projectId: number) => {
-          // The modal needs domain_id, end_date and progress, none of which
-          // survive the mapping into ProjectRow.
-          const raw = rawProjects.find((p: any) => String(p.id) === String(projectId));
-          if (!raw) return;
-          setEditProject(raw);
-          loadProjectUsers();
+        const handleEditProject = async (projectId: number) => {
+          /*
+           * Read the project rather than hunting for it in the list.
+           *
+           * The list is paged now, so the row for page two is not in memory to
+           * be found — and the read answers with `editValues` and `members`,
+           * which is exactly what the form needs and what a list row never
+           * reliably carried.
+           *
+           * The roster still loads alongside it: `members` says who is on the
+           * project, not who could be added to it.
+           */
+          if (editProjectLoading.current) return;
+          editProjectLoading.current = true;
+          try {
+            setEditProject(await fetchProject(projectId));
+          } catch (error: any) {
+            showSnackbar({
+              message:
+                error?.response?.data?.message || "Could not open that project",
+              severity: "error",
+            });
+          } finally {
+            editProjectLoading.current = false;
+          }
         };
         const handleStatusClick = (projectId: number, currentStatus: string) => {
           const proj = projects.find((p) => p.id === projectId);
@@ -522,6 +520,11 @@ const DomainProject = () => {
         <TableList
           columns={getDomainColumns((id) => setDeleteDomainId(id))}
           data={domains}
+          pagination={{
+            currentPage: domainPage,
+            totalPages: domainTotalPages,
+            onPageChange: setDomainPage,
+          }}
           emptyMessage="No departments found"
         />
       )}
@@ -736,14 +739,8 @@ const DomainProject = () => {
       <EditProjectModal
         open={editProject !== null}
         project={editProject}
-        domains={domains}
-        users={projectUsers}
-        usersLoading={projectUsersLoading}
         onClose={() => setEditProject(null)}
         onSaved={() => {
-          // A membership change invalidates the cached projects[] on each user.
-          projectUsersLoaded.current = false;
-          loadProjectUsers();
           fetchData(currentPage);
           fetchProjectStats()
             .then((res) => setStats(res?.data || null))
