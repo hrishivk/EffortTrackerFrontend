@@ -1,5 +1,6 @@
 import Dialog from "@mui/material/Dialog";
 import { motion } from "framer-motion";
+import logo from "../assets/img/logo2.png.png";
 import {
   FiActivity,
   FiBarChart2,
@@ -244,7 +245,9 @@ export default function WhatsNew({ open, onClose, role }: WhatsNewProps) {
                 What&rsquo;s new
               </span>
               <h2 className="wn__title">
-                Meet RX KREW <span className="wn__title-ver">{APP_VERSION}</span>
+                Meet
+                <img src={logo} alt="" className="wn__logo" />
+                KREW <span className="wn__title-ver">{APP_VERSION}</span>
               </h2>
               <p className="wn__sub">
                 Rebuilt around how your team really works — new ways to plan, split and
