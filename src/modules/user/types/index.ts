@@ -25,6 +25,25 @@ export type TaskComment = {
 };
 
 /**
+ * One push of a task's deadline.
+ *
+ * A record, not an edit: the date moved, somebody moved it, and they said why.
+ * `PATCH /updateTask { due_date }` still exists for a date typed wrong, and is
+ * deliberately not logged — which is why the Extend dialog must never use it.
+ */
+export type TaskExtension = {
+  id: string;
+  /** Null when the task had no deadline before — "Due date set", not "null →". */
+  previous_due_date: string | null;
+  new_due_date: string;
+  reason: string;
+  created_at: string;
+  extended_by: string;
+  /** Resolved live, so a rename shows through; null for a deleted account. */
+  extendedBy?: TaskUser | null;
+};
+
+/**
  * What a blocked subtask is waiting on: always the *earliest* thing still
  * outstanding, not the one immediately before it.
  */
@@ -81,6 +100,9 @@ export type taskList = {
   /** The newest 50, oldest first. `comment_count` is the true total. */
   comments?: TaskComment[];
   comment_count?: number;
+  /** Every push of this task's deadline, oldest first. Never truncated. */
+  extensions?: TaskExtension[];
+  extension_count?: number;
   /** The tally the API keeps, so nobody counts `subtasks[]` by hand. */
   subtask_count?: number;
   subtask_done_count?: number;

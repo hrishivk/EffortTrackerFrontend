@@ -26,7 +26,9 @@ export const uservalidationSchema=z.object({
         message: "Contact number cannot have all same digits",
       }),
     dateOfBirth:z.string().min(1,"Date of birth is required"),
-    bloodGroup:z.string().min(1,"Blood group is required"),
+    // Optional: useful to hold, not something to stop an account being created
+    // over.
+    bloodGroup:z.string().optional(),
     department:z.string().min(1,"Department is required"),
     workSchedule:z.string().min(1,"Work schedule is required"),
     joiningDate:z.string()
@@ -57,6 +59,33 @@ export const taskValidationSchema = z.object({
     required_error: "Priority is required",
   }),
 });
+
+/**
+ * Raising a task, from either surface that does it — the board's Create Task
+ * dialog and the list view's create panel. One schema so the two cannot drift
+ * into disagreeing about what a task needs.
+ *
+ * `assignees` is checked by the caller, not here: who may be assigned depends
+ * on the role raising the task (a developer assigns themselves and is never
+ * asked), which is a question about the session rather than the form.
+ */
+export const createTaskValidationSchema = z
+  .object({
+    taskName: z.string().trim().min(1, "Task name is required"),
+    project: z.string().min(1, "Please select a project"),
+    startDate: z.string().optional(),
+    // Every task is chased by its deadline, so every task has one.
+    dueDate: z.string().min(1, "Please set a due date"),
+  })
+  .refine(
+    (form) => !form.startDate || !form.dueDate || form.startDate <= form.dueDate,
+    {
+      // `YYYY-MM-DD` compares correctly as a string, which is how both forms
+      // hold these already.
+      message: "Start date must be on or before the due date",
+      path: ["startDate"],
+    }
+  );
 
 export const ProjectValidationSchema=z.object({
   name:z.string().min(1,"Project name is required"),
@@ -167,6 +196,7 @@ export const userPasswordValidationSchema = z
 
 export type taskWithDateValidationSchema=z.infer<typeof taskWithDateValidationSchema>
 export type taskValidationSchema=z.infer<typeof taskValidationSchema>
+export type createTaskValidationSchema=z.infer<typeof createTaskValidationSchema>
 export type ProjectValidationSchema=z.infer<typeof ProjectValidationSchema>
 export type DomainValidationSchema=z.infer<typeof DomainValidationSchema>
 export type loginValidationSchema=z.infer<typeof loginValidationSchema>

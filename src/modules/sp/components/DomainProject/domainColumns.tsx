@@ -11,7 +11,9 @@ const formatDate = (value?: string) => {
 
 export const getDomainColumns = (
   onDelete?: (id: number) => void,
-): Column<Domain>[] => [
+  canManage = true,
+): Column<Domain>[] =>
+  ([
   {
     key: "name",
     header: "Department Name",
@@ -84,4 +86,4 @@ export const getDomainColumns = (
       </button>
     ),
   },
-];
+  ] as Column<Domain>[]).filter((col) => canManage || col.key !== "actions");

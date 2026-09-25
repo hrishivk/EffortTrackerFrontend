@@ -1,0 +1,503 @@
+/**
+ * The Extend dialog, and the extension entries shown with a task.
+ *
+ * The app's purple carries the dialog — pushing a deadline is a normal,
+ * expected action, not an alarm — and amber is spent on the one thing that
+ * should give pause: how many times this deadline has already moved.
+ */
+
+.xtd {
+  display: flex;
+  flex-direction: column;
+}
+
+// ─── Header ────────────────────────────────────────────────────────
+.xtd__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 17px 20px 13px;
+}
+
+.xtd__badge {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 37px;
+  height: 37px;
+  border-radius: 12px;
+  background: linear-gradient(140deg, rgba(124, 58, 237, 0.16), rgba(168, 85, 247, 0.1));
+  color: #7c3aed;
+}
+
+.xtd__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.xtd__sub {
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xtd__x {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  background-color: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+
+  &:hover:not(:disabled) {
+    border-color: #7c3aed;
+    color: #7c3aed;
+  }
+}
+
+// ─── Body ──────────────────────────────────────────────────────────
+.xtd__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 20px 17px;
+}
+
+.xtd__now {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px solid rgba(124, 58, 237, 0.16);
+  border-radius: 13px;
+  background: linear-gradient(140deg, rgba(124, 58, 237, 0.07), rgba(124, 58, 237, 0.03));
+}
+
+.xtd__now-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--bg-card);
+  color: #7c3aed;
+}
+
+.xtd__now-date {
+  margin: 3px 0 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/** The one amber thing here: how often this has already moved. */
+.xtd__pushes {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+  padding: 3px 10px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 999px;
+  background-color: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(245, 158, 11, 0.22);
+  }
+}
+
+.xtd__pushes-more {
+  padding-left: 7px;
+  border-left: 1px solid rgba(180, 83, 9, 0.3);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.xtd__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.xtd__heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.xtd__label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-faint);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.xtd__req {
+  color: #dc2626;
+}
+
+// ─── The jumps ─────────────────────────────────────────────────────
+.xtd__jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.xtd__jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.45);
+    color: #7c3aed;
+  }
+
+  &--on {
+    border-color: #7c3aed;
+    background-color: rgba(124, 58, 237, 0.08);
+    color: #7c3aed;
+  }
+}
+
+// ─── The date itself ───────────────────────────────────────────────
+.xtd__date {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 41px;
+  padding: 0 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 11px;
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.45);
+  }
+
+  // Open, or reached by keyboard: the same ring as the other fields.
+  &--open,
+  &:focus-visible {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.12);
+    outline: none;
+  }
+
+  &--bad {
+    border-color: #dc2626;
+  }
+}
+
+.xtd__date-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+
+  &--empty {
+    font-weight: 500;
+    color: var(--text-faint);
+  }
+}
+
+.xtd__date-clear {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    color: #dc2626;
+  }
+}
+
+// ─── The reason ────────────────────────────────────────────────────
+.xtd__reason-wrap {
+  position: relative;
+}
+
+.xtd__reason {
+  display: block;
+  width: 100%;
+  padding: 10px 12px 22px;
+  border: 1px solid var(--border-light);
+  border-radius: 11px;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.55;
+  resize: vertical;
+
+  &:focus {
+    border-color: #7c3aed;
+    outline: none;
+  }
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+
+  &--bad {
+    border-color: #dc2626;
+  }
+}
+
+.xtd__count {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  font-size: 10px;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.xtd__error {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.xtd__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background-color: var(--bg-surface);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-muted);
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: #7c3aed;
+  }
+}
+
+// ─── Footer ────────────────────────────────────────────────────────
+.xtd__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 13px 20px 17px;
+  border-top: 1px solid var(--border-light);
+}
+
+.xtd__cancel {
+  padding: 8px 18px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--text-faint);
+    color: var(--text-secondary);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.xtd__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.3);
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+}
+
+// ─── The log, in the task panel ────────────────────────────────────
+.tdp__slip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background-color: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+  font-size: 9.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tdp__event-reason {
+  margin: 3px 0 0;
+  padding-left: 9px;
+  border-left: 2px solid rgba(245, 158, 11, 0.4);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/**
+ * How many times a task's deadline has moved, beside the date in the List
+ * view. Amber, like the dialog and the log — a slip is not a neutral fact.
+ */
+.task-slip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background-color: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+
+  &:hover {
+    border-color: rgba(217, 119, 6, 0.55);
+    background-color: rgba(245, 158, 11, 0.26);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #d97706;
+    outline-offset: 1px;
+  }
+}
+
+// ─── The log itself, wherever it is shown ──────────────────────────
+.xlog {
+  min-width: 0;
+}
+
+.xlog__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #d97706;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.xlog__count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background-color: rgba(245, 158, 11, 0.16);
+  font-size: 9.5px;
+}
+
+.xlog__list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  max-height: 168px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.xlog__item {
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-left: 2px solid rgba(245, 158, 11, 0.55);
+  border-radius: 9px;
+  background-color: var(--bg-surface);
+}
+
+.xlog__move {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.xlog__was {
+  text-decoration: line-through;
+}
+
+.xlog__arrow {
+  color: #d97706;
+}
+
+.xlog__now {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.xlog__reason {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.xlog__by {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: var(--text-faint);
+}

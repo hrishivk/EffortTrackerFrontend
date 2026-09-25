@@ -8,6 +8,12 @@ export type TaskListFilters = {
   assigned_to?: string;
   project?: string;
   status?: string | string[];
+  /**
+   * Tasks whose deadline has been pushed at least this many times. Matches a
+   * parent whose *subtask* slipped too, which is what makes it useful on a
+   * board that draws parents.
+   */
+  min_extensions?: number;
 };
 
 const apiservice = axios.create({
@@ -39,6 +45,9 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
       ...(filters?.assigned_to ? { assigned_to: filters.assigned_to } : {}),
       ...(filters?.project ? { project: filters.project } : {}),
       ...(status ? { status } : {}),
+      // `extended=true` is the same question as "at least one"; one param
+      // covers both and keeps the filter tray down to a single field.
+      ...(filters?.min_extensions ? { min_extensions: filters.min_extensions } : {}),
       ...(pagination?.page ? { page: pagination.page } : {}),
       ...(pagination?.limit ? { limit: pagination.limit } : {}),
       _t: Date.now(),
@@ -66,6 +75,13 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
   },
   patchTask: (url: string, data: Record<string, unknown>) => {
     return apiservice.patch(url, data, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+
+  /** Pushing a deadline out. Its own route because it writes a record too. */
+  extendTask: (url: string, data: { task_id: string; due_date: string; reason: string }) => {
+    return apiservice.post(url, data, {
       headers: { "Content-Type": "application/json" },
     });
   },

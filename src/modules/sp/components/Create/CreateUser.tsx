@@ -103,7 +103,6 @@ const CreateUser = () => {
   const [projectList, setProjectList] = useState<project[]>([]);
   const [domainList, setDomainList] = useState<Domain[]>([]);
   const todayStr = new Date().toISOString().split("T")[0];
-  const [projectSearch, setProjectSearch] = useState("");
 
   // Sharing is scoped by domain and offered to managers only.
   const canShare = isAM;
@@ -111,11 +110,31 @@ const CreateUser = () => {
 
   const roleOptions = roleOptionsFor(form.is_shared);
 
-  const visibleProjects = projectSearch.trim()
-    ? projectList.filter((p) =>
-        (p.name || "").toLowerCase().includes(projectSearch.trim().toLowerCase())
+  /**
+   * The department a project sits under, however this payload names it. The
+   * list sends `domain` as an object; `client_department` is the column behind
+   * the table's Client / Department column and is the fallback.
+   */
+  const departmentOf = (p: project & { domain?: unknown; client_department?: string }) => {
+    const d = p.domain as { name?: string } | string | undefined;
+    const name =
+      d && typeof d === "object" ? d.name : typeof d === "string" ? d : undefined;
+    return String(name ?? p.client_department ?? "").trim().toLowerCase();
+  };
+
+  /**
+   * Projects follow the department chosen above, and wait for it.
+   *
+   * With no department picked the list is empty rather than complete: the
+   * department is the question this form asks first, and offering every project
+   * in the company before it is answered invites assigning somebody to work
+   * outside the department they are being put in.
+   */
+  const visibleProjects = form.department
+    ? projectList.filter(
+        (p) => departmentOf(p) === form.department.trim().toLowerCase()
       )
-    : projectList;
+    : [];
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -142,11 +161,16 @@ const CreateUser = () => {
     fetchProjects();
   }, [fetchProjects]);
 
+  /**
+   * Departments, for both things this form does with them: the shared-user
+   * flow assigns them, and the project picker below is grouped under them.
+   *
+   * `isShared=true` widens the list past our own departments, which is what a
+   * shared user needs; for the picker the plain list is the honest one.
+   */
   const loadDomains = useCallback(async () => {
-    if (!isSharing) return;
     try {
-      // isShared=true so the API can widen the list past our own domains.
-      const response = await fetchExistDomains(true);
+      const response = await fetchExistDomains(isSharing || undefined);
       setDomainList(response?.data || []);
     } catch (error) {
       console.log(error);
@@ -193,6 +217,23 @@ const CreateUser = () => {
       }
       return next;
     });
+  };
+
+  /**
+   * Choosing a department also ticks every project in it.
+   *
+   * Somebody put in a department normally works across its projects, so the
+   * full set is the sensible starting point and unticking is the exception
+   * made — not a list built one checkbox at a time. Changing department
+   * replaces the selection rather than adding to it: the projects belonged to
+   * the answer that just changed.
+   */
+  const handleDepartmentChange = (name: string) => {
+    handleChange("department", name);
+    const ids = projectList
+      .filter((p) => departmentOf(p) === name.trim().toLowerCase())
+      .map((p) => String(p.id));
+    setForm((prev) => ({ ...prev, projects: ids }));
   };
 
   const handleChange = (field: string, value: string | boolean) => {
@@ -481,7 +522,7 @@ const CreateUser = () => {
           </div>
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Blood Group <span style={{ color: "#ef4444" }}>*</span>
+              Blood Group
             </label>
             <FormControl fullWidth size="small" error={!!errors.bloodGroup} sx={sx("bloodGroup")}>
               <Select
@@ -578,12 +619,29 @@ const CreateUser = () => {
               <Select
                 displayEmpty
                 value={form.department}
-                onChange={(e) => handleChange("department", e.target.value)}
+                onChange={(e) => handleDepartmentChange(String(e.target.value))}
                 renderValue={(val) => val || "Select Department"}
                 sx={{ color: form.department ? "var(--text-primary)" : "var(--text-faint)" }}
               >
-                {["Engineering", "Design", "Marketing", "Finance", "HR", "Operations", "Electronics"].map((d) => (
-                  <MenuItem key={d} value={d}>{d}</MenuItem>
+                {/*
+                  * The departments that exist, not a list written into the
+                  * form. It was seven names hard-coded here, so a department
+                  * created last week could not be chosen and one that was
+                  * never created still could.
+                  *
+                  * The name is what goes up, as it always has — the field is
+                  * submitted as `department` and doubles as `projectCategory`,
+                  * both of which the API takes as text.
+                  */}
+                {domainList.length === 0 && (
+                  <MenuItem disabled value="">
+                    No departments yet — create one first
+                  </MenuItem>
+                )}
+                {domainList.map((domain) => (
+                  <MenuItem key={domain.id} value={domain.name}>
+                    {domain.name}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -790,23 +848,15 @@ const CreateUser = () => {
           )
         ) : projectList.length > 0 ? (
           <div className="mb-4">
-            {/* Search only earns its place once the list outgrows the viewport */}
-            {projectList.length > 6 && (
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Search projects..."
-                value={projectSearch}
-                onChange={(e) => setProjectSearch(e.target.value)}
-                sx={{ ...inputSx, marginBottom: "8px" }}
-              />
-            )}
-
             <div className="d-flex align-items-center justify-content-between mb-2">
               <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
                 {form.projects.length > 0
-                  ? `${form.projects.length} of ${projectList.length} selected`
-                  : `${projectList.length} project${projectList.length === 1 ? "" : "s"} available`}
+                  ? `${form.projects.length} of ${visibleProjects.length} selected`
+                  : form.department
+                    ? `${visibleProjects.length} project${
+                        visibleProjects.length === 1 ? "" : "s"
+                      } in ${form.department}`
+                    : "Choose a department to see its projects"}
               </span>
               {form.projects.length > 0 && (
                 <button
@@ -842,7 +892,9 @@ const CreateUser = () => {
                   className="mb-0 text-center"
                   style={{ fontSize: 12, color: "var(--text-faint)", padding: "16px 0" }}
                 >
-                  No projects match &ldquo;{projectSearch}&rdquo;.
+                  {form.department
+                    ? `No active projects in ${form.department} yet.`
+                    : "Pick a department above to see its projects."}
                 </p>
               )}
               {visibleProjects.map((proj) => {

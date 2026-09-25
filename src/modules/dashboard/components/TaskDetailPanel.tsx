@@ -26,6 +26,7 @@ import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
 import LowPriorityRoundedIcon from "@mui/icons-material/LowPriorityRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import EventRepeatOutlinedIcon from "@mui/icons-material/EventRepeatOutlined";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 
 import type {
@@ -45,6 +46,7 @@ import TaskComments from "./TaskComments";
 import TaskEditForm, { AddSubtasksForm } from "./TaskEditForm";
 import type { SubtaskAssignee } from "./CreateTaskModal";
 import Dialoge from "../../../presentation/Dialog";
+import ExtendTaskDialog from "./ExtendTaskDialog";
 
 /**
  * One spring for the whole tab strip, so the pill, the tap and the icon pop all
@@ -136,7 +138,14 @@ const showStamp = (v?: string | null) => {
  * tab reads as the story of the whole task rather than just the parent's.
  */
 const buildActivity = (task: taskList) => {
-  const events: { at: string; title: string; by: string; tone: string }[] = [];
+  const events: {
+    at: string;
+    title: string;
+    by: string;
+    tone: string;
+    /** Why a deadline moved. Only an extension carries one. */
+    note?: string;
+  }[] = [];
   const creator = task.dailyLog?.creator?.fullName || "—";
 
   if (task.created_at)
@@ -160,8 +169,32 @@ const buildActivity = (task: taskList) => {
       });
   };
 
+  /**
+   * Every push of a deadline, with the reason given for it.
+   *
+   * These are the only entries here that were recorded rather than inferred —
+   * the rest are read off timestamps the task happens to carry. A push with no
+   * previous date is a deadline being set, not moved, and says so.
+   */
+  const pushes = (row: taskList, label: string) =>
+    (row.extensions ?? []).forEach((ext) =>
+      events.push({
+        at: ext.created_at,
+        title: ext.previous_due_date
+          ? `${label} extended · ${showShort(ext.previous_due_date)} → ${showShort(ext.new_due_date)}`
+          : `${label} due date set · ${showShort(ext.new_due_date)}`,
+        by: ext.extendedBy?.fullName || "Somebody since removed",
+        tone: "#d97706",
+        note: ext.reason,
+      })
+    );
+
   add(task, "Main task");
-  (task.subtasks ?? []).forEach((sub) => add(sub, `“${sub.description}”`));
+  pushes(task, "Main task");
+  (task.subtasks ?? []).forEach((sub) => {
+    add(sub, `“${sub.description}”`);
+    pushes(sub, `“${sub.description}”`);
+  });
 
   return events.sort((a, b) => (a.at < b.at ? -1 : 1));
 };
@@ -254,6 +287,22 @@ interface TaskDetailPanelProps {
    * destroy it — so it is decided by the caller, which knows the viewer's role.
    */
   canDelete?: (row: taskList) => boolean;
+  /**
+   * Push one row's deadline out, with a reason. Rejects when the API refuses,
+   * which keeps the dialog open with what was typed still in it.
+   *
+   * Omitted, no row offers the control.
+   */
+  onTaskExtend?: (
+    taskId: string,
+    input: { due_date: string; reason: string }
+  ) => Promise<void>;
+  /**
+   * The tab to open on. Omitted, the panel opens on the work — but something
+   * that asked a specific question ("why has this slipped?") should land on
+   * the answer rather than make the reader go looking for it.
+   */
+  initialTab?: TabKey;
   /** The room's roster, so a new subtask can be handed to one of them. */
   roomMembers?: SubtaskAssignee[];
   projectColorMap: Record<string, { bg: string; text: string }>;
@@ -276,7 +325,9 @@ export default function TaskDetailPanel({
   onTaskEdit,
   onSubtaskAdd,
   onTaskDelete,
+  onTaskExtend,
   canDelete,
+  initialTab,
   roomMembers = [],
   projectColorMap,
 }: TaskDetailPanelProps) {
@@ -293,20 +344,27 @@ export default function TaskDetailPanel({
   const [saving, setSaving] = useState(false);
   /** The row a delete has been asked for, held until it is confirmed. */
   const [pendingDelete, setPendingDelete] = useState<taskList | null>(null);
+  /** The row whose deadline is being pushed. */
+  const [extending, setExtending] = useState<taskList | null>(null);
 
   const subs = useMemo(() => task?.subtasks ?? [], [task]);
 
   useEffect(() => {
     if (!open) return;
     // The work is what the panel is for — its pieces if it has any, and if it
-    // has none, the one card plus the control that breaks it into some.
-    setTab("subtasks");
+    // has none, the one card plus the control that breaks it into some. Unless
+    // whoever opened it was asking something else.
+    setTab(initialTab ?? "subtasks");
     setOpenRows({});
     setOpenThreads({});
     // A form left open would reopen against whatever task is shown next.
     setEditingId(null);
     setAddingChild(false);
     setPendingDelete(null);
+    setExtending(null);
+    // `initialTab` is read at open; changing it later must not yank the reader
+    // off the tab they have since chosen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task?.id, subs.length]);
 
   /**
@@ -414,6 +472,19 @@ export default function TaskDetailPanel({
       setEditingId(null);
     } catch {
       /* reported by the caller — leave the form standing */
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const pushDeadline = async (input: { due_date: string; reason: string }) => {
+    if (!onTaskExtend || !extending) return;
+    setSaving(true);
+    try {
+      await onTaskExtend(String(extending.id), input);
+      setExtending(null);
+    } catch {
+      /* reported by the caller — leave the dialog standing */
     } finally {
       setSaving(false);
     }
@@ -673,6 +744,19 @@ export default function TaskDetailPanel({
                   {t}
                 </span>
               ))}
+
+              {/* How often this one has slipped, where the deadline is read. */}
+              {(row.extension_count ?? row.extensions?.length ?? 0) > 0 && (
+                <span
+                  className="tdp__slip"
+                  title={`The deadline has been pushed ${
+                    row.extension_count ?? row.extensions?.length
+                  } time(s) — the reasons are in Activity`}
+                >
+                  <EventRepeatOutlinedIcon sx={{ fontSize: 10 }} />
+                  {row.extension_count ?? row.extensions?.length}
+                </span>
+              )}
             </div>
           </div>
 
@@ -722,6 +806,30 @@ export default function TaskDetailPanel({
                 }}
               >
                 <EditOutlinedIcon sx={{ fontSize: 12 }} />
+              </button>
+            )}
+
+            {/*
+              * Extending is offered on anything unfinished, not only on what
+              * has already slipped: the honest moment to push a deadline is
+              * when you know you will miss it, which is before you do.
+              */}
+            {onTaskExtend && mayEdit(row) && normalize(row.status) !== "completed" && (
+              <button
+                type="button"
+                className="tdp__comment-btn"
+                title={
+                  row.due_date
+                    ? "Extend this deadline"
+                    : "Set a deadline for this"
+                }
+                onClick={() => {
+                  setEditingId(null);
+                  setAddingChild(false);
+                  setExtending(row);
+                }}
+              >
+                <EventRepeatOutlinedIcon sx={{ fontSize: 12 }} />
               </button>
             )}
 
@@ -1178,6 +1286,8 @@ export default function TaskDetailPanel({
                         <span style={{ minWidth: 0, flex: 1 }}>
                           <p className="tdp__event-title">{e.title}</p>
                           <p className="tdp__event-when">{showStamp(e.at)}</p>
+                          {/* Why, in their words. Only a push carries one. */}
+                          {e.note && <p className="tdp__event-reason">{e.note}</p>}
                         </span>
                         <span className="tdp__event-by">by {e.by}</span>
                       </motion.li>
@@ -1262,6 +1372,14 @@ export default function TaskDetailPanel({
           </aside>
         </div>
       </div>
+
+      <ExtendTaskDialog
+        task={extending}
+        open={extending !== null}
+        saving={saving}
+        onClose={() => setExtending(null)}
+        onExtend={pushDeadline}
+      />
 
       <Dialoge
         open={pendingDelete !== null}

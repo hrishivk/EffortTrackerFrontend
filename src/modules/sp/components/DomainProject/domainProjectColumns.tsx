@@ -237,11 +237,18 @@ const statusStyles: Record<string, { bg: string; text: string; label: string }> 
 const normalizeStatus = (s: string) =>
   s.toLowerCase().replace(/\s+/g, "_");
 
+/**
+ * `canManage` false drops the Actions column altogether rather than leaving a
+ * row of buttons that answer with a 403. The chevron still opens the row, so a
+ * reader can see a project's team without being offered the means to change it.
+ */
 export const getProjectColumns = (
   onManageMembers?: (rowId: number) => void,
   onStatusChange?: (rowId: number, currentStatus: string) => void,
   onEditProject?: (rowId: number) => void,
-): Column<ProjectRow>[] => [
+  canManage = true,
+): Column<ProjectRow>[] =>
+  ([
   {
     key: "name",
     header: "Project Name",
@@ -263,8 +270,19 @@ export const getProjectColumns = (
         />
         <div>
           <div style={{ fontWeight: 600, fontSize: 14 }}>{row.name}</div>
-          <div style={{ fontSize: 11, color: "#9ca3af" }}>
+          <div
+            style={{ fontSize: 11, color: "#9ca3af", display: "flex", alignItems: "center", gap: 6 }}
+          >
             {normalizeStatus(row.status) === "completed" ? "Completed" : "Due"}: {row.dueDate}
+            {/* Amber, like a task's slip badge: a pushed deadline is not a neutral fact. */}
+            {(row.extensionCount ?? 0) > 0 && (
+              <span
+                className="ep-slip"
+                title={`Due date extended ${row.extensionCount} time${row.extensionCount === 1 ? "" : "s"}`}
+              >
+                Extended {row.extensionCount}×
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -376,4 +394,4 @@ export const getProjectColumns = (
       </div>
     ),
   },
-];
+  ] as Column<ProjectRow>[]).filter((col) => canManage || col.key !== "actions");

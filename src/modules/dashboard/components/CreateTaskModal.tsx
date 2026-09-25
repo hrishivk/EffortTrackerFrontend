@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Dialog from "@mui/material/Dialog";
 import CircularProgress from "@mui/material/CircularProgress";
 import FormControl from "@mui/material/FormControl";
@@ -17,6 +17,7 @@ import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
 
 import { toDateInput } from "../../../shared/utils/taskStatus";
+import { createTaskValidationSchema } from "../../../utils/validation/Validation";
 import type { formUserData } from "../../../shared/types/User";
 import { PRIORITIES, STATUS_ACCENT } from "./boardConstants";
 import SubtaskEditor from "./SubtaskEditor";
@@ -241,8 +242,32 @@ export default function CreateTaskModal({
   /** A due date can be moved out past the subtasks, never back inside them. */
   const dueMin = lastSubtaskDue > form.startDate ? lastSubtaskDue : form.startDate;
 
-  const nameMissing = touched && !form.taskName.trim();
-  const projectMissing = touched && !form.project;
+  /**
+   * The form against its schema. Read on every render so a field clears its
+   * red the moment it is filled, rather than waiting for the next submit.
+   *
+   * `dueDate` rather than `form.dueDate`: a subtask may have pushed it out, and
+   * that pushed-out date is the one being sent.
+   */
+  const problems = useMemo(() => {
+    const result = createTaskValidationSchema.safeParse({
+      taskName: form.taskName,
+      project: form.project,
+      startDate: form.startDate,
+      dueDate,
+    });
+    if (result.success) return {} as Record<string, string>;
+    return result.error.errors.reduce<Record<string, string>>((acc, err) => {
+      const key = String(err.path[0] ?? "");
+      if (key && !acc[key]) acc[key] = err.message;
+      return acc;
+    }, {});
+  }, [form.taskName, form.project, form.startDate, dueDate]);
+
+  const nameMissing = touched && !!problems.taskName;
+  const projectMissing = touched && !!problems.project;
+  const dueMissing = touched && !!problems.dueDate;
+  const startInvalid = touched && !!problems.startDate;
 
   const addTag = () => {
     const t = tagDraft.trim();
@@ -253,7 +278,7 @@ export default function CreateTaskModal({
 
   const submit = async () => {
     setTouched(true);
-    if (!form.taskName.trim() || !form.project) return;
+    if (Object.keys(problems).length > 0) return;
     // `dueDate` rather than `form.dueDate`: the subtasks may have pushed it out.
     await onSubmit({ ...form, dueDate });
   };
@@ -447,7 +472,7 @@ export default function CreateTaskModal({
           <div className="ctm__row ctm__row--2">
             <div>
               <label className="ctm__label">Start Date</label>
-              <div className="ctm__field">
+              <div className={`ctm__field${startInvalid ? " ctm__field--invalid" : ""}`}>
                 <CalendarTodayOutlinedIcon />
                 <input
                   type="date"
@@ -458,8 +483,10 @@ export default function CreateTaskModal({
               </div>
             </div>
             <div>
-              <label className="ctm__label">Due Date</label>
-              <div className="ctm__field">
+              <label className="ctm__label">
+                Due Date<span className="ctm__req">*</span>
+              </label>
+              <div className={`ctm__field${dueMissing ? " ctm__field--invalid" : ""}`}>
                 <CalendarTodayOutlinedIcon />
                 <input
                   type="date"
@@ -468,8 +495,9 @@ export default function CreateTaskModal({
                   onChange={(e) => set("dueDate", e.target.value)}
                 />
               </div>
+              {dueMissing && <p className="ctm__hint">{problems.dueDate}</p>}
               {/* Said out loud, because the field moved on its own. */}
-              {lastSubtaskDue > form.dueDate && (
+              {!dueMissing && lastSubtaskDue > form.dueDate && (
                 <p className="ctm__hint">
                   Set by the subtask that runs longest.
                 </p>

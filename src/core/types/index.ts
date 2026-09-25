@@ -38,6 +38,38 @@ export interface EditProjectPayload {
   start_date?: string;
   /** Stored casing (`active`, `on_hold`), never the table's display twin. */
   status?: string;
+  /**
+   * Required whenever `end_date` moves to a later day — or is set for the first
+   * time. Without it the API answers 400 and saves nothing of the edit.
+   */
+  extension_reason?: string;
+}
+
+export type ProjectActivityAction =
+  | "created"
+  | "extended"
+  | "due_date_changed"
+  | "status_changed"
+  | "renamed"
+  | "updated"
+  | "member_added"
+  | "member_removed";
+
+/**
+ * One thing that happened to a project. Dates in `old_value`/`new_value` are
+ * `YYYY-MM-DD`; member entries carry the person's name there and their id in
+ * `field`. `actor_name` is a snapshot from when it was written.
+ */
+export interface ProjectActivityEntry {
+  id: string;
+  action: ProjectActivityAction;
+  field: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  reason: string | null;
+  actor_id: string | null;
+  actor_name: string | null;
+  created_at: string;
 }
 
 /** Somebody on a project, straight off the join. SP accounts are excluded. */
@@ -72,6 +104,10 @@ export interface ProjectDetail {
   completedTasks?: number;
   created_by?: string;
   created_at?: string;
+  /** Newest first — the reverse of a task's `extensions[]`. */
+  activity?: ProjectActivityEntry[];
+  /** Only the `extended` entries, not `activity.length`. */
+  extension_count?: number;
   [key: string]: unknown;
 }
 

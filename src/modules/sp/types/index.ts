@@ -46,6 +46,8 @@ export interface ProjectRow {
   status: "ACTIVE" | "ON HOLD" | "COMPLETED";
   progress: number;
   teamAssigned: TeamMember[];
+  /** Times the due date has been pushed later. From the list, no detail read. */
+  extensionCount?: number;
 }
 
 export interface PhaseItem {

@@ -57,6 +57,13 @@ const DomainProject = () => {
   const { role: urlRole } = useParams();
   const role = useSelector((state: any) => state.user.user.role);
   const isAM = role?.toUpperCase() === "AM";
+  /**
+   * The team can read this page — a developer needs to see what the projects
+   * they are on actually are — but not act on it. Raising, editing, staffing
+   * and deleting stay with the managers who own them; the API says the same,
+   * and a button that only ever earns a 403 is worse than no button.
+   */
+  const canManage = ["SP", "AM"].includes(String(role ?? "").toUpperCase());
   const currentRole = urlRole || (isAM ? "am" : "sp");
   const tabs = allTabs;
   const [activeTab, setActiveTab] = useState<DomainTab>("overview");
@@ -154,6 +161,7 @@ const DomainProject = () => {
           clientDepartment: p.client_department || p.clientDepartment || p.domain?.name || "-",
           status: (p.status || "ACTIVE").toUpperCase(),
           progress: p.progress ?? 0,
+          extensionCount: p.extension_count ?? 0,
           teamAssigned: (p.teamAssigned || []).map((u: any) =>
             typeof u === "string"
               ? { name: u, avatar: "" }
@@ -279,7 +287,9 @@ const DomainProject = () => {
               ? activeTab === "overview"
                 ? "High-level overview of all active initiatives and project health."
                 : "Historical view of delivered initiatives and retrospective data."
-              : "Manage all departments and their associated projects"}
+              : canManage
+                ? "Manage all departments and their associated projects"
+                : "The departments and projects you are part of"}
           </p>
         </div>
 
@@ -305,7 +315,7 @@ const DomainProject = () => {
                   </button>
                 </>
               )}
-              {!isAM && (
+              {!isAM && canManage && (
                 <>
                   <button
                     className="btn text-white"
@@ -416,7 +426,7 @@ const DomainProject = () => {
         );
       })()}
 
-      {activeTab === "overview" && (
+      {activeTab === "overview" && canManage && (
         <div
           className="mb-3"
           style={{
@@ -543,7 +553,12 @@ const DomainProject = () => {
         };
         return (
           <TableList
-            columns={getProjectColumns(handleManageMembers, handleStatusClick, handleEditProject)}
+            columns={getProjectColumns(
+              handleManageMembers,
+              handleStatusClick,
+              handleEditProject,
+              canManage,
+            )}
             data={projects}
             pagination={{
               currentPage,
@@ -564,7 +579,7 @@ const DomainProject = () => {
       })()
             ) : (
               <TableList
-                columns={getDomainColumns((id) => setDeleteDomainId(id))}
+                columns={getDomainColumns((id) => setDeleteDomainId(id), canManage)}
                 data={domains}
                 pagination={{
                   currentPage: domainPage,

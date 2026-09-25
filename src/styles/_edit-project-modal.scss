@@ -439,3 +439,295 @@
   font-size: 11.5px;
   color: var(--text-faint);
 }
+
+/* ───────────────────────────────
+   Extensions and the activity log
+   Amber is kept for the due date slipping, as it is on tasks; everything
+   else in the log is the app's purple or neutral.
+   ─────────────────────────────── */
+
+/* "Extended N×" — beside the due date here, under the name in the table. */
+.ep-slip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ep-reason {
+  overflow: hidden;
+}
+
+/* ── Details / Activity tabs ──
+   The same sliding pill as the task panel's tabs. */
+.ep-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 16px 28px 0;
+  padding: 4px;
+  border: 1px solid $border-light;
+  border-radius: 12px;
+  background: $bg-light;
+  width: fit-content;
+
+  @include respond-below($bp-sm) {
+    margin: 14px 16px 0;
+  }
+}
+
+.ep-tab {
+  position: relative;
+  padding: 7px 16px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: $text-muted;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s;
+
+  &:hover {
+    color: $text-dark;
+  }
+
+  &.is-active {
+    color: #fff;
+  }
+}
+
+.ep-tab-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background: $purple-primary;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.28);
+}
+
+.ep-tab-inner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ep-tab-count {
+  padding: 0 6px;
+  border-radius: 20px;
+  background: rgba(124, 58, 237, 0.14);
+  color: $purple-primary;
+  font-size: 10.5px;
+  font-weight: 700;
+
+  .ep-tab.is-active & {
+    background: rgba(255, 255, 255, 0.24);
+    color: #fff;
+  }
+}
+
+/* ── Activity: a timeline ──
+   One rail down the left, a dated marker for each day, and a node on the
+   rail per event. No boxes — the rail is the structure. */
+.ep-tl {
+  position: relative;
+  max-width: 720px;
+  padding: 4px 0 4px 4px;
+}
+
+.ep-tl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 12px;
+  color: $text-muted;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.ep-tl-day {
+  position: relative;
+
+  & + & {
+    margin-top: 6px;
+  }
+}
+
+/* The day marker sits on the rail itself, like a station sign. */
+.ep-tl-date {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 4px 12px 4px 10px;
+  border-radius: 999px;
+  background: $purple-light;
+  color: $purple-primary;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+
+  &::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: $purple-primary;
+  }
+}
+
+.ep-tl-list {
+  position: relative;
+  margin: 0;
+  padding: 0 0 8px;
+  list-style: none;
+
+  /* The rail, running through every node of the day and on to the next marker. */
+  &::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    bottom: 0;
+    left: 13px;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, rgba(124, 58, 237, 0.35), rgba(124, 58, 237, 0.12));
+  }
+
+  /* The last day's rail fades out instead of stopping dead. */
+  .ep-tl-day:last-child &::before {
+    background: linear-gradient(to bottom, rgba(124, 58, 237, 0.35), transparent);
+  }
+}
+
+.ep-tl-item {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  padding: 10px 0 10px 0;
+
+  --tl: #{$purple-primary};
+  --tl-soft: rgba(124, 58, 237, 0.14);
+
+  &.ep-tl--amber { --tl: #d97706; --tl-soft: rgba(245, 158, 11, 0.18); }
+  &.ep-tl--green { --tl: #16a34a; --tl-soft: rgba(22, 163, 74, 0.14); }
+  &.ep-tl--red   { --tl: #dc2626; --tl-soft: rgba(220, 38, 38, 0.12); }
+  &.ep-tl--grey  { --tl: #{$text-muted}; --tl-soft: #{$border-light}; }
+}
+
+/* A ring on the rail: the page shows through, so the rail reads as passing behind it. */
+.ep-tl-node {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: $bg-white;
+  box-shadow: 0 0 0 2px var(--tl-soft), inset 0 0 0 1.5px var(--tl);
+  color: var(--tl);
+  transition: transform 0.15s;
+
+  .ep-tl-item:hover & {
+    transform: scale(1.08);
+  }
+}
+
+.ep-tl-content {
+  min-width: 0;
+  flex: 1;
+  padding-top: 4px;
+}
+
+.ep-tl-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: $text-dark;
+  overflow-wrap: anywhere;
+}
+
+.ep-tl-time {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: $text-muted;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Before → after, the old value struck through. */
+.ep-tl-diff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ep-tl-was {
+  color: $text-muted;
+  text-decoration-color: rgba(220, 38, 38, 0.55);
+  text-decoration-thickness: 1.5px;
+}
+
+.ep-tl-arrow {
+  color: var(--tl);
+  font-weight: 700;
+}
+
+.ep-tl-now {
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: var(--tl-soft);
+  color: var(--tl);
+  font-weight: 700;
+}
+
+/* The why, hung off the event as a quote rather than boxed in. */
+.ep-tl-reason {
+  position: relative;
+  margin: 7px 0 0;
+  padding: 0 0 0 14px;
+  font-size: 12.5px;
+  font-style: italic;
+  line-height: 1.5;
+  color: $text-secondary;
+  overflow-wrap: anywhere;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--tl);
+    opacity: 0.55;
+  }
+}
+
+.ep-tl-by {
+  margin: 5px 0 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: $text-muted;
+}

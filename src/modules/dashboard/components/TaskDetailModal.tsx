@@ -9,6 +9,7 @@ import { assigneeOf } from "../../../shared/utils/subtasks";
 import type { TaskGroup } from "../types";
 import { findGroupForStatus } from "./boardConstants";
 import { parseServerTime } from "../../../shared/utils/serverTime";
+import ExtensionLog from "./ExtensionLog";
 
 const PROJECT_COLORS = [
   { bg: "#dbeafe", text: "#2563eb" },
@@ -325,6 +326,14 @@ export default function TaskDetailModal({
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
                 {formatDate(task.end_time)}
               </span>
+              {(task.extension_count ?? task.extensions?.length ?? 0) > 0 && (
+                <span
+                  className="task-slip"
+                  title="The deadline has been pushed — the reasons are below"
+                >
+                  +{task.extension_count ?? task.extensions?.length}
+                </span>
+              )}
               {overdue && (
                 <span
                   style={{
@@ -397,6 +406,24 @@ export default function TaskDetailModal({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/*
+          * Why the deadline moved.
+          *
+          * The only history this modal carries, because it is the only part
+          * that was written down rather than inferred from a timestamp — and
+          * the date above it is meaningless without it once a task has been
+          * pushed twice.
+          */}
+        {(task.extensions?.length ?? 0) > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <ExtensionLog
+              extensions={task.extensions}
+              title="Deadline changes"
+              newestFirst
+            />
           </div>
         )}
 

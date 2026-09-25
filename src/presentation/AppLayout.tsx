@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { FiMenu, FiSun, FiMoon, FiChevronDown } from "react-icons/fi";
+import { FiMenu, FiSun, FiMoon, FiChevronDown, FiStar } from "react-icons/fi";
 import { useDispatch } from "react-redux";
 import Sidebar from "./Sidebar";
 import AccountPanel from "./AccountPanel";
 import NotificationPanel from "./NotificationPanel";
+import { AnimatePresence } from "framer-motion";
+import WhatsNew, {
+  APP_VERSION,
+  WhatsNewBanner,
+  hasSeenWhatsNew,
+  markWhatsNewSeen,
+} from "./WhatsNew";
 import { useAppSelector, type AppDispatch } from "../store/configureStore";
 import { reset } from "../store/authSlice";
 import { authLogout } from "../core/actions/action";
@@ -49,6 +56,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // rather than opening wide and snapping shut.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readCollapsed);
   const { user } = useAppSelector((state) => state.user);
+
+  /**
+   * The 2.0 release. The first sign-in after it gets a banner across the top
+   * of the page; dismissing it, or opening the full note from it, retires it
+   * for good. The header pill opens the note any time after.
+   */
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const [whatsNewSeen, setWhatsNewSeen] = useState(hasSeenWhatsNew);
+  const retireBanner = () => {
+    markWhatsNewSeen();
+    setWhatsNewSeen(true);
+  };
+  const openWhatsNew = () => {
+    setWhatsNewOpen(true);
+    retireBanner();
+  };
   const { theme, toggleTheme } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
   const { pathname, search } = useLocation();
@@ -134,6 +157,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           {/* Right controls */}
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <button
+              type="button"
+              className={`wn-pill${whatsNewSeen ? "" : " wn-pill--new"}`}
+              title={`What's new in RX KREW ${APP_VERSION}`}
+              onClick={openWhatsNew}
+            >
+              <FiStar size={13} />
+              <span className="wn-pill__label">What&rsquo;s new</span>
+              <span className="wn-pill__ver">{APP_VERSION}</span>
+            </button>
+
+            <button
               onClick={toggleTheme}
               className="rounded-lg p-2 transition-colors"
               style={{ color: "var(--text-muted)" }}
@@ -184,10 +218,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </div>
       </header>
 
+      <WhatsNew open={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} role={user?.role} />
+
       <main
         className={`min-h-screen pt-[64px] transition-all duration-300 ${mainInset}`}
         style={{ backgroundColor: "var(--bg-page)" }}
       >
+        <AnimatePresence initial={false}>
+          {!whatsNewSeen && user && (
+            <WhatsNewBanner
+              key="whats-new"
+              role={user.role}
+              onOpen={openWhatsNew}
+              onDismiss={retireBanner}
+            />
+          )}
+        </AnimatePresence>
         {children}
       </main>
 

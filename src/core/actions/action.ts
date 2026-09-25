@@ -180,6 +180,34 @@ export const addSubtask = async (parentId: string, input: AddSubtaskInput) => {
 };
 
 /**
+ * Push a task's deadline out, on the record.
+ *
+ * Not `PATCH /updateTask { due_date }` — that one moves the date and logs
+ * nothing, which is the correction path for a date typed wrong and the exact
+ * bug this endpoint exists to remove. Every extension made from the UI comes
+ * through here, so the history is complete.
+ *
+ * `reason` is required and the new date must be *after* the current one; both
+ * come back as a `400` whose message is meant to be shown. Also `403` when the
+ * caller is neither the assignee, the creator, an AM over them nor SP, `404`
+ * for an unknown task and `423` for a locked one.
+ *
+ * Resolves to the decorated task — and for a subtask, to its parent with the
+ * subtask nested, which is the card the board actually draws.
+ */
+export const extendTask = async (
+  taskId: string,
+  input: { due_date: string; reason: string }
+) => {
+  const response = await userServiceMethood.extendTask("/task/extend", {
+    task_id: taskId,
+    due_date: input.due_date,
+    reason: input.reason.trim(),
+  });
+  return response.data;
+};
+
+/**
  * Delete a task, or one subtask.
  *
  * Deleting a **main task** takes every subtask with it, including ones assigned

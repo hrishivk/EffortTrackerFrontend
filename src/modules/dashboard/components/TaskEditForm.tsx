@@ -7,12 +7,10 @@ import CircularProgress from "@mui/material/CircularProgress";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
 import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
-import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
 import LowPriorityRoundedIcon from "@mui/icons-material/LowPriorityRounded";
 
 import type { taskList, TaskEditFields, AddSubtaskInput } from "../../user/types";
-import { toDateValue } from "../../../shared/utils/taskStatus";
 import { PRIORITIES, PRIORITY_COLORS, miniSelectSx } from "./boardConstants";
 import SubtaskEditor from "./SubtaskEditor";
 import type { SubtaskAssignee, SubtaskDraft } from "./CreateTaskModal";
@@ -131,14 +129,10 @@ export default function TaskEditForm({
 }: TaskEditFormProps) {
   const wasName = (task.description ?? "").trim();
   const wasPriority = (task.priority || "").toUpperCase();
-  const wasStart = toDateValue(task.start_date);
-  const wasDue = toDateValue(task.due_date);
   const wasTags = task.tags ?? [];
 
   const [name, setName] = useState(task.description ?? "");
   const [priority, setPriority] = useState(wasPriority || "MEDIUM");
-  const [startDate, setStartDate] = useState(wasStart);
-  const [dueDate, setDueDate] = useState(wasDue);
   const [tags, setTags] = useState<string[]>(wasTags);
   const [sequential, setSequential] = useState(!!task.sequential);
   const [touched, setTouched] = useState(false);
@@ -148,17 +142,18 @@ export default function TaskEditForm({
   /**
    * What actually moved, and nothing else.
    *
-   * An untouched field must stay out of the body: sending a date back
-   * unchanged is harmless, but sending every field would overwrite whatever
-   * somebody else changed in the meantime. A date the user emptied is the one
-   * place `null` is sent — that is the API's "clear it".
+   * An untouched field must stay out of the body: sending a field back
+   * unchanged is harmless, but sending every one would overwrite whatever
+   * somebody else changed in the meantime.
+   *
+   * Dates are not here at all. Moving a deadline is an extension — recorded,
+   * with a reason — and this form's unlogged `PATCH` is exactly the hole that
+   * feature closes, so it does not offer the field.
    */
   const changes = (): TaskEditFields => {
     const fields: TaskEditFields = {};
     if (name.trim() !== wasName) fields.description = name.trim();
     if (priority !== wasPriority) fields.priority = priority;
-    if (startDate !== wasStart) fields.start_date = startDate || null;
-    if (dueDate !== wasDue) fields.due_date = dueDate || null;
     if (tags.length !== wasTags.length || tags.some((t, i) => t !== wasTags[i]))
       fields.tags = tags;
     if (isMain && sequential !== !!task.sequential) fields.sequential = sequential;
@@ -224,32 +219,6 @@ export default function TaskEditForm({
           </FormControl>
         </label>
 
-        <label className="tdp__edit-field">
-          <span className="tdp__edit-label">Starts</span>
-          <span className="tdp__edit-box">
-            <CalendarTodayOutlinedIcon sx={{ fontSize: 13 }} />
-            <input
-              type="date"
-              value={startDate}
-              max={dueDate || undefined}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </span>
-        </label>
-
-        <label className="tdp__edit-field">
-          <span className="tdp__edit-label">Due</span>
-          <span className="tdp__edit-box">
-            <CalendarTodayOutlinedIcon sx={{ fontSize: 13 }} />
-            <input
-              type="date"
-              value={dueDate}
-              min={startDate || undefined}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
-          </span>
-        </label>
-
         <TagField tags={tags} onChange={setTags} />
 
         {/* A subtask has no children to order, and the API refuses the field
@@ -286,7 +255,8 @@ export default function TaskEditForm({
       </div>
 
       <p className="tdp__edit-hint">
-        Emptying a date clears it. Who a task is assigned to cannot be changed here yet.
+        Dates move through Extend, which records the reason. Who a task is
+        assigned to cannot be changed here yet.
       </p>
     </div>
   );

@@ -156,6 +156,11 @@ const getSections = (role?: string): NavSection[] => {
         items: [
           { to: "/user/dashboard", label: "Dashboard", icon: icon(FiGrid) },
           { to: "/user/attendance", label: "Attendance", icon: icon(FiCalendar) },
+          {
+            to: "/user/domain-project",
+            label: "Departments & Projects",
+            icon: icon(FiLayers),
+          },
         ],
       },
     ];

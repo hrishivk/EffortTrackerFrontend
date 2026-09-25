@@ -17,7 +17,7 @@ import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiActivity, FiGrid, FiLayers, FiUsers } from "react-icons/fi";
+import { FiActivity, FiClock, FiGrid, FiLayers, FiUsers } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 
 import { useAppSelector } from "../../../store/configureStore";
@@ -25,6 +25,7 @@ import {
   addSubtask,
   addTask,
   deleteTask,
+  extendTask,
   addTaskComment,
   createTaskGroup,
   deleteTaskGroup,
@@ -56,6 +57,7 @@ import TaskBoardView from "./TaskBoardView";
 import TaskTimer from "./TaskTimer";
 import DueBadge from "./DueBadge";
 import { taskTiming } from "../../../shared/utils/taskTime";
+import { createTaskValidationSchema } from "../../../utils/validation/Validation";
 import {
   assigneeIdOf,
   assigneeOf,
@@ -207,6 +209,20 @@ const avatarColors = [
  * worth expanding. Renders nothing when a task has no children.
  */
 
+/**
+ * Every push of a deadline on this task, its children included.
+ *
+ * `extension_count` is the API's own tally and is never truncated, so it is
+ * preferred over counting the array — which only holds what this response
+ * happened to nest.
+ */
+const slipsOn = (task: taskList): number =>
+  (task.extension_count ?? task.extensions?.length ?? 0) +
+  (task.subtasks ?? []).reduce(
+    (sum, sub) => sum + (sub.extension_count ?? sub.extensions?.length ?? 0),
+    0
+  );
+
 /** Find a task by id, looking inside subtasks too. */
 const findTaskById = (list: taskList[], id: string | null): taskList | null => {
   if (!id) return null;
@@ -217,6 +233,25 @@ const findTaskById = (list: taskList[], id: string | null): taskList | null => {
   }
   return null;
 };
+
+/**
+ * The task a write handed back, in the `/task-list` shape.
+ *
+ * Extend and add-subtask answer with the decorated task (a subtask's write
+ * answers with its parent, which is the card that is drawn). `/updateTask`
+ * answers with the row itself plus `parent` when the row was a subtask — so
+ * the parent wins when there is one. Anything else is ignored.
+ */
+const taskFromWrite = (res: unknown): taskList | null => {
+  const data = (res as { data?: taskList & { parent?: taskList | null } } | null)?.data;
+  if (!data || typeof data !== "object") return null;
+  if (data.parent) return data.parent;
+  return data.id !== undefined && !data.parent_id ? data : null;
+};
+
+/** Replace one top-level task by id, keeping anything the write did not send. */
+const mergeTask = (list: taskList[], fresh: taskList): taskList[] =>
+  list.map((t) => (String(t.id) === String(fresh.id) ? { ...t, ...fresh } : t));
 
 /**
  * Is this person actually on this task?
@@ -327,6 +362,12 @@ type GroupedTask = {
    */
   subtask_count?: number;
   subtask_done_count?: number;
+  /**
+   * How many times this piece of work has had its deadline pushed — the task
+   * itself plus its children, because a parent that looks on time while its
+   * subtask has slipped twice is the case the manager view exists for.
+   */
+  extension_count?: number;
   status?: string;
   tasks: taskList[];
   assignees: { name: string; status: string; userId: string | number | null | undefined }[];
@@ -358,6 +399,7 @@ function groupTasks(
       subtasks: t.subtasks ?? [],
       subtask_count: t.subtask_count,
       subtask_done_count: t.subtask_done_count,
+      extension_count: slipsOn(t),
       status: t.status,
       tasks: [t],
       assignees: [{
@@ -418,6 +460,9 @@ function groupTasks(
       subtasks: first.subtasks ?? [],
       subtask_count: first.subtask_count,
       subtask_done_count: first.subtask_done_count,
+      // The row is one piece of work held by several people; the deadline that
+      // slipped is the work's, so the largest tally is the row's.
+      extension_count: Math.max(...rowTasks.map(slipsOn)),
       status: first.status,
       tasks: rowTasks,
       assignees,
@@ -470,6 +515,8 @@ export default function MyTasksView({
   );
   // Comma-separated list of API statuses; "" = every status.
   const [statusFilter, setStatusFilter] = useState("");
+  /** "" all tasks, "1" any slip, "2"/"3" the repeat offenders. */
+  const [slipFilter, setSlipFilter] = useState("");
   // "list" and "board" are two renderings of the same task set; "gantt" is its own view.
   const [viewMode, setViewMode] = useState<"list" | "board" | "gantt">(
     viewTab === "gantt" ? "gantt" : viewTab === "board" ? "board" : "list"
@@ -485,6 +532,8 @@ export default function MyTasksView({
    * update without being closed and reopened.
    */
   const [panelTaskId, setPanelTaskId] = useState<string | null>(null);
+  /** Which tab the panel should land on, set by whatever opened it. */
+  const [panelTab, setPanelTab] = useState<"details" | "subtasks" | "activity">("subtasks");
   /** The List row a delete has been asked for, held until it is confirmed. */
   const [pendingRowDelete, setPendingRowDelete] = useState<GroupedTask | null>(null);
   const [deletingRow, setDeletingRow] = useState(false);
@@ -643,8 +692,9 @@ export default function MyTasksView({
     if (assigneeFilter) filters.assigned_to = assigneeFilter;
     if (projectFilter) filters.project = projectFilter;
     if (statusFilter) filters.status = statusFilter;
+    if (slipFilter) filters.min_extensions = Number(slipFilter);
     return filters;
-  }, [assigneeFilter, projectFilter, statusFilter]);
+  }, [assigneeFilter, projectFilter, statusFilter, slipFilter]);
 
   /**
    * Drop anything the viewed person is not actually on.
@@ -669,31 +719,43 @@ export default function MyTasksView({
     [viewUserId]
   );
 
+  /**
+   * Only the newest request may write the list. Without this a slower, older
+   * response landing after a newer one puts the pre-save data back on screen.
+   */
+  const listRequest = useRef(0);
+  const boardRequest = useRef(0);
+
   const loadTasks = useCallback(async () => {
+    const mine = ++listRequest.current;
     setLoading(true);
     try {
       const taskRes = await fetchTask(selectedDate, String(userId), role, activeFilters(), { page, limit: ITEMS_PER_PAGE });
+      if (mine !== listRequest.current) return;
       setTasks(scopeToViewedUser(taskRes?.data || []));
       setTotalPages(taskRes?.totalPages || 1);
     } catch {
-      setTasks([]);
+      if (mine === listRequest.current) setTasks([]);
     } finally {
-      setLoading(false);
+      if (mine === listRequest.current) setLoading(false);
     }
   }, [selectedDate, userId, role, activeFilters, page, scopeToViewedUser]);
 
   /** Board data: same /task-list endpoint, one big page so no column is empty by accident. */
   const loadBoardTasks = useCallback(async () => {
+    const mine = ++boardRequest.current;
     setBoardLoading(true);
     try {
       const res = await fetchTask(selectedDate, String(userId), role, activeFilters(), { page: 1, limit: BOARD_TASK_LIMIT });
+      if (mine !== boardRequest.current) return;
       setBoardTasks(scopeToViewedUser(res?.data || []));
       setBoardHasMore((res?.totalPages || 1) > 1);
     } catch {
+      if (mine !== boardRequest.current) return;
       setBoardTasks([]);
       setBoardHasMore(false);
     } finally {
-      setBoardLoading(false);
+      if (mine === boardRequest.current) setBoardLoading(false);
     }
   }, [selectedDate, userId, role, activeFilters, scopeToViewedUser]);
 
@@ -868,6 +930,7 @@ export default function MyTasksView({
     ...(lockedProject ? {} : { project: projectFilter }),
     ...(viewUserId ? {} : { assignee: assigneeFilter }),
     status: statusFilter,
+    slipped: slipFilter,
   };
 
   /**
@@ -1001,7 +1064,7 @@ export default function MyTasksView({
       key: "statusFilters",
       label: "Status",
       icon: <FiActivity size={16} />,
-      caption: "Filter tasks by status",
+      caption: "Filter tasks by status and by what has slipped",
       fields: [
         {
           key: "status",
@@ -1009,6 +1072,22 @@ export default function MyTasksView({
           placeholder: "All statuses",
           icon: <FiActivity size={15} />,
           options: statusFilterOptions,
+        },
+        {
+          /*
+           * What a manager opens this page to find: the work that has been
+           * pushed, and how often. The server answers it — a client-side
+           * count could only ever see the page already loaded.
+           */
+          key: "slipped",
+          label: "Extended deadlines",
+          placeholder: "Any",
+          icon: <FiClock size={15} />,
+          options: [
+            { value: "1", label: "Has been extended" },
+            { value: "2", label: "Extended twice or more" },
+            { value: "3", label: "Extended three times or more" },
+          ],
         },
       ],
     },
@@ -1031,6 +1110,7 @@ export default function MyTasksView({
      */
     setAssigneeFilter(viewUserId ?? values.assignee ?? "");
     setStatusFilter(values.status ?? "");
+    setSlipFilter(values.slipped ?? "");
     setPage(1);
   };
 
@@ -1061,6 +1141,19 @@ export default function MyTasksView({
     viewMode === "board" ? boardTasks : tasks,
     panelTaskId
   );
+
+  /**
+   * The detail modal's task, re-read from the current data on every render.
+   * `selectedTask` is the snapshot taken at the click; laying the live row over
+   * it keeps what the click added (a subtask's borrowed project and log) while
+   * letting a status change or reload show without closing the modal.
+   */
+  const liveSelected = selectedTask
+    ? {
+        ...selectedTask,
+        ...(findTaskById(viewMode === "board" ? boardTasks : tasks, String(selectedTask.id)) ?? {}),
+      }
+    : null;
 
   const isManagerView = isManagerRole;
   const groupedFiltered = groupTasks(filtered, isManagerView, getUserName);
@@ -1117,7 +1210,10 @@ export default function MyTasksView({
                 type="button"
                 className="task-edit-btn"
                 title="Edit this task, or break it into subtasks"
-                onClick={() => setPanelTaskId(String(row.tasks[0]?.id ?? ""))}
+                onClick={() => {
+                  setPanelTab("subtasks");
+                  setPanelTaskId(String(row.tasks[0]?.id ?? ""));
+                }}
               >
                 <EditOutlinedIcon sx={{ fontSize: 14 }} />
               </button>
@@ -1307,10 +1403,48 @@ export default function MyTasksView({
       key: "dueDate",
       header: "Due Date",
       render: (row) => {
+        const slips = row.extension_count ?? 0;
+
+        /*
+         * A deadline that has moved is a different fact from the date itself,
+         * so it is said beside it rather than folded in. This is the column a
+         * manager reads down, which makes it the place the slip has to show —
+         * the reasons are in the task's Activity, one click away.
+         */
+        const slipMark =
+          slips > 0 ? (
+            <button
+              type="button"
+              className="task-slip"
+              title={`Deadline pushed ${slips} time${
+                slips === 1 ? "" : "s"
+              } — click to read why`}
+              onClick={(e) => {
+                // A narrower question than "open this task", so it lands on the
+                // answer rather than the work.
+                e.stopPropagation();
+                setPanelTab("activity");
+                setPanelTaskId(String(row.tasks[0]?.id ?? ""));
+              }}
+            >
+              +{slips}
+            </button>
+          ) : null;
+
+        const withMark = (node: React.ReactNode) =>
+          slipMark ? (
+            <span className="d-flex align-items-center gap-1" style={{ whiteSpace: "nowrap" }}>
+              {node}
+              {slipMark}
+            </span>
+          ) : (
+            node
+          );
+
         // The deadline, which is `due_date` — not `end_time`, which records when
         // the work actually finished and is overwritten on completion.
         if (!row.due_date) {
-          return (
+          return withMark(
             <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>
               --
             </span>
@@ -1318,11 +1452,11 @@ export default function MyTasksView({
         }
         // Due today or already missed: the badge, blinking, escalated for overdue.
         const due = dueState(row.due_date, row.status);
-        if (due) return <DueBadge dueDate={row.due_date} state={due} />;
+        if (due) return withMark(<DueBadge dueDate={row.due_date} state={due} />);
 
         const d = toLocalDate(row.due_date);
         if (!d) return <span style={{ fontSize: 12, color: "var(--text-faint)" }}>--</span>;
-        return (
+        return withMark(
           <span
             style={{
               fontSize: 12,
@@ -1742,6 +1876,7 @@ export default function MyTasksView({
     try {
       const g = findGroupForStatus(boardGroups, next);
       const res = await updateTaskLane(key, g ? { groupId: g.id } : { status: next, groupId: null });
+      applyWrite(res);
 
       /*
        * Nothing here touches the parent.
@@ -1802,6 +1937,21 @@ export default function MyTasksView({
   const reloadTasks = () =>
     viewMode === "board" ? loadBoardTasks() : loadTasks();
 
+  /**
+   * Put a write's answer on screen now, before the reload comes back.
+   *
+   * The detail panel reads its task out of these lists, so this is what makes
+   * an edit, an extension or a new subtask show in the open panel the moment
+   * the server accepts it. The reload that follows still runs — it is what
+   * refreshes every other row the write may have touched.
+   */
+  const applyWrite = (res: unknown) => {
+    const fresh = taskFromWrite(res);
+    if (!fresh) return;
+    setTasks((list) => mergeTask(list, fresh));
+    setBoardTasks((list) => mergeTask(list, fresh));
+  };
+
   const handleCommentAdd = async (taskId: string, body: string) => {
     try {
       await addTaskComment(taskId, body);
@@ -1843,7 +1993,7 @@ export default function MyTasksView({
 
   const handleTaskEdit = async (taskId: string, fields: TaskEditFields) => {
     try {
-      await updateTask(taskId, fields);
+      applyWrite(await updateTask(taskId, fields));
       showSnackbar({ message: "Task updated", severity: "success" });
       await reloadTasks();
     } catch (error: unknown) {
@@ -1943,6 +2093,30 @@ export default function MyTasksView({
     return `${name} and its ${kids} subtask${kids === 1 ? "" : "s"} will be deleted, including any assigned to other people, along with the time tracked against them — the reports read the same figures.${shared} This cannot be undone.`;
   };
 
+  /**
+   * Push a deadline out, on the record.
+   *
+   * Deliberately not `updateTask({ due_date })`, which the edit form uses and
+   * which logs nothing — that is the path for a date typed wrong. Every
+   * extension the UI makes goes through the endpoint that writes the reason
+   * down, or the history has holes in exactly the cases it exists for.
+   *
+   * Rethrows so the dialog stays open on a refusal with the reason still typed.
+   */
+  const handleTaskExtend = async (
+    taskId: string,
+    input: { due_date: string; reason: string }
+  ) => {
+    try {
+      applyWrite(await extendTask(taskId, input));
+      showSnackbar({ message: "Deadline extended", severity: "success" });
+      await reloadTasks();
+    } catch (error: unknown) {
+      showSnackbar({ message: apiMessage(error, "Failed to extend the task"), severity: "error" });
+      throw error;
+    }
+  };
+
   const handleSubtasksAdd = async (
     parentId: string,
     rows: AddSubtaskInput[],
@@ -1951,7 +2125,7 @@ export default function MyTasksView({
     let added = 0;
     try {
       for (const row of rows) {
-        await addSubtask(parentId, row);
+        applyWrite(await addSubtask(parentId, row));
         added += 1;
       }
     } catch (error: unknown) {
@@ -2009,15 +2183,25 @@ export default function MyTasksView({
    * What has to be true before the subtasks step. The same checks guard the
    * submit — this only brings them forward, so a missing project is caught on
    * the step that holds the field rather than two screens later.
+   *
+   * The fields themselves go through the schema the board's dialog uses, so
+   * the two ways of raising a task cannot disagree about what one needs.
+   * Assignment is checked here instead: who may be assigned depends on the
+   * role raising the task, which is a question about the session, not the form.
+   *
+   * `panelDue`, not `form.dueDate` — a subtask may have pushed the deadline
+   * out, and that is the date being sent.
    */
   const stepOneError = (): string | null => {
-    if (!form.taskName.trim()) return "Task name is required";
-    if (!form.project) return "Please select a project";
+    const result = createTaskValidationSchema.safeParse({
+      taskName: form.taskName,
+      project: form.project,
+      startDate: form.startDate,
+      dueDate: panelDue,
+    });
+    if (!result.success) return result.error.errors[0]?.message ?? "Please check the form";
     if (!isUserOrDev && !assignToSelf && form.assignees.length === 0) {
       return "Please assign at least one person";
-    }
-    if (form.startDate && panelDue && form.startDate > panelDue) {
-      return "Start date must be on or before the due date";
     }
     return null;
   };
@@ -2032,23 +2216,9 @@ export default function MyTasksView({
   };
 
   const handleCreateTask = async () => {
-    if (!form.taskName.trim()) {
-      showSnackbar({ message: "Task name is required", severity: "error" });
-      return;
-    }
-    if (!form.project) {
-      showSnackbar({ message: "Please select a project", severity: "error" });
-      return;
-    }
-    if (!isUserOrDev && !assignToSelf && form.assignees.length === 0) {
-      showSnackbar({ message: "Please assign at least one person", severity: "error" });
-      return;
-    }
-    if (form.startDate && panelDue && form.startDate > panelDue) {
-      showSnackbar({
-        message: "Start date must be on or before the due date",
-        severity: "error",
-      });
+    const error = stepOneError();
+    if (error) {
+      showSnackbar({ message: error, severity: "error" });
       return;
     }
 
@@ -2836,14 +3006,14 @@ export default function MyTasksView({
 
       {/* Task Detail Modal */}
       <TaskDetailModal
-        task={selectedTask}
+        task={liveSelected}
         open={selectedTask !== null}
         onClose={() => setSelectedTask(null)}
         onStatusUpdate={viewMode === "board" ? loadBoardTasks : loadTasks}
         canStartTask={
           // A subtask opened from a board card carries its own assignee, which
           // on a shared task is not the person who owns the parent.
-          selectedTask ? assigneeIdOf(selectedTask) === String(userId) : false
+          liveSelected ? assigneeIdOf(liveSelected) === String(userId) : false
         }
         projectColorMap={projectColorMap}
         groups={boardGroups}
@@ -2867,6 +3037,8 @@ export default function MyTasksView({
         onTaskEdit={handleTaskEdit}
         onSubtaskAdd={handleSubtasksAdd}
         onTaskDelete={handleTaskDelete}
+        onTaskExtend={handleTaskExtend}
+        initialTab={panelTab}
         canDelete={mayDeleteTask}
         roomMembers={roomMembers}
         projectColorMap={projectColorMap}

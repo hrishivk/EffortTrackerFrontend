@@ -87,10 +87,13 @@ const routes = [
     roles: ['SP', 'AM', 'USER', 'DEVLOPER'],
   },
   {
+    // Open to the team as well: a developer needs to see what the projects
+    // they are on actually are. What they can *do* there is decided inside the
+    // page and by the API, not by keeping them off it.
     path: '/:role/domain-project',
     name: 'Department & Projects',
     element: DomainProject,
-    roles: ['SP', 'AM'],
+    roles: ['SP', 'AM', 'USER', 'DEVLOPER'],
   },
   {
     path: '/:role/create-project',

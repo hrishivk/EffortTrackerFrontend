@@ -29,6 +29,8 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
   const { showSnackbar } = useSnackbar();
   const loggedInRole = useSelector((state: any) => state.user.user.role);
   const isSP = loggedInRole?.toUpperCase() === "SP";
+  /** Staffing a project belongs to whoever runs it, not to everyone on it. */
+  const canManage = ["SP", "AM"].includes(String(loggedInRole ?? "").toUpperCase());
   /** Who is on the project, answered by the project itself. */
   const [assignedMembers, setAssignedMembers] = useState<formUserData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +172,7 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
         <h6 className="fw-bold mb-0" style={{ fontSize: 14, color: "var(--text-secondary)" }}>
           Team Members ({assignedMembers.length})
         </h6>
-        {isActive ? (
+        {!canManage ? null : isActive ? (
           <button
             className="btn btn-sm text-white"
             style={{
@@ -225,20 +227,22 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
                   <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{member.role}</div>
                 </div>
               </div>
-              <button
-                className="btn btn-sm"
-                style={{
-                  color: "#dc3545",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  padding: "2px 10px",
-                  border: "1px solid #fecaca",
-                  borderRadius: 6,
-                }}
-                onClick={() => setRemoveTarget(member)}
-              >
-                Remove
-              </button>
+              {canManage && (
+                <button
+                  className="btn btn-sm"
+                  style={{
+                    color: "#dc3545",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    padding: "2px 10px",
+                    border: "1px solid #fecaca",
+                    borderRadius: 6,
+                  }}
+                  onClick={() => setRemoveTarget(member)}
+                >
+                  Remove
+                </button>
+              )}
             </div>
           ))}
         </div>

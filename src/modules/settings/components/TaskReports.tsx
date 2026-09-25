@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { FormControl, MenuItem, Select } from "@mui/material";
 import { motion } from "framer-motion";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import {
   Area,
   AreaChart,
@@ -26,7 +24,6 @@ import {
   FiArrowUpRight,
   FiCalendar,
   FiCheckSquare,
-  FiChevronLeft,
   FiChevronRight,
   FiClock,
   FiDownload,
@@ -55,6 +52,7 @@ import { fetchUsers } from "../../../core/actions/spAction";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
 import { useAppSelector } from "../../../store/configureStore";
 import MentionPicker from "../../../shared/components/User/MentionPicker";
+import AppCalendar from "../../../shared/components/Calendar/AppCalendar";
 import { deltaPct, fmtDay, fmtDayLong, fmtDuration, toKey } from "../data/reportMetrics";
 
 
@@ -123,31 +121,6 @@ const inputSx = {
   "& .MuiInputBase-input": { padding: "10px 14px", fontSize: 13, fontWeight: 600 },
   "& .MuiSelect-select": { padding: "10px 14px" },
 };
-
-/** The same field, shrunk to sit in the calendar header. */
-const headerSx = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "7px",
-    backgroundColor: "var(--bg-card)",
-    fontSize: 11.5,
-    fontWeight: 600,
-    "& fieldset": { borderColor: "var(--border-light)" },
-    "&:hover fieldset": { borderColor: "var(--border-light)" },
-    "&.Mui-focused fieldset": {
-      borderColor: "#7c3aed",
-      boxShadow: "0 0 0 2px rgba(124,58,237,0.12)",
-    },
-  },
-  "& .MuiSelect-select": {
-    padding: "4px 26px 4px 8px",
-    color: "var(--text-primary)",
-  },
-  "& .MuiSelect-icon": { right: 3, color: "var(--text-muted)" },
-};
-
-const MONTHS = Array.from({ length: 12 }, (_, i) =>
-  new Date(2000, i, 1).toLocaleDateString(undefined, { month: "short" })
-);
 
 /** Placeholder text is faint; a chosen value is not. */
 const valueSx = (filled: boolean) => ({
@@ -292,11 +265,6 @@ export default function TaskReports() {
 
   const range = RANGES.find((r) => r.key === rangeKey) ?? RANGES[1];
   const today = useMemo(() => startOfDay(new Date()), []);
-
-  const YEARS = useMemo(() => {
-    const end = today.getFullYear();
-    return Array.from({ length: 6 }, (_, i) => end - 5 + i);
-  }, [today]);
 
   const customReady = rangeKey === CUSTOM && !!customFrom && !!customTo;
 
@@ -924,80 +892,14 @@ export default function TaskReports() {
 
             {calOpen && (
               <div className="tr-cal">
-                <DatePicker
-                  selectsRange
-                  inline
-                  /*
-                   * The header is ours, so the month and year are the same MUI
-                   * select the rest of the form uses.
-                   *
-                   * react-datepicker's own `showMonthDropdown` renders a bare
-                   * native select that inherits nothing — a different control
-                   * sitting inside the field it belongs to. The arrows stay for
-                   * stepping one month at a time.
-                   */
-                  renderCustomHeader={({
-                    date,
-                    changeMonth,
-                    changeYear,
-                    decreaseMonth,
-                    increaseMonth,
-                    prevMonthButtonDisabled,
-                    nextMonthButtonDisabled,
-                  }) => (
-                    <div className="tr-cal__head">
-                      <button
-                        type="button"
-                        className="tr-cal__nav"
-                        onClick={decreaseMonth}
-                        disabled={prevMonthButtonDisabled}
-                        aria-label="Previous month"
-                      >
-                        <FiChevronLeft size={14} />
-                      </button>
-
-                      <FormControl size="small" sx={headerSx}>
-                        <Select
-                          value={date.getMonth()}
-                          onChange={(e) => changeMonth(Number(e.target.value))}
-                          MenuProps={{ PaperProps: { sx: { maxHeight: 260 } } }}
-                        >
-                          {MONTHS.map((m, i) => (
-                            <MenuItem key={m} value={i} sx={{ fontSize: 12.5 }}>{m}</MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      <FormControl size="small" sx={headerSx}>
-                        <Select
-                          value={date.getFullYear()}
-                          onChange={(e) => changeYear(Number(e.target.value))}
-                          MenuProps={{ PaperProps: { sx: { maxHeight: 260 } } }}
-                        >
-                          {YEARS.map((y) => (
-                            <MenuItem key={y} value={y} sx={{ fontSize: 12.5 }}>{y}</MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      <button
-                        type="button"
-                        className="tr-cal__nav"
-                        onClick={increaseMonth}
-                        disabled={nextMonthButtonDisabled}
-                        aria-label="Next month"
-                      >
-                        <FiChevronRight size={14} />
-                      </button>
-                    </div>
-                  )}
+                <AppCalendar
+                  range
                   startDate={customFrom}
                   endDate={customTo}
                   // Every preset ends today; a window running into the future
                   // would only ever add empty days.
                   maxDate={today}
-                  onChange={(dates) => {
-                    const [start, end] = dates as [Date | null, Date | null];
+                  onChange={([start, end]) => {
                     if (start && end) {
                       const span =
                         Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
