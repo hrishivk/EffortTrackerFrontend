@@ -81,7 +81,7 @@ const getSections = (role?: string): NavSection[] => {
         title: "Main",
         items: [
           { to: "/sp/dashboard", label: "Dashboard", icon: icon(FiGrid) },
-          { to: "/sp/attendance", label: "Attendance", icon: icon(FiCalendar) },
+          // { to: "/sp/attendance", label: "Attendance", icon: icon(FiCalendar) },
         ],
       },
       {
@@ -118,7 +118,7 @@ const getSections = (role?: string): NavSection[] => {
         title: "Main",
         items: [
           { to: "/am/dashboard", label: "Dashboard", icon: icon(FiGrid) },
-          { to: "/am/attendance", label: "Attendance", icon: icon(FiCalendar) },
+          // { to: "/am/attendance", label: "Attendance", icon: icon(FiCalendar) },
         ],
       },
       {
@@ -155,7 +155,7 @@ const getSections = (role?: string): NavSection[] => {
         title: "Main",
         items: [
           { to: "/user/dashboard", label: "Dashboard", icon: icon(FiGrid) },
-          { to: "/user/attendance", label: "Attendance", icon: icon(FiCalendar) },
+          // { to: "/user/attendance", label: "Attendance", icon: icon(FiCalendar) },
           {
             to: "/user/domain-project",
             label: "Departments & Projects",

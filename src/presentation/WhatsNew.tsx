@@ -301,9 +301,6 @@ export default function WhatsNew({ open, onClose, role }: WhatsNewProps) {
 
         <footer className="wn__foot">
           <span>You can open this again from &ldquo;What&rsquo;s new&rdquo; at the top of the page.</span>
-          <button type="button" className="wn__go" onClick={onClose}>
-            Got it
-          </button>
         </footer>
       </div>
     </Dialog>

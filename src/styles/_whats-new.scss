@@ -350,7 +350,7 @@
 .wn__foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 14px;
   padding: 14px 32px 20px;
   border-top: 1px solid var(--border-light);
@@ -363,21 +363,6 @@
     padding: 14px 18px 18px;
     text-align: center;
   }
-}
-
-.wn__go {
-  flex-shrink: 0;
-  padding: 9px 22px;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #7c3aed, #a855f7);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.3);
-
-  &:hover { filter: brightness(1.05); }
 }
 
 // ─── The first-login banner ────────────────────────────────────────
