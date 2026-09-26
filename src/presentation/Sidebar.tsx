@@ -5,7 +5,6 @@ import {
   FiUsers,
   FiX,
   FiLayers,
-  FiCalendar,
   FiChevronDown,
   FiChevronRight,
   FiChevronsLeft,
