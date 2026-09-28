@@ -1638,19 +1638,17 @@ export default function MyTasksView({
    *
    * Deliberately narrower than who may see it: on a room board everybody can
    * read a shared task, and that must not mean everybody can delete it. The
-   * API enforces the same list and answers a `403` with a message; this only
-   * decides whether to offer the control.
+   * API answers a `403` with a message; this only decides whether to offer
+   * the control.
    *
-   * An AM qualifies "over that person's board", which here means the assignee
-   * is one of the users their own list covers — that list is exactly the team
-   * they manage.
+   * Only whoever created the task may delete it. Being assigned it is not
+   * enough — a task a manager set stays theirs to remove, not the assignee's.
    */
   const mayDeleteTask = (row: taskList): boolean => {
     if (!userId) return false;
     const me = String(userId);
     if (role === "SP") return true;
     if (String(row.created_by ?? row.dailyLog?.created_by ?? "") === me) return true;
-    if (assigneeIdOf(row) === me) return true;
 
     // A subtask may also be deleted by whoever raised the task it belongs to.
     if (row.parent_id) {
@@ -1658,11 +1656,6 @@ export default function MyTasksView({
       if (parent && String(parent.created_by ?? parent.dailyLog?.created_by ?? "") === me) {
         return true;
       }
-    }
-
-    if (role === "AM") {
-      const who = assigneeIdOf(row);
-      return !!who && users.some((u) => String(u.id) === who);
     }
     return false;
   };
