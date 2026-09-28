@@ -87,7 +87,7 @@ const CreateUser = () => {
     dateOfBirth: "",
     bloodGroup: "",
     role: "",
-    department: "",
+    departments: [] as string[],
     workSchedule: "",
     joiningDate: "",
     manager_id: "",
@@ -122,19 +122,24 @@ const CreateUser = () => {
     return String(name ?? p.client_department ?? "").trim().toLowerCase();
   };
 
+  const normalize = (name: string) => name.trim().toLowerCase();
+
   /**
-   * Projects follow the department chosen above, and wait for it.
+   * Projects follow the departments chosen above, and wait for them.
    *
    * With no department picked the list is empty rather than complete: the
    * department is the question this form asks first, and offering every project
    * in the company before it is answered invites assigning somebody to work
-   * outside the department they are being put in.
+   * outside the departments they are being put in.
    */
-  const visibleProjects = form.department
-    ? projectList.filter(
-        (p) => departmentOf(p) === form.department.trim().toLowerCase()
-      )
-    : [];
+  const selectedDepartments = new Set(form.departments.map(normalize));
+  const visibleProjects = projectList.filter((p) =>
+    selectedDepartments.has(departmentOf(p))
+  );
+
+  /** The first department picked stands in wherever the API still takes one. */
+  const primaryDepartment = form.departments[0] ?? "";
+  const departmentLabel = form.departments.join(", ");
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -201,7 +206,7 @@ const CreateUser = () => {
       contactNumber: nextForm.contactNumber,
       dateOfBirth: nextForm.dateOfBirth,
       bloodGroup: nextForm.bloodGroup,
-      department: nextForm.department,
+      department: nextForm.departments[0] ?? "",
       workSchedule: nextForm.workSchedule,
       joiningDate: nextForm.joiningDate,
     };
@@ -220,20 +225,33 @@ const CreateUser = () => {
   };
 
   /**
-   * Choosing a department also ticks every project in it.
+   * Adding a department also ticks every project in it.
    *
    * Somebody put in a department normally works across its projects, so the
    * full set is the sensible starting point and unticking is the exception
-   * made — not a list built one checkbox at a time. Changing department
-   * replaces the selection rather than adding to it: the projects belonged to
-   * the answer that just changed.
+   * made — not a list built one checkbox at a time. Removing a department
+   * drops its projects; the departments still selected keep whatever was
+   * ticked or unticked in them.
    */
-  const handleDepartmentChange = (name: string) => {
-    handleChange("department", name);
-    const ids = projectList
-      .filter((p) => departmentOf(p) === name.trim().toLowerCase())
-      .map((p) => String(p.id));
-    setForm((prev) => ({ ...prev, projects: ids }));
+  const handleDepartmentsChange = (names: string[]) => {
+    setForm((prev) => {
+      const before = new Set(prev.departments.map(normalize));
+      const after = new Set(names.map(normalize));
+      const kept = prev.projects.filter((id) => {
+        const p = projectList.find((proj) => String(proj.id) === id);
+        return p ? after.has(departmentOf(p)) : false;
+      });
+      const added = projectList
+        .filter((p) => after.has(departmentOf(p)) && !before.has(departmentOf(p)))
+        .map((p) => String(p.id));
+      const nextForm = {
+        ...prev,
+        departments: names,
+        projects: Array.from(new Set([...kept, ...added])),
+      };
+      validateField("department", nextForm);
+      return nextForm;
+    });
   };
 
   const handleChange = (field: string, value: string | boolean) => {
@@ -296,8 +314,11 @@ const CreateUser = () => {
       contactNumber: form.contactNumber,
       dateOfBirth: form.dateOfBirth,
       bloodGroup: form.bloodGroup,
-      department: form.department,
-      projectCategory: form.department,
+      // `department` / `projectCategory` are single text fields on the API, so
+      // they carry the first pick; the full list goes up as `departments`.
+      department: primaryDepartment,
+      projectCategory: primaryDepartment,
+      departments: form.departments,
       workSchedule: form.workSchedule,
       joiningDate: form.joiningDate,
       manager_id: form.manager_id,
@@ -312,6 +333,9 @@ const CreateUser = () => {
       payload.domain_ids = form.domains;
       payload.projects = "";
     } else {
+      payload.domain_ids = domainList
+        .filter((d) => selectedDepartments.has(normalize(d.name)))
+        .map((d) => String(d.id));
       // Send projects as comma-separated string or empty string
       payload.projects = form.projects.length > 0 ? form.projects.join(",") : "";
     }
@@ -613,15 +637,19 @@ const CreateUser = () => {
           </div>
           <div className="col-md-6">
             <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Department <span style={{ color: "#ef4444" }}>*</span>
+              Departments <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <FormControl fullWidth size="small" error={!!errors.department} sx={sx("department")}>
               <Select
+                multiple
                 displayEmpty
-                value={form.department}
-                onChange={(e) => handleDepartmentChange(String(e.target.value))}
-                renderValue={(val) => val || "Select Department"}
-                sx={{ color: form.department ? "var(--text-primary)" : "var(--text-faint)" }}
+                value={form.departments}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  handleDepartmentsChange(typeof v === "string" ? v.split(",") : v);
+                }}
+                renderValue={(val) => (val.length ? val.join(", ") : "Select Departments")}
+                sx={{ color: form.departments.length ? "var(--text-primary)" : "var(--text-faint)" }}
               >
                 {/*
                   * The departments that exist, not a list written into the
@@ -629,9 +657,9 @@ const CreateUser = () => {
                   * created last week could not be chosen and one that was
                   * never created still could.
                   *
-                  * The name is what goes up, as it always has — the field is
-                  * submitted as `department` and doubles as `projectCategory`,
-                  * both of which the API takes as text.
+                  * Names are what go up: the full list as `departments`, the
+                  * first as `department` / `projectCategory`, which the API
+                  * takes as text.
                   */}
                 {domainList.length === 0 && (
                   <MenuItem disabled value="">
@@ -640,6 +668,12 @@ const CreateUser = () => {
                 )}
                 {domainList.map((domain) => (
                   <MenuItem key={domain.id} value={domain.name}>
+                    <input
+                      type="checkbox"
+                      checked={form.departments.includes(domain.name)}
+                      readOnly
+                      style={{ width: 14, height: 14, marginRight: 8, accentColor: "#7c3aed" }}
+                    />
                     {domain.name}
                   </MenuItem>
                 ))}
@@ -852,10 +886,10 @@ const CreateUser = () => {
               <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
                 {form.projects.length > 0
                   ? `${form.projects.length} of ${visibleProjects.length} selected`
-                  : form.department
+                  : form.departments.length
                     ? `${visibleProjects.length} project${
                         visibleProjects.length === 1 ? "" : "s"
-                      } in ${form.department}`
+                      } in ${departmentLabel}`
                     : "Choose a department to see its projects"}
               </span>
               {form.projects.length > 0 && (
@@ -892,8 +926,8 @@ const CreateUser = () => {
                   className="mb-0 text-center"
                   style={{ fontSize: 12, color: "var(--text-faint)", padding: "16px 0" }}
                 >
-                  {form.department
-                    ? `No active projects in ${form.department} yet.`
+                  {form.departments.length
+                    ? `No active projects in ${departmentLabel} yet.`
                     : "Pick a department above to see its projects."}
                 </p>
               )}

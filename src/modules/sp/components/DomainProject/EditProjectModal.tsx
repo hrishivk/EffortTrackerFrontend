@@ -255,6 +255,7 @@ const EditProjectModal = ({
 }: EditProjectModalProps) => {
   const { showSnackbar } = useSnackbar();
   const role = useSelector((state: any) => state.user.user.role);
+  const myId = useSelector((state: any) => state.user.user?.id);
   const isAM = String(role || "").toUpperCase() === "AM";
 
   /**
@@ -395,6 +396,34 @@ const EditProjectModal = ({
    * the project would otherwise be missing from this list until you happened to
    * scroll far enough to load them.
    */
+  /**
+   * An AM sees only the users they created — not another manager's team that
+   * happens to be on the same project, and not shared users someone else made.
+   *
+   * `manager_id` decides it when the row carries one. Without it, a non-shared
+   * roster row counts: `list-users` already scopes those to the calling AM.
+   * A shared row with no `manager_id` cannot be traced to its creator, so it is
+   * left out.
+   *
+   * This only narrows what is shown. Saving sends a diff against the seeded
+   * membership, so the hidden members stay on the project untouched.
+   */
+  const rosterById = useMemo(
+    () => new Map(roster.map((u) => [String(u.id), u])),
+    [roster]
+  );
+  const isMine = useCallback(
+    (u: formUserData) => {
+      if (!isAM) return true;
+      if (u.manager_id != null && u.manager_id !== "") {
+        return String(u.manager_id) === String(myId);
+      }
+      const row = rosterById.get(String(u.id));
+      return !!row && !row.is_shared;
+    },
+    [isAM, myId, rosterById]
+  );
+
   const visibleUsers = useMemo(() => {
     const members: formUserData[] = Array.isArray(project?.members)
       ? project.members.filter(canAssign)
@@ -404,11 +433,16 @@ const EditProjectModal = ({
       const id = String(u.id);
       if (!byId.has(id)) byId.set(id, u);
     }
-    const all = [...byId.values()];
+    const all = [...byId.values()].filter(isMine);
     const assigned = all.filter((u) => memberIds.includes(String(u.id)));
     const rest = all.filter((u) => !memberIds.includes(String(u.id)));
     return [...assigned, ...rest];
-  }, [project, roster, memberIds, canAssign]);
+  }, [project, roster, memberIds, canAssign, isMine]);
+
+  /** Matches the rows shown, not the hidden members still on the project. */
+  const visibleMemberCount = visibleUsers.filter((u) =>
+    memberIds.includes(String(u.id))
+  ).length;
 
   /**
    * An SP staffs projects with managers; an AM staffs its own team onto them.
@@ -836,7 +870,7 @@ const EditProjectModal = ({
                           <FiUsers size={14} />
                           Team Assigned
                         </h4>
-                        <span className="ep-team-count">{memberIds.length}</span>
+                        <span className="ep-team-count">{visibleMemberCount}</span>
                       </div>
                       <p className="ep-team-sub">
                         Tap a row to add or remove them from this project.

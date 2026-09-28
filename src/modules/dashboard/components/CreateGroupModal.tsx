@@ -21,8 +21,6 @@ export default function CreateGroupModal({
   const [name, setName] = useState("");
   const [accent, setAccent] = useState(GROUP_COLORS[5]);
   const [saving, setSaving] = useState(false);
-
-  // Start clean every time the dialog opens.
   useEffect(() => {
     if (open) {
       setName("");
@@ -196,7 +194,7 @@ export default function CreateGroupModal({
           })}
         </div>
 
-        {/* Preview */}
+
         <p
           style={{
             margin: "18px 0 7px",

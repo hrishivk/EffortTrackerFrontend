@@ -193,13 +193,6 @@ export const BOARD_LANE_MAX_HEIGHT = "58vh";
 
 export const GROUP_LANE_PREFIX = "group:";
 export const groupLaneKey = (groupId: string) => `${GROUP_LANE_PREFIX}${groupId}`;
-
-/**
- * Priorities, their colours, and the compact Select that carries them on a
- * subtask row. Here rather than in a component file because both create forms
- * draw the same rows — the board's Create Task dialog and the list view's
- * create panel.
- */
 export const PRIORITIES = [
   { value: "HIGH", label: "High" },
   { value: "MEDIUM", label: "Medium" },
