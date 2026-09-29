@@ -239,7 +239,9 @@ export const updateProjectStatus=async(projectId:string,status:string)=>{
 }
 export const fetchProjectStats=async()=>{
   try {
-    const response=await spserviceMethood.getProjectStats("/project-stats")
+    // At /role-user, open to every role, so a USER or DEVLOPER gets their
+    // numbers too; the server scopes them to the caller's projects.
+    const response=await userServiceMethood.listProjects("/project-stats")
     return response.data
   } catch (error) {
     throw error

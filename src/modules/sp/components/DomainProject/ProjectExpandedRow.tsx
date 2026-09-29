@@ -28,15 +28,12 @@ const ROSTER_PAGE = 10;
 const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: () => void }) => {
   const { showSnackbar } = useSnackbar();
   const loggedInRole = useSelector((state: any) => state.user.user.role);
-  const myId = useSelector((state: any) => state.user.user?.id);
   const isSP = loggedInRole?.toUpperCase() === "SP";
   const isAM = loggedInRole?.toUpperCase() === "AM";
   /** Staffing a project belongs to whoever runs it, not to everyone on it. */
   const canManage = ["SP", "AM"].includes(String(loggedInRole ?? "").toUpperCase());
   /** Who is on the project, answered by the project itself. */
   const [assignedMembers, setAssignedMembers] = useState<formUserData[]>([]);
-  /** Members this AM created, when the member rows cannot say so themselves. */
-  const [ownIds, setOwnIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [removeTarget, setRemoveTarget] = useState<formUserData | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -65,21 +62,8 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
   const loadMembers = useCallback(async () => {
     setLoading(true);
     try {
-      const [project, mine] = await Promise.all([
-        fetchProject(row.id),
-        // For an AM, `list-users` is scoped to the users they created (plus
-        // shared ones), so its non-shared rows on this project are theirs.
-        // Only a fallback for member rows that carry no `manager_id`.
-        isAM
-          ? fetchUsers({ project_id: String(row.id), limit: 100 }).catch(() => null)
-          : Promise.resolve(null),
-      ]);
+      const project = await fetchProject(row.id);
       setAssignedMembers((project?.members ?? []) as unknown as formUserData[]);
-      setOwnIds(
-        new Set(
-          (mine?.users ?? []).filter((u) => !u.is_shared).map((u) => String(u.id))
-        )
-      );
     } catch {
       showSnackbar({ message: "Failed to load the team", severity: "error" });
       setAssignedMembers([]);
@@ -88,20 +72,17 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
     }
     // showSnackbar is stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [row.id, isAM]);
+  }, [row.id]);
 
   /**
-   * An AM sees the whole team but removes only the users they created — not
-   * another manager's people, not shared users someone else made, and not
-   * other AMs. `manager_id` decides it when the row carries one.
+   * An SP removes anyone. An AM removes any USER or DEVLOPER on the team,
+   * whoever created them — but not other AMs.
    */
   const canRemove = (member: formUserData) => {
     if (isSP) return true;
     if (!isAM) return false;
-    if (member.manager_id != null && member.manager_id !== "") {
-      return String(member.manager_id) === String(myId);
-    }
-    return ownIds.has(String(member.id));
+    const r = String(member.role ?? "").toUpperCase();
+    return r === "USER" || r === "DEVLOPER";
   };
 
   useEffect(() => {

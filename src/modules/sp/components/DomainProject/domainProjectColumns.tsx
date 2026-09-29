@@ -239,8 +239,7 @@ const normalizeStatus = (s: string) =>
 
 /**
  * `canManage` false drops the Actions column altogether rather than leaving a
- * row of buttons that answer with a 403. The chevron still opens the row, so a
- * reader can see a project's team without being offered the means to change it.
+ * row of buttons that answer with a 403, and makes the status badge read-only.
  */
 export const getProjectColumns = (
   onManageMembers?: (rowId: number) => void,
@@ -305,6 +304,7 @@ export const getProjectColumns = (
       return (
         <span
           onClick={(e) => {
+            if (!canManage) return;
             e.stopPropagation();
             onStatusChange?.(row.id, row.status);
           }}
@@ -317,7 +317,7 @@ export const getProjectColumns = (
             borderRadius: 6,
             textTransform: "uppercase",
             letterSpacing: "0.03em",
-            cursor: "pointer",
+            cursor: canManage ? "pointer" : "default",
             border: `1px solid ${style.text}20`,
           }}
         >

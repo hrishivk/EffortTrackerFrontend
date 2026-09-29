@@ -79,8 +79,8 @@ const DomainProject = () => {
   const [stats, setStats] = useState<{
     projects: { total: number; active: number; on_hold: number; paused: number; completed: number };
     activeResources: number;
-    totalTasks: number;
-    completedTasks: number;
+    /** Percent of tasks completed across the projects in scope. */
+    totalCompletion: number;
   } | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -385,8 +385,8 @@ const DomainProject = () => {
           <div style={{ minWidth: 200, flex: "1 0 auto" }}>
             <StatCard
               title="Total Completion"
-              value={stats && stats.totalTasks > 0 ? `${Math.round((stats.completedTasks / stats.totalTasks) * 100)}%` : "0%"}
-              progress={stats && stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}
+              value={`${stats?.totalCompletion ?? 0}%`}
+              progress={stats?.totalCompletion ?? 0}
               accentColor="#10b981"
               icon={<Target size={18} strokeWidth={2.1} />}
             />
@@ -568,12 +568,17 @@ const DomainProject = () => {
                 fetchData(page);
               },
             }}
-            expandable={{
-              renderExpandedRow: (row) => <ProjectExpandedRow row={row} onRefresh={() => fetchData(currentPage)} />,
-              accordion: true,
-              expandedIndex,
-              onExpandChange: setExpandedIndex,
-            }}
+            // The team drop-down is for staffing, so only managers get it.
+            expandable={
+              canManage
+                ? {
+                    renderExpandedRow: (row) => <ProjectExpandedRow row={row} onRefresh={() => fetchData(currentPage)} />,
+                    accordion: true,
+                    expandedIndex,
+                    onExpandChange: setExpandedIndex,
+                  }
+                : undefined
+            }
           />
         );
       })()
