@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiGlobe, FiLock, FiUsers } from "react-icons/fi";
 
+import SpinLoader from "../../../presentation/SpinLoader";
 import TableList from "../../../shared/components/Table/Table";
 import type { Column } from "../../../shared/components/Table/types";
 import { fetchWorkspacePage } from "../../../core/actions/workspaceAction";
@@ -299,6 +300,8 @@ export default function WorkspaceList() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
     >
+      <SpinLoader isLoading={loading} />
+
       <div className="um-header">
         <div className="um-title">
           <h2>Workspaces</h2>
@@ -331,11 +334,8 @@ export default function WorkspaceList() {
         // The rows handed over are already one page, cut by the server, so the
         // table renders them as given and only drives the pager.
         pagination={{ currentPage: page, totalPages, onPageChange: setPage }}
-        emptyMessage={
-          loading
-            ? "Loading workspaces..."
-            : "No workspaces yet"
-        }
+        // Blank while loading; the loader says it, not the empty row.
+        emptyMessage={loading ? "" : "No workspaces yet"}
       />
     </motion.div>
   );

@@ -32,7 +32,12 @@ import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 
 import { useAppSelector } from "../../../store/configureStore";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
-import { createWorkspace } from "../../../core/actions/workspaceAction";
+import {
+  assignWorkspaceManagers,
+  createWorkspace,
+  fetchNotifyTargets,
+  fetchWorkspaces,
+} from "../../../core/actions/workspaceAction";
 import { fetchAllExistProjects } from "../../../core/actions/spAction";
 import {
   fetchAssignablePeople,
@@ -207,7 +212,18 @@ export default function WorkspaceFlow() {
   const [projects, setProjects] = useState<PickProject[]>([]);
   const [people, setPeople] = useState<AssignablePerson[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  /** Projects left out because a workspace already covers them. */
+  const [usedProjectCount, setUsedProjectCount] = useState(0);
   const [loadingPeople, setLoadingPeople] = useState(true);
+
+  /**
+   * Other AMs to run the workspace with the creator. Optional, and an AM's
+   * choice only — SP does not hand workspaces out.
+   */
+  const canPickManagers = user?.role === "AM";
+  const [amOptions, setAmOptions] = useState<{ id: string; name: string; email?: string }[]>([]);
+  const [loadingAms, setLoadingAms] = useState(false);
+  const [managerIds, setManagerIds] = useState<string[]>([]);
 
   const [wsName, setWsName] = useState("");
   const [wsNote, setWsNote] = useState("");
@@ -335,9 +351,22 @@ export default function WorkspaceFlow() {
   const loadProjects = useCallback(async () => {
     setLoadingProjects(true);
     try {
-      const res = await fetchAllExistProjects();
+      // A project gets one workspace, so the ones already covered are left
+      // out. The workspace read failing only costs the filter, not the page.
+      const [res, existing] = await Promise.all([
+        fetchAllExistProjects(),
+        fetchWorkspaces().catch(() => []),
+      ]);
+      const used = new Set(
+        (existing ?? [])
+          .map((ws) => ws.project_id ?? ws.project?.id)
+          .filter(Boolean)
+          .map(String)
+      );
       const rows = (res?.data ?? []) as { id: string; name: string }[];
-      setProjects(rows.map((r) => ({ id: String(r.id), name: r.name })));
+      const free = rows.filter((r) => !used.has(String(r.id)));
+      setUsedProjectCount(rows.length - free.length);
+      setProjects(free.map((r) => ({ id: String(r.id), name: r.name })));
     } catch (error) {
       showSnackbar({
         message: apiMessage(error, "Could not load projects"),
@@ -380,6 +409,30 @@ export default function WorkspaceFlow() {
     void loadProjects();
   }, [loadProjects]);
 
+  // The same list the announce picker narrows to AMs; it already leaves the
+  // caller out.
+  useEffect(() => {
+    if (!canPickManagers) return;
+    setLoadingAms(true);
+    fetchNotifyTargets()
+      .then((rows) =>
+        setAmOptions(
+          rows
+            .filter((t) => !!t.id && (t.role || "").toUpperCase() === "AM")
+            .filter((t) => String(t.id) !== String(user?.id))
+            .map((t) => ({ id: String(t.id), name: t.fullName, email: t.email }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        )
+      )
+      .catch(() => setAmOptions([]))
+      .finally(() => setLoadingAms(false));
+  }, [canPickManagers, user?.id]);
+
+  const toggleManager = (id: string) =>
+    setManagerIds((list) =>
+      list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
+    );
+
   useEffect(() => {
     if (!projectId) {
       setPeople([]);
@@ -397,7 +450,7 @@ export default function WorkspaceFlow() {
     if (!projectId) return;
     setSaving(true);
     try {
-      await createWorkspace({
+      const created = await createWorkspace({
         name: wsName.trim(),
         // Blank optional fields are omitted rather than sent as "".
         ...(wsCode.trim() ? { code: wsCode.trim() } : {}),
@@ -411,6 +464,25 @@ export default function WorkspaceFlow() {
           member_ids: r.memberIds,
         })),
       });
+
+      /*
+       * Managers are a second call: the create does not take them. The
+       * workspace exists by now, so a failure here must not read as the whole
+       * thing failing — say so, and let them assign from the workspace page.
+       */
+      if (managerIds.length && created?.id) {
+        try {
+          await assignWorkspaceManagers(created.id, managerIds);
+        } catch (error) {
+          showSnackbar({
+            message: apiMessage(
+              error,
+              "Workspace created, but the account managers could not be assigned. Assign them from the workspace page."
+            ),
+            severity: "warning",
+          });
+        }
+      }
       setDone(true);
     } catch (error) {
       // The server's message names the offending room or user ids, so it is
@@ -438,6 +510,9 @@ export default function WorkspaceFlow() {
     setRoomFor(null);
     setRoomName("");
     setPoolOpen(false);
+    setManagerIds([]);
+    // The project just used is taken now, so the picker is read again.
+    void loadProjects();
   };
 
   // ─── Done ──────────────────────────────────────────────────────
@@ -622,6 +697,53 @@ export default function WorkspaceFlow() {
                   onChange={(e) => setWsNote(e.target.value)}
                   placeholder="What does this workspace cover?"
                 />
+
+                {canPickManagers && (
+                  <>
+                    <p className="cws__label" style={{ marginTop: 16 }}>
+                      Assign account managers (optional){" "}
+                      <span className="wsd__modal-count">
+                        {managerIds.length ? `· ${managerIds.length} selected` : ""}
+                      </span>
+                    </p>
+                    <div className="wsd__pick">
+                      {loadingAms && (
+                        <p className="cws__empty">Loading account managers…</p>
+                      )}
+                      {!loadingAms && amOptions.length === 0 && (
+                        <p className="cws__empty">No other account managers.</p>
+                      )}
+                      {amOptions.map((m) => {
+                        const on = managerIds.includes(m.id);
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            className={`wsd__pick-row${on ? " wsd__pick-row--on" : ""}`}
+                            onClick={() => toggleManager(m.id)}
+                          >
+                            <span className="cws__avatar cws__avatar--sm">
+                              {initials(m.name)}
+                            </span>
+                            <span style={{ minWidth: 0, flex: 1 }}>
+                              <span className="wsd__pick-name">{m.name}</span>
+                              <span className="wsd__pick-role">
+                                {m.email ?? "Account Manager"}
+                              </span>
+                            </span>
+                            <span className="wsd__pick-tick">
+                              {on && <CheckIcon sx={{ fontSize: 14 }} />}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="cws__note">
+                      They can open and manage this workspace with you. You can
+                      change this later from the workspace page.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Fills the right of the step, and shows the form taking shape. */}
@@ -730,10 +852,13 @@ export default function WorkspaceFlow() {
                   <FolderOutlinedIcon sx={{ fontSize: 24 }} />
                 </span>
 
-                <h3 className="cws__setup-title">No projects yet</h3>
+                <h3 className="cws__setup-title">
+                  {usedProjectCount ? "No projects left" : "No projects yet"}
+                </h3>
                 <p className="cws__setup-caption">
-                  A workspace covers one project, and its rooms are staffed from
-                  that project's team. Create one first:
+                  {usedProjectCount
+                    ? `Every project you can see already has a workspace (${usedProjectCount}). A workspace covers one project, so create a new project first:`
+                    : "A workspace covers one project, and its rooms are staffed from that project's team. Create one first:"}
                 </p>
 
                 <ol className="cws__setup-steps">
@@ -1348,6 +1473,18 @@ export default function WorkspaceFlow() {
                     <span className="cws__rv-row-label">Created by</span>
                     <span className="cws__rv-row-value">{creator || "—"}</span>
                   </div>
+                  {canPickManagers && (
+                    <div className="cws__rv-row">
+                      <PeopleAltOutlinedIcon sx={{ fontSize: 15 }} />
+                      <span className="cws__rv-row-label">Account managers</span>
+                      <span className="cws__rv-row-value">
+                        {amOptions
+                          .filter((m) => managerIds.includes(m.id))
+                          .map((m) => m.name)
+                          .join(", ") || "—"}
+                      </span>
+                    </div>
+                  )}
                   <div className="cws__rv-row">
                     {isPrivate ? (
                       <LockOutlinedIcon sx={{ fontSize: 15 }} />

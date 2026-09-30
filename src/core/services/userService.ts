@@ -221,6 +221,20 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
     });
   },
 
+  // Account managers assigned to a workspace alongside its creator
+  assignWorkspaceManagers: (url: string, data: { id: string; user_ids: string[] }) => {
+    return apiservice.post(url, data, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+  /** DELETE with a body — the route reads `{ id, user_id }`, not the query. */
+  removeWorkspaceManager: (url: string, data: { id: string; user_id: string }) => {
+    return apiservice.delete(url, {
+      data,
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+
   // Workspaces, rooms and room members
   listWorkspaces: (url: string, pagination?: { page?: number; limit?: number }) => {
     return apiservice.get(url, {

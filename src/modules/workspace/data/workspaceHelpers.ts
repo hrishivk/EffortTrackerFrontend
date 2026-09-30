@@ -13,13 +13,14 @@ export const initials = (name: string) =>
     .slice(0, 2);
 
 
+/** A workspace as far as "who runs it" goes. */
+type ManagedWorkspace = { created_by?: string; can_manage?: boolean };
+
 export const workspaceGate = (
-  ws: { name: string; status?: string; created_by?: string; locked?: boolean },
+  ws: { name: string; status?: string; locked?: boolean } & ManagedWorkspace,
   user?: { id?: string | number | null; role?: string }
 ): { open: true } | { open: false; reason: string } => {
-  const privileged =
-    user?.role === "SP" ||
-    (!!ws.created_by && String(ws.created_by) === String(user?.id));
+  const privileged = canManageWorkspace(ws, user);
 
 
   if (ws.locked || !ws.status) return { open: true };
@@ -45,17 +46,17 @@ export const workspaceGate = (
 
 
 export const visibleWorkspaces = <
-  T extends { status?: string; locked?: boolean; created_by?: string }
+  T extends { status?: string; locked?: boolean } & ManagedWorkspace
 >(
   list: T[],
   user?: { id?: string | number | null; role?: string } | null
 ): T[] => {
   if (user?.role === "SP") return list;
 
+  // An AM lists the workspaces they run: their own, and the ones another AM
+  // assigned them to.
   if (user?.role === "AM") {
-    return list.filter(
-      (ws) => !!ws.created_by && String(ws.created_by) === String(user?.id)
-    );
+    return list.filter((ws) => canManageWorkspace(ws, user));
   }
 
   // Finished workspaces stay listed: they are still open, so hiding them would
@@ -68,11 +69,16 @@ export const visibleWorkspaces = <
 
 
 
+/**
+ * SP, the creator, or an AM assigned to the workspace. The last is only known
+ * from the server's `can_manage`, so that is trusted when it is present.
+ */
 export const canManageWorkspace = (
-  ws?: { created_by?: string } | null,
+  ws?: ManagedWorkspace | null,
   user?: { id?: string | number | null; role?: string } | null
 ): boolean =>
   user?.role === "SP" ||
+  ws?.can_manage === true ||
   (!!ws?.created_by && String(ws.created_by) === String(user?.id));
 
 /**
@@ -91,7 +97,7 @@ export const canManageWorkspace = (
  * ring offers the link.
  */
 export const canOpenMemberTasks = (
-  ws: { created_by?: string } | null | undefined,
+  ws: ManagedWorkspace | null | undefined,
   user: { id?: string | number | null; role?: string } | null | undefined,
   memberId: string
 ): boolean =>

@@ -124,6 +124,60 @@ export const removeRoomMember = async (roomId: string, userId: string) => {
 };
 
 
+
+export type WorkspaceManager = {
+  id: string;
+  fullName: string;
+  email?: string;
+  assigned_by?: string | null;
+  created_at?: string;
+};
+
+export const fetchWorkspaceManagers = async (
+  workspaceId: string
+): Promise<WorkspaceManager[]> => {
+  const response = await userServiceMethood.getJson("/workspaces/managers", {
+    id: workspaceId,
+  });
+  return (response.data?.data ?? []) as WorkspaceManager[];
+};
+
+/** AMs who could be assigned: active, not the creator, not already on it. */
+export const fetchWorkspaceManagerCandidates = async (
+  workspaceId: string
+): Promise<WorkspaceManager[]> => {
+  const response = await userServiceMethood.getJson(
+    "/workspaces/manager-candidates",
+    { id: workspaceId }
+  );
+  return (response.data?.data ?? []) as WorkspaceManager[];
+};
+
+/** Answers with the updated managers list. */
+export const assignWorkspaceManagers = async (
+  workspaceId: string,
+  userIds: string[]
+): Promise<WorkspaceManager[]> => {
+  const response = await userServiceMethood.assignWorkspaceManagers(
+    "/workspaces/managers",
+    { id: workspaceId, user_ids: userIds }
+  );
+  return (response.data?.data ?? []) as WorkspaceManager[];
+};
+
+/** Answers with the updated managers list. */
+export const removeWorkspaceManager = async (
+  workspaceId: string,
+  userId: string
+): Promise<WorkspaceManager[]> => {
+  const response = await userServiceMethood.removeWorkspaceManager(
+    "/workspaces/managers",
+    { id: workspaceId, user_id: userId }
+  );
+  return (response.data?.data ?? []) as WorkspaceManager[];
+};
+
+
 export type NotifyTarget = {
   id: string;
   fullName: string;

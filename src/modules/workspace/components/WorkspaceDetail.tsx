@@ -20,18 +20,23 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
+import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
 
 import {
   addRoomMember,
+  assignWorkspaceManagers,
   createRoom,
   deleteRoom,
   deleteWorkspace,
   fetchWorkspace,
+  fetchWorkspaceManagerCandidates,
   fetchNotifyTargets,
   joinWorkspace,
   notifyWorkspaceCompleted,
+  removeWorkspaceManager,
   updateRoom,
   updateWorkspace,
+  type WorkspaceManager,
 } from "../../../core/actions/workspaceAction";
 import {
   fetchAssignablePeople,
@@ -210,6 +215,16 @@ export default function WorkspaceDetail() {
    * AM's workspace. The server has to enforce it too; see docs/workspace-api.md.
    */
   const canManage = canManageWorkspace(workspace, user);
+  /**
+   * Assigning managers and deleting the workspace stay with SP and the
+   * creator; an assigned AM runs it but cannot hand it on or remove it. The
+   * fallback covers a payload from before `can_assign_managers` existed.
+   */
+  const canAssignManagers =
+    workspace?.can_assign_managers ??
+    (user?.role === "SP" ||
+      (!!workspace?.created_by &&
+        String(workspace.created_by) === String(user?.id)));
 
   const openAdd = () => {
     setNewName("");
@@ -345,6 +360,98 @@ export default function WorkspaceDetail() {
       });
     } finally {
       setSending(false);
+    }
+  };
+
+  // ─── Other account managers who run this workspace ──────────────
+
+  const [coOpen, setCoOpen] = useState(false);
+  const [coCandidates, setCoCandidates] = useState<WorkspaceManager[]>([]);
+  const [coLoading, setCoLoading] = useState(false);
+  const [coPicked, setCoPicked] = useState<string[]>([]);
+  const [coSaving, setCoSaving] = useState(false);
+  /** The manager being removed, so only that row shows a spinner. */
+  const [coRemoving, setCoRemoving] = useState<string | null>(null);
+
+  const loadCoCandidates = async (workspaceId: string) => {
+    setCoLoading(true);
+    try {
+      setCoCandidates(await fetchWorkspaceManagerCandidates(workspaceId));
+    } catch (error) {
+      showSnackbar({
+        message: apiMessage(error, "Could not load the account managers"),
+        severity: "error",
+      });
+      setCoCandidates([]);
+    } finally {
+      setCoLoading(false);
+    }
+  };
+
+  const openCoManagers = () => {
+    if (!workspace) return;
+    setCoPicked([]);
+    setCoOpen(true);
+    void loadCoCandidates(workspace.id);
+  };
+
+  const assignCoManagers = async () => {
+    if (!workspace || coPicked.length === 0) return;
+    setCoSaving(true);
+    try {
+      // Answers with the updated list, so no re-read of the workspace.
+      const managers = await assignWorkspaceManagers(workspace.id, coPicked);
+      setWorkspace((ws) =>
+        ws
+          ? { ...ws, managers: managers.map(({ id, fullName }) => ({ id, fullName })) }
+          : ws
+      );
+      showSnackbar({
+        message:
+          coPicked.length === 1
+            ? "Account manager assigned"
+            : `${coPicked.length} account managers assigned`,
+        severity: "success",
+      });
+      setCoPicked([]);
+      // The candidates lose whoever was just added.
+      await loadCoCandidates(workspace.id);
+      notifyWorkspacesChanged();
+    } catch (error) {
+      showSnackbar({
+        message: apiMessage(error, "Could not assign those managers"),
+        severity: "error",
+      });
+    } finally {
+      setCoSaving(false);
+    }
+  };
+
+  const removeCoManager = async (manager: { id: string; fullName: string }) => {
+    if (!workspace) return;
+    setCoRemoving(manager.id);
+    try {
+      // The response is the updated list, so the dialog and the header redraw
+      // from it; only the candidates need asking again, to offer them back.
+      const managers = await removeWorkspaceManager(workspace.id, manager.id);
+      setWorkspace((ws) =>
+        ws
+          ? { ...ws, managers: managers.map(({ id, fullName }) => ({ id, fullName })) }
+          : ws
+      );
+      showSnackbar({
+        message: `${manager.fullName} unassigned from ${workspace.name}`,
+        severity: "success",
+      });
+      await loadCoCandidates(workspace.id);
+      notifyWorkspacesChanged();
+    } catch (error) {
+      showSnackbar({
+        message: apiMessage(error, "Could not unassign that manager"),
+        severity: "error",
+      });
+    } finally {
+      setCoRemoving(null);
     }
   };
 
@@ -718,6 +825,13 @@ export default function WorkspaceDetail() {
               year: "numeric",
             })}
           </p>
+
+          {canManage && !!workspace.managers?.length && (
+            <p className="wsd__hero-date">
+              <ManageAccountsOutlinedIcon sx={{ fontSize: 15 }} />
+              Managed with: {workspace.managers.map((m) => m.fullName).join(", ")}
+            </p>
+          )}
         </div>
 
         <div className="wsd__stats">
@@ -823,6 +937,9 @@ export default function WorkspaceDetail() {
               )}
             </div>
 
+            {/* Everything in this menu is SP's or the creator's, so an
+                assigned AM does not get an empty one. */}
+            {canAssignManagers && (
             <div className="wsd__more" ref={menuRef}>
               <button
                 type="button"
@@ -841,6 +958,23 @@ export default function WorkspaceDetail() {
 
               {menuOpen && (
                 <div className="wsd__drop" role="menu">
+                  {/* Handing a workspace to another AM is the creator's call;
+                      SP keeps only Delete here. */}
+                  {user?.role !== "SP" && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="wsd__drop-row"
+                      disabled={busy}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        openCoManagers();
+                      }}
+                    >
+                      <ManageAccountsOutlinedIcon sx={{ fontSize: 18 }} />
+                      Assign
+                    </button>
+                  )}
                   <button
                     type="button"
                     role="menuitem"
@@ -857,11 +991,10 @@ export default function WorkspaceDetail() {
                 </div>
               )}
             </div>
+            )}
           </>
         )}
       </div>
-
-      {/* ─── Finished: let the account managers know ─── */}
       {canManage && workspace.status === "completed" && (
         <div className={`wsd__done${announcedTo ? " wsd__done--sent" : ""}`}>
           <span className="wsd__done-icon">
@@ -885,9 +1018,7 @@ export default function WorkspaceDetail() {
             {announcedTo ? "Announce again" : "Announce it"}
           </button>
         </div>
-      )}
-
-      {/* ─── Description ─── */}
+      )} 
       {workspace.description?.trim() && (
         <div className="wsd__note">
           <InfoOutlinedIcon sx={{ fontSize: 18, color: "#7c3aed", flexShrink: 0 }} />
@@ -925,22 +1056,10 @@ export default function WorkspaceDetail() {
           <p className="cws__empty">
             {canManage
               ? "No rooms yet — use Add Room to create the first one."
-              : /*
-                 * An unlocked non-member gets the shell with `rooms: []`: the
-                 * key buys sight of the workspace, a manager still has to put
-                 * them in a room. Saying "this workspace has no rooms" would
-                 * be wrong — there may be plenty, just none they can see.
-                 */
+              : 
                 "You can see this workspace, but not any rooms yet — a manager needs to add you to one."}
           </p>
         ) : (
-          /*
-           * One chart rather than a chart plus a grid: the branches end in the
-           * room cards themselves, so each card is visibly the workspace's
-           * child. The connectors are borders, not SVG — the bus is the top
-           * edge of each branch, so segments meet with no gap, and the first
-           * and last branches trim their outer half.
-           */
           <div className="wsd__tree">
             <div className="wsd__tree-top">
               <div className="wsd__tree-root">
@@ -956,7 +1075,6 @@ export default function WorkspaceDetail() {
 
             {roomRows.map((row, rowIndex) => (
               <div key={rowIndex}>
-                {/* Carries the spine down from the row above. */}
                 {rowIndex > 0 && <span className="wsd__tree-stem" />}
                 <div className="wsd__tree-row">
                   {row.map((room) => (
@@ -1291,6 +1409,155 @@ export default function WorkspaceDetail() {
                 <CampaignOutlinedIcon sx={{ fontSize: 17 }} />
               )}
               Send notification
+            </button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Other AMs who run this workspace with its creator. Same picker rows
+          as the announce dialog; the current ones are listed above it. */}
+      <Dialog
+        open={coOpen}
+        onClose={() => !coSaving && !coRemoving && setCoOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            className: "wsd__modal-paper",
+            sx: {
+              borderRadius: 4,
+              backgroundColor: "var(--bg-card)",
+              backgroundImage: "none",
+            },
+          },
+        }}
+      >
+        <div className="wsd__modal">
+          <div className="wsd__modal-head">
+            <span className="cws__tile cws__tile--project">
+              <ManageAccountsOutlinedIcon sx={{ fontSize: 20 }} />
+            </span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h3 className="wsd__modal-title">Assign account managers</h3>
+              <p className="wsd__modal-caption">
+                They can open &ldquo;{workspace.name}&rdquo; without the key, see
+                every room and manage it. Only the creator or SP can assign or
+                remove them, or delete the workspace.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="cws__icon-btn"
+              title="Close"
+              disabled={coSaving || !!coRemoving}
+              onClick={() => setCoOpen(false)}
+            >
+              <CloseIcon sx={{ fontSize: 19 }} />
+            </button>
+          </div>
+
+          <p className="cws__label">
+            Assigned{" "}
+            <span className="wsd__modal-count">
+              · {workspace.managers?.length ?? 0}
+            </span>
+          </p>
+          <div className="wsd__pick">
+            {!workspace.managers?.length && (
+              <p className="cws__empty">No other account managers yet.</p>
+            )}
+            {workspace.managers?.map((m) => (
+              <div key={m.id} className="wsd__pick-row">
+                <span className="cws__avatar cws__avatar--sm">
+                  {initials(m.fullName)}
+                </span>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span className="wsd__pick-name">{m.fullName}</span>
+                  <span className="wsd__pick-role">Account Manager</span>
+                </span>
+                {canAssignManagers && (
+                  <button
+                    type="button"
+                    className="cws__ghost"
+                    style={{ color: "#dc2626", padding: "4px 12px", fontSize: 12.5 }}
+                    title={`Unassign ${m.fullName}`}
+                    disabled={coSaving || !!coRemoving}
+                    onClick={() => void removeCoManager(m)}
+                  >
+                    {coRemoving === m.id ? (
+                      <CircularProgress size={13} sx={{ color: "#dc2626" }} />
+                    ) : (
+                      "Unassign"
+                    )}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <p className="cws__label" style={{ marginTop: 16 }}>
+            Add{" "}
+            <span className="wsd__modal-count">
+              {coPicked.length ? `· ${coPicked.length} selected` : "· pick one or more"}
+            </span>
+          </p>
+          <div className="wsd__pick">
+            {coLoading && <p className="cws__empty">Loading account managers…</p>}
+            {!coLoading && coCandidates.length === 0 && (
+              <p className="cws__empty">No other account managers to add.</p>
+            )}
+            {!coLoading &&
+              coCandidates.map((m) => {
+                const on = coPicked.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`wsd__pick-row${on ? " wsd__pick-row--on" : ""}`}
+                    onClick={() =>
+                      setCoPicked((list) =>
+                        on ? list.filter((x) => x !== m.id) : [...list, m.id]
+                      )
+                    }
+                  >
+                    <span className="cws__avatar cws__avatar--sm">
+                      {initials(m.fullName)}
+                    </span>
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span className="wsd__pick-name">{m.fullName}</span>
+                      <span className="wsd__pick-role">
+                        {m.email ?? "Account Manager"}
+                      </span>
+                    </span>
+                    <span className="wsd__pick-tick">
+                      {on && <CheckIcon sx={{ fontSize: 14 }} />}
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
+
+          <div className="wsd__modal-foot">
+            <button
+              type="button"
+              className="cws__ghost"
+              disabled={coSaving || !!coRemoving}
+              onClick={() => setCoOpen(false)}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              className="cws__primary"
+              disabled={coPicked.length === 0 || coSaving || !!coRemoving}
+              onClick={() => void assignCoManagers()}
+            >
+              {coSaving ? (
+                <CircularProgress size={15} sx={{ color: "#fff" }} />
+              ) : (
+                <CheckIcon sx={{ fontSize: 17 }} />
+              )}
+              Assign
             </button>
           </div>
         </div>

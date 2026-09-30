@@ -35,6 +35,7 @@ import { useSnackbar } from "../../../../contexts/SnackbarContext";
 import { exportProjectReport } from "../../../../shared/utils/exportProjectReport";
 import { exportTaskReport } from "../../../../shared/utils/exportTaskReport";
 import Dialoge from "../../../../presentation/Dialog";
+import SpinLoader from "../../../../presentation/SpinLoader";
 
 import StatCard from "./StatCard";
 import ProjectDetailsView from "./ProjectDetailsView";
@@ -97,6 +98,9 @@ const DomainProject = () => {
   /** The departments table pages against the server, as the projects one does. */
   const [domainPage, setDomainPage] = useState(1);
   const [domainTotalPages, setDomainTotalPages] = useState(1);
+  /** The projects and departments reads, each on its own flag. */
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [domainsLoading, setDomainsLoading] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => { setDebouncedSearch(search); setCurrentPage(1); }, 400);
@@ -110,6 +114,7 @@ const DomainProject = () => {
   }, []);
 
   const fetchDomains = useCallback(async (page: number) => {
+    setDomainsLoading(true);
     try {
       const response = await fetchExistDomains(undefined, { page, limit: itemsPerPage });
       const list = response?.data;
@@ -119,6 +124,8 @@ const DomainProject = () => {
       setDomainTotalPages(response?.totalPages ? Number(response.totalPages) : 1);
     } catch (error) {
       console.log(error);
+    } finally {
+      setDomainsLoading(false);
     }
   }, []);
 
@@ -149,6 +156,7 @@ const DomainProject = () => {
 
 
   const fetchData = useCallback(async (page?: number) => {
+    setProjectsLoading(true);
     try {
       const pg = page ?? currentPage;
       const response = await fetchAllExistProjects(debouncedSearch || undefined, { page: pg, limit: itemsPerPage });
@@ -175,6 +183,8 @@ const DomainProject = () => {
       }
     } catch (error) {
       console.log(error);
+    } finally {
+      setProjectsLoading(false);
     }
   }, [debouncedSearch, currentPage]);
 
@@ -246,6 +256,11 @@ const DomainProject = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
     >
+      {/* Only the table on screen counts: a departments read in the
+          background should not block someone reading projects. */}
+      <SpinLoader
+        isLoading={listView === "domains" ? domainsLoading : projectsLoading}
+      />
 
       <div className="relative flex gap-6 mt-2" style={{ borderBottom: "1px solid var(--border-light)" }}>
         {tabs.map((tab) => {

@@ -306,6 +306,17 @@ export type Workspace = {
    * the local `canManageWorkspace` guess (SP, or the creator) predates it.
    */
   can_manage?: boolean;
+  /**
+   * Other AMs assigned to run this workspace with its creator. An assigned
+   * manager arrives with `can_manage` true and every room listed.
+   */
+  managers?: { id: string; fullName: string }[];
+  isCreator?: boolean;
+  /**
+   * Whether this caller may assign or remove managers, and delete the
+   * workspace: SP or the creator. Not `isCreator`, which is false for an SP.
+   */
+  can_assign_managers?: boolean;
   room_count?: number;
   /** Distinct people across all of its rooms, not the sum of the rooms. */
   member_count?: number;
