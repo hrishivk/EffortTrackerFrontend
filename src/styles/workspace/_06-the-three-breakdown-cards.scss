@@ -1,0 +1,360 @@
+// ─── The three breakdown cards ──────────────────────────────────
+.cws__rv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+.cws__rv-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  overflow: hidden;
+}
+
+.cws__rv-card-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 15px 0;
+}
+
+.cws__rv-card-title {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7c3aed;
+}
+
+.cws__rv-card-body {
+  flex: 1;
+  padding: 14px 15px;
+}
+
+.cws__rv-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 15px;
+  border-top: 1px solid var(--border-light);
+  background-color: var(--bg-surface);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+
+  strong {
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+}
+
+// ─── Project & rooms card ───────────────────────────────────────
+.cws__rv-project {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-bottom: 12px;
+}
+
+.cws__rv-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #7c3aed;
+}
+
+.cws__rv-project-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+// Rooms hang off a line drawn down from the project, so the nesting reads.
+.cws__rv-rooms {
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+  border-left: 1.5px dashed var(--border-light);
+}
+
+.cws__rv-room {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  padding: 7px 0 7px 14px;
+
+  // The stub joining the room to the line.
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 10px;
+    height: 1.5px;
+    background-color: var(--border-light);
+  }
+}
+
+.cws__rv-room-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__rv-room-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+// ─── Assigned users card ────────────────────────────────────────
+.cws__rv-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+
+.cws__rv-user-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__rv-user-role {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+// ─── Summary card ───────────────────────────────────────────────
+.cws__rv-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 0;
+  color: var(--text-faint);
+
+  & + & {
+    border-top: 1px solid var(--border-light);
+  }
+}
+
+.cws__rv-row-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cws__rv-row-value {
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+// ─── Sign-off ───────────────────────────────────────────────────
+.cws__signoff {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 17px 19px;
+  border: 1.5px dashed rgba(124, 58, 237, 0.3);
+  border-radius: 14px;
+  background-color: rgba(124, 58, 237, 0.05);
+}
+
+.cws__signoff-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
+
+.cws__signoff-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7c3aed;
+}
+
+.cws__signoff-caption {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cws__signoff-note {
+  margin: 12px 0 0;
+  padding: 12px 15px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+// ─── Footer ─────────────────────────────────────────────────────
+.cws__foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border-light);
+
+  @media (max-width: 700px) {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+}
+
+.cws__progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 auto;
+
+  @media (max-width: 700px) {
+    order: 3;
+    width: 100%;
+    margin: 0;
+  }
+}
+
+.cws__progress-label {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.cws__progress-bar {
+  display: flex;
+  gap: 5px;
+}
+
+.cws__progress-seg {
+  width: 56px;
+  height: 5px;
+  border-radius: 999px;
+  background-color: var(--border-light);
+  transition: background-color 0.25s;
+
+  &--on {
+    background: linear-gradient(90deg, #7c3aed, #a855f7);
+  }
+
+  @media (max-width: 700px) {
+    width: auto;
+    flex: 1;
+  }
+}
+
+.cws__foot-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+
+// ─── Buttons ────────────────────────────────────────────────────
+.cws__primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 44px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+.cws__ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.cws__empty {
+  margin: 0;
+  padding: 18px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}

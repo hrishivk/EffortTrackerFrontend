@@ -26,8 +26,6 @@ export const uservalidationSchema=z.object({
         message: "Contact number cannot have all same digits",
       }),
     dateOfBirth:z.string().min(1,"Date of birth is required"),
-    // Optional: useful to hold, not something to stop an account being created
-    // over.
     bloodGroup:z.string().optional(),
     department:z.string().min(1,"Department is required"),
     workSchedule:z.string().min(1,"Work schedule is required"),
@@ -60,28 +58,16 @@ export const taskValidationSchema = z.object({
   }),
 });
 
-/**
- * Raising a task, from either surface that does it — the board's Create Task
- * dialog and the list view's create panel. One schema so the two cannot drift
- * into disagreeing about what a task needs.
- *
- * `assignees` is checked by the caller, not here: who may be assigned depends
- * on the role raising the task (a developer assigns themselves and is never
- * asked), which is a question about the session rather than the form.
- */
 export const createTaskValidationSchema = z
   .object({
     taskName: z.string().trim().min(1, "Task name is required"),
     project: z.string().min(1, "Please select a project"),
     startDate: z.string().optional(),
-    // Every task is chased by its deadline, so every task has one.
     dueDate: z.string().min(1, "Please set a due date"),
   })
   .refine(
     (form) => !form.startDate || !form.dueDate || form.startDate <= form.dueDate,
     {
-      // `YYYY-MM-DD` compares correctly as a string, which is how both forms
-      // hold these already.
       message: "Start date must be on or before the due date",
       path: ["startDate"],
     }
@@ -137,11 +123,6 @@ export const taskWithDateValidationSchema = z.object({
     }),
 });
 
-/**
- * Editing an existing user. Only what the Edit User modal exposes: no password
- * (that is its own tab) and no create-only profile fields, so an old record
- * missing them can still be saved.
- */
 export const editUserValidationSchema = z.object({
   fullName: z
     .string()
@@ -178,7 +159,6 @@ export const editUserValidationSchema = z.object({
     }),
 });
 
-/** New password for a user, set by their manager. Mirrors the login rules. */
 export const userPasswordValidationSchema = z
   .object({
     password: z

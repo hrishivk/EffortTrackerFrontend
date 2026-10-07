@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { CreateWorkspacePayload, CreateTaskPayload } from "../../modules/user/types";
+import type { CreateWorkspacePayload, CreateTaskPayload, BulkTaskItem } from "../../modules/user/types";
 import { API_URL } from "../../config/apiEndpoints";
 import { handleAuthError, handleResponse } from "./interceptors";
 import { toStatusParam } from "../../shared/utils/taskStatus";
@@ -8,11 +8,6 @@ export type TaskListFilters = {
   assigned_to?: string;
   project?: string;
   status?: string | string[];
-  /**
-   * Tasks whose deadline has been pushed at least this many times. Matches a
-   * parent whose *subtask* slipped too, which is what makes it useful on a
-   * board that draws parents.
-   */
   min_extensions?: number;
 };
 
@@ -37,6 +32,11 @@ export const userServiceMethood = {
       headers: { "Content-Type": "application/json" },
     });
   },
+  bulkCreateTasks: (url: string, tasks: BulkTaskItem[]) => {
+    return apiservice.post(url, { tasks }, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
 listTask: (url: string, date: Date | null, _id: string, _role: string, filters?: TaskListFilters, pagination?: { page?: number; limit?: number }) => {
   const status = toStatusParam(filters?.status);
   return apiservice.get(url, {
@@ -45,8 +45,6 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
       ...(filters?.assigned_to ? { assigned_to: filters.assigned_to } : {}),
       ...(filters?.project ? { project: filters.project } : {}),
       ...(status ? { status } : {}),
-      // `extended=true` is the same question as "at least one"; one param
-      // covers both and keeps the filter tray down to a single field.
       ...(filters?.min_extensions ? { min_extensions: filters.min_extensions } : {}),
       ...(pagination?.page ? { page: pagination.page } : {}),
       ...(pagination?.limit ? { limit: pagination.limit } : {}),
@@ -79,25 +77,18 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
     });
   },
 
-  /** Pushing a deadline out. Its own route because it writes a record too. */
   extendTask: (url: string, data: { task_id: string; due_date: string; reason: string }) => {
     return apiservice.post(url, data, {
       headers: { "Content-Type": "application/json" },
     });
   },
 
-  /** Query param, not a body — DELETE bodies are dropped by some proxies. */
   deleteTask: (url: string) => {
     return apiservice.delete(url, {
       headers: { "Content-Type": "application/json" },
     });
   },
 
-  /**
-   * One child added to a task that already exists. Separate from `createTask`
-   * because the body is different in kind: the server reads the project, the
-   * room and the status off the parent, so only the child's own fields go up.
-   */
   createSubtask: (url: string, data: Record<string, unknown>) => {
     return apiservice.post(url, data, {
       headers: { "Content-Type": "application/json" },
@@ -105,10 +96,6 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
   },
 
 
-  /**
-   * Task comments. There is no GET — a task's thread arrives inside
-   * `/task-list`, so these three only mutate.
-   */
   createTaskComment: (url: string, data: { task_id: string; body: string }) => {
     return apiservice.post(url, data, {
       headers: { "Content-Type": "application/json" },
@@ -122,7 +109,6 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
       headers: { "Content-Type": "application/json" },
     });
   },
-  // Query params, not a body — DELETE bodies are dropped by some proxies.
   deleteTaskComment: (url: string) => {
     return apiservice.delete(url, {
       headers: { "Content-Type": "application/json" },
@@ -137,8 +123,6 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
   },
   createTaskGroup: (
     url: string,
-    // assigned_to names the board the lane belongs to. Omitted -> the caller's
-    // own board, which is what the API assumes.
     data: { name: string; color: string; assigned_to?: string }
   ) => {
     return apiservice.post(url, data, {
@@ -182,7 +166,6 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
     });
   },
 
-  // Leave Management
   applyLeave: (url: string, data: any) => {
     return apiservice.post(url, data, {
       headers: { "Content-Type": "application/json" },
@@ -200,18 +183,12 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
     });
   },
 
-  /** Who this caller may announce a finished workspace to. */
   listNotifyTargets: (url: string) => {
     return apiservice.get(url, {
       headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
     });
   },
 
-  /**
-   * Announce a finished workspace to the managers who were picked. The only
-   * place the frontend *raises* a notification rather than just reading them —
-   * every other one is a side effect of something the API already does.
-   */
   notifyWorkspaceCompleted: (
     url: string,
     data: { workspace_id: string; user_ids: string[] }
@@ -221,13 +198,11 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
     });
   },
 
-  // Account managers assigned to a workspace alongside its creator
   assignWorkspaceManagers: (url: string, data: { id: string; user_ids: string[] }) => {
     return apiservice.post(url, data, {
       headers: { "Content-Type": "application/json" },
     });
   },
-  /** DELETE with a body — the route reads `{ id, user_id }`, not the query. */
   removeWorkspaceManager: (url: string, data: { id: string; user_id: string }) => {
     return apiservice.delete(url, {
       data,
@@ -235,7 +210,6 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
     });
   },
 
-  // Workspaces, rooms and room members
   listWorkspaces: (url: string, pagination?: { page?: number; limit?: number }) => {
     return apiservice.get(url, {
       params: {
@@ -290,7 +264,6 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
       headers: { "Content-Type": "application/json" },
     });
   },
-  /** Plain JSON GET with query params — the reports routes use it. */
   getJson: (url: string, params?: Record<string, unknown>) => {
     return apiservice.get(url, {
       params,

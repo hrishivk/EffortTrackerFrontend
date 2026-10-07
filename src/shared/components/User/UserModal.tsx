@@ -252,8 +252,6 @@ const handleChange = (
             </div>
           </div>
 
-          {/* Editing is guarded by SuperAdmin on the API, so only SP may toggle
-              an existing user; on create an AM may set it. */}
           <div className="mb-3 px-20 text-lg">
             <div className="form-check d-flex align-items-start gap-2">
               <input

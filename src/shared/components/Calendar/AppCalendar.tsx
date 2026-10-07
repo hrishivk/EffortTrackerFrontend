@@ -4,19 +4,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
-/**
- * The app's calendar: react-datepicker, inline, under our own header.
- *
- * The header is ours so the month and year are the same MUI select the rest of
- * the forms use — react-datepicker's own `showMonthDropdown` renders a bare
- * native select that inherits nothing. The arrows stay for stepping one month
- * at a time.
- *
- * Only the calendar itself: where it sits (a dropdown under a field, a popover
- * in a dialog) is the caller's business. Styled by `.app-cal`.
- */
 
-/** The same select the forms use, shrunk to sit in the calendar header. */
 const headerSx = {
   "& .MuiOutlinedInput-root": {
     borderRadius: "7px",
@@ -44,7 +32,6 @@ const MONTHS = Array.from({ length: 12 }, (_, i) =>
 interface CommonProps {
   minDate?: Date;
   maxDate?: Date;
-  /** Days to ring without selecting them — e.g. the date being replaced. */
   markedDates?: Date[];
   className?: string;
 }
@@ -67,10 +54,6 @@ export type AppCalendarProps = SingleProps | RangeProps;
 export default function AppCalendar(props: AppCalendarProps) {
   const { minDate, maxDate, markedDates, className } = props;
 
-  /**
-   * The year menu covers exactly what can be picked: bounded by min/max when
-   * given, otherwise five years either side of this one.
-   */
   const years = useMemo(() => {
     const now = new Date().getFullYear();
     const first = minDate ? minDate.getFullYear() : now - 5;

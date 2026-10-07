@@ -1,95 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { TextField, FormControl, Select, MenuItem } from "@mui/material";
 import { applyLeave, fetchLeaveBalance } from "../../../core/actions/leaveAction";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
 import { leaveRequestValidationSchema } from "../../../utils/validation/Validation";
 import type { LeaveBalance } from "../types";
-
-const ErrorText = ({ message }: { message?: string }) =>
-  message ? (
-    <p style={{ fontSize: 11, color: "#ef4444", fontWeight: 500, margin: "4px 0 0" }}>{message}</p>
-  ) : null;
-
-const selectSx = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "12px",
-    backgroundColor: "var(--bg-surface)",
-    color: "var(--text-primary)",
-    fontSize: 13,
-    fontWeight: 500,
-    "& fieldset": { borderColor: "var(--border-light)" },
-    "&.Mui-focused fieldset": {
-      borderColor: "#7c3aed",
-      boxShadow: "0 0 0 2px rgba(124,58,237,0.1)",
-    },
-  },
-  "& .MuiInputBase-input": { padding: "8px 14px", fontSize: 13, color: "var(--text-primary)" },
-};
-
-const errorSx = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "12px",
-    backgroundColor: "#fef2f2",
-    color: "var(--text-primary)",
-    fontSize: 13,
-    fontWeight: 500,
-    "& fieldset": { borderColor: "#ef4444" },
-    "&:hover fieldset": { borderColor: "#dc2626" },
-    "&.Mui-focused fieldset": {
-      borderColor: "#dc2626",
-      boxShadow: "0 0 0 2px rgba(239,68,68,0.12)",
-    },
-  },
-  "& .MuiInputBase-input": { padding: "8px 14px", fontSize: 13, color: "var(--text-primary)" },
-};
-
-const menuProps = {
-  PaperProps: {
-    sx: { borderRadius: 3, boxShadow: "0px 8px 30px rgba(0,0,0,0.08)" },
-  },
-};
-
-const leaveTypes = [
-  "Casual Leave",
-  "Sick Leave",
-  "Earned Leave",
-  "Leave Without Pay",
-  "Compensatory Off",
-  "On Duty",
-];
-
-const sessions = ["Full Day", "First Half", "Second Half"] as const;
-
-const defaultBalance = [
-  { label: "Casual Leave", days: 8, color: "#14b8a6" },
-  { label: "Sick Leave", days: 5, color: "#f97316" },
-  { label: "Earned Leave", days: 12, color: "#7c3aed" },
-];
+import FormField from "./LeaveRequest/FormField";
+import LeaveBalanceCard from "./LeaveRequest/LeaveBalanceCard";
+import {
+  EMPTY_FORM,
+  balanceColorMap,
+  defaultBalance,
+  errorSx,
+  leaveTypes,
+  menuProps,
+  selectSx,
+  sessions,
+  toValidationPayload,
+  type LeaveForm,
+} from "./LeaveRequest/leaveRequestConstants";
 
 export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) {
-  const [form, setForm] = useState({
-    leaveType: "",
-    session: "Full Day" as string,
-    fromDate: "",
-    toDate: "",
-    contact: "",
-    reason: "",
-  });
+  const [form, setForm] = useState<LeaveForm>(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [balanceItems, setBalanceItems] = useState(defaultBalance);
   const { showSnackbar } = useSnackbar();
 
-  const validateField = (field: string, nextForm: typeof form) => {
-    const payload = {
-      leaveType: nextForm.leaveType,
-      fromDate: nextForm.fromDate,
-      toDate: nextForm.toDate || undefined,
-      contact: nextForm.contact || undefined,
-      reason: nextForm.reason,
-    };
-    const result = leaveRequestValidationSchema.safeParse(payload);
+  const validateField = (field: string, nextForm: LeaveForm) => {
+    const result = leaveRequestValidationSchema.safeParse(toValidationPayload(nextForm));
     setErrors((prev) => {
       const next = { ...prev };
       delete next[field];
@@ -103,11 +41,10 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
     });
   };
 
-  const updateField = (field: keyof typeof form, value: string) => {
+  const updateField = (field: keyof LeaveForm, value: string) => {
     setForm((prev) => {
       const nextForm = { ...prev, [field]: value };
       validateField(field, nextForm);
-      // toDate depends on fromDate — re-check toDate when fromDate changes
       if (field === "fromDate" && nextForm.toDate) validateField("toDate", nextForm);
       return nextForm;
     });
@@ -119,20 +56,15 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
     try {
       const res = await fetchLeaveBalance();
       if (res.data && res.data.length > 0) {
-        const colorMap: Record<string, string> = {
-          casual: "#14b8a6", sick: "#f97316", earned: "#7c3aed",
-          "leave without pay": "#ef4444", "compensatory off": "#a855f7", "on duty": "#3b82f6",
-        };
         setBalanceItems(
           res.data.map((b: LeaveBalance) => ({
             label: b.leave_type,
             days: b.remaining,
-            color: colorMap[b.leave_type.toLowerCase()] || "#7c3aed",
+            color: balanceColorMap[b.leave_type.toLowerCase()] || "#7c3aed",
           }))
         );
       }
     } catch {
-      /* API not ready, use defaults */
     }
   }, []);
 
@@ -141,13 +73,7 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
   }, [loadBalance]);
 
   const handleSubmit = async () => {
-    const result = leaveRequestValidationSchema.safeParse({
-      leaveType: form.leaveType,
-      fromDate: form.fromDate,
-      toDate: form.toDate || undefined,
-      contact: form.contact || undefined,
-      reason: form.reason,
-    });
+    const result = leaveRequestValidationSchema.safeParse(toValidationPayload(form));
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
@@ -171,7 +97,7 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
         contact: form.contact || undefined,
       });
       showSnackbar({ message: "Leave request submitted successfully!", severity: "success" });
-      setForm({ leaveType: "", session: "Full Day", fromDate: "", toDate: "", contact: "", reason: "" });
+      setForm(EMPTY_FORM);
       onSuccess?.();
     } catch {
       showSnackbar({ message: "Failed to submit leave request", severity: "error" });
@@ -182,7 +108,6 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
 
   return (
     <>
-      {/* Title */}
       <div>
         <h2 className="fw-bold mb-1" style={{ fontSize: "1.65rem" }}>
           Apply for Leave
@@ -192,9 +117,7 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
         </p>
       </div>
 
-      {/* Two-column layout */}
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left — Form */}
         <div
           className="flex-1 rounded-2xl p-6"
           style={{
@@ -203,12 +126,8 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
             boxShadow: "var(--shadow-card)",
           }}
         >
-          {/* Leave Type & Session */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
-            <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                Leave Type
-              </label>
+            <FormField label="Leave Type" error={errors.leaveType}>
               <FormControl fullWidth size="small" error={!!errors.leaveType} sx={sx("leaveType")}>
                 <Select
                   value={form.leaveType}
@@ -224,13 +143,9 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
                   ))}
                 </Select>
               </FormControl>
-              <ErrorText message={errors.leaveType} />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                Session
-              </label>
+            <FormField label="Session">
               <div
                 style={{
                   display: "flex",
@@ -260,15 +175,11 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
                   </button>
                 ))}
               </div>
-            </div>
+            </FormField>
           </div>
 
-          {/* From Date & To Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
-            <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                From Date
-              </label>
+            <FormField label="From Date" error={errors.fromDate}>
               <TextField
                 fullWidth
                 size="small"
@@ -279,12 +190,8 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
                 sx={sx("fromDate")}
                 slotProps={{ inputLabel: { shrink: true } }}
               />
-              <ErrorText message={errors.fromDate} />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                To Date
-              </label>
+            </FormField>
+            <FormField label="To Date" error={errors.toDate}>
               <TextField
                 fullWidth
                 size="small"
@@ -296,15 +203,10 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
                 sx={sx("toDate")}
                 slotProps={{ inputLabel: { shrink: true } }}
               />
-              <ErrorText message={errors.toDate} />
-            </div>
+            </FormField>
           </div>
 
-          {/* Contact Number */}
-          <div className="mb-5">
-            <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-              Contact Number during leave
-            </label>
+          <FormField label="Contact Number during leave" error={errors.contact} className="mb-5">
             <TextField
               fullWidth
               size="small"
@@ -318,14 +220,9 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
               error={!!errors.contact}
               sx={sx("contact")}
             />
-            <ErrorText message={errors.contact} />
-          </div>
+          </FormField>
 
-          {/* Reason */}
-          <div className="mb-5">
-            <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-              Reason for Leave
-            </label>
+          <FormField label="Reason for Leave" error={errors.reason} className="mb-5">
             <TextField
               fullWidth
               size="small"
@@ -337,14 +234,12 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
               error={!!errors.reason}
               sx={sx("reason")}
             />
-            <ErrorText message={errors.reason} />
-          </div>
+          </FormField>
 
-          {/* Buttons */}
           <div className="d-flex justify-content-end gap-3">
             <button
               onClick={() => {
-                setForm({ leaveType: "", session: "Full Day", fromDate: "", toDate: "", contact: "", reason: "" });
+                setForm(EMPTY_FORM);
                 setErrors({});
               }}
               style={{
@@ -380,74 +275,9 @@ export default function LeaveRequest({ onSuccess }: { onSuccess?: () => void }) 
           </div>
         </div>
 
-        {/* Right — Leave Balance */}
         <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col gap-5">
-          {/* Balance card — commented out */}
-          {false && (
-          <div
-            className="rounded-2xl p-5"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border-card)",
-              boxShadow: "var(--shadow-card)",
-            }}
-          >
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 16px" }}>
-              Current Leave Balance
-            </h3>
+          {false && <LeaveBalanceCard items={balanceItems} />}
 
-            <div className="flex flex-col gap-4">
-              {balanceItems.map((item, i) => (
-                <div key={i}>
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
-                      {item.label}
-                    </span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: item.color }}>
-                      {item.days} Days
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      height: 6,
-                      borderRadius: 3,
-                      backgroundColor: "var(--bg-hover)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, (item.days / 15) * 100)}%` }}
-                      transition={{ duration: 0.8, delay: 0.2 + i * 0.1, ease: [0.33, 1, 0.68, 1] }}
-                      style={{
-                        height: "100%",
-                        borderRadius: 3,
-                        backgroundColor: item.color,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              className="d-flex align-items-center gap-1 mt-4"
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#7c3aed",
-                cursor: "pointer",
-                padding: 0,
-              }}
-            >
-              View Detailed Balance &rsaquo;
-            </button>
-          </div>
-          )}
-
-          {/* Info box */}
           <div
             className="rounded-2xl p-4"
             style={{

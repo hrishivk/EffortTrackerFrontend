@@ -9,7 +9,6 @@ import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import type { TaskComment } from "../../user/types";
 import { parseServerTime } from "../../../shared/utils/serverTime";
 
-/** The API truncates past this rather than rejecting; say so before it happens. */
 const BODY_MAX = 2000;
 
 const initials = (name: string) =>
@@ -31,30 +30,19 @@ const when = (value: string) => {
   return d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
 };
 
-/**
- * Who wrote it. `user` is resolved live by the API so a rename shows through;
- * it is null for a deleted account, and `user_name` is the snapshot taken when
- * the comment was written — which is the whole reason both fields exist.
- */
 const authorName = (c: TaskComment) =>
   c.user?.fullName || c.user_name || "Former member";
 
 interface TaskCommentsProps {
-  /** The task or subtask the thread belongs to. Both are rows in `tasks`. */
   taskId: string;
   comments?: TaskComment[];
-  /** The API's true total. Larger than `comments.length` means older ones exist. */
   commentCount?: number;
   currentUserId?: string | number | null;
-  /** The task's creator, who may delete anyone's comment on it. */
   taskCreatedBy?: string | number | null;
-  /** Each resolves once the API has saved; the caller reloads afterwards. */
   onAdd: (taskId: string, body: string) => Promise<void>;
   onEdit: (taskId: string, commentId: string, body: string) => Promise<void>;
   onDelete: (taskId: string, commentId: string) => Promise<void>;
-  /** Read-only when the viewer cannot act on this task at all. */
   disabled?: boolean;
-  /** Tighter rows, for the subtask thread nested inside the panel. */
   dense?: boolean;
 }
 
@@ -72,13 +60,10 @@ export default function TaskComments({
 }: TaskCommentsProps) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
-  /** The comment being edited, and the text as it is being retyped. */
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const boxRef = useRef<HTMLDivElement>(null);
 
-  // A new thread is a new conversation — never carry a half-typed comment from
-  // the last task into it.
   useEffect(() => {
     setDraft("");
     setEditingId(null);
@@ -86,8 +71,6 @@ export default function TaskComments({
   }, [taskId]);
 
   const mine = (c: TaskComment) => String(c.user_id) === String(currentUserId);
-  // Explicit null checks: two missing ids must not compare equal and hand
-  // every viewer the task creator's delete rights.
   const ownsTask =
     taskCreatedBy != null &&
     currentUserId != null &&
@@ -100,7 +83,6 @@ export default function TaskComments({
     try {
       await onAdd(taskId, body);
       setDraft("");
-      // The new comment lands at the bottom, so follow it there.
       requestAnimationFrame(() => {
         if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight;
       });
@@ -154,7 +136,6 @@ export default function TaskComments({
           comments.map((c) => {
             const name = authorName(c);
             const editing = editingId === c.id;
-            // The author may edit; the author or the task's creator may delete.
             const canEdit = !disabled && mine(c);
             const canDelete = !disabled && (mine(c) || ownsTask);
 
@@ -249,8 +230,6 @@ export default function TaskComments({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              // Enter sends, Shift+Enter breaks the line — a comment is usually
-              // one line, and reaching for the button every time is friction.
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 void submit();

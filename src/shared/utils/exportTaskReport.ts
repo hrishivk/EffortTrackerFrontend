@@ -46,7 +46,6 @@ interface DayCol {
   month: number;
 }
 
-/** Strip time, return local midnight */
 function toLocalDate(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -58,14 +57,12 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
       return;
     }
 
-    // Resolve start/end for each task, using created_at as fallback
     const resolved = tasks.map((t) => {
       const start = t.start_time || t.created_at || null;
       const end = t.end_time || t.start_time || t.created_at || null;
       return { ...t, _start: start, _end: end };
     });
 
-    // Tasks with dates for Gantt bars
     const withDates = resolved.filter((t) => t._start && t._end);
 
     if (withDates.length === 0) {
@@ -73,7 +70,6 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
       return;
     }
 
-    // Sort by start date
     withDates.sort((a, b) => new Date(a._start!).getTime() - new Date(b._start!).getTime());
 
     let earliest = toLocalDate(new Date(withDates[0]._start!));
@@ -101,14 +97,13 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
       cur.setDate(cur.getDate() + 1);
     }
 
-    const FIXED_COLS = 3; // Task, Assignee, Status
+    const FIXED_COLS = 3;
     const HEADER_ROWS = 3;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Task Gantt Chart");
 
     ws.views = [{ state: "frozen", xSplit: FIXED_COLS, ySplit: HEADER_ROWS }];
 
-    // ── Row 1: Month headers ──
     const row1 = ws.getRow(1);
     row1.height = 24;
     for (let c = 1; c <= FIXED_COLS; c++) {
@@ -139,7 +134,6 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
       row1.getCell(mg.startCol).value = mg.label;
     }
 
-    // ── Row 2: Column headers + Day numbers ──
     const row2 = ws.getRow(2);
     row2.height = 20;
     const headerLabels = ["Task", "Assignee", "Status"];
@@ -160,7 +154,6 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BAR_COLOR } };
     }
 
-    // ── Row 3: Day names ──
     const row3 = ws.getRow(3);
     row3.height = 18;
     for (let c = 1; c <= FIXED_COLS; c++) {
@@ -182,22 +175,19 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
       };
     }
 
-    // ── Column widths ──
-    ws.getColumn(1).width = 30; // Task
-    ws.getColumn(2).width = 18; // Assignee
-    ws.getColumn(3).width = 14; // Status
+    ws.getColumn(1).width = 30;
+    ws.getColumn(2).width = 18;
+    ws.getColumn(3).width = 14;
     for (let i = 0; i < dayCols.length; i++) {
       ws.getColumn(FIXED_COLS + 1 + i).width = 3.5;
     }
 
-    // ── Data rows ──
     let currentRow = HEADER_ROWS + 1;
     const totalCols = FIXED_COLS + dayCols.length;
 
     for (let idx = 0; idx < withDates.length; idx++) {
       const t = withDates[idx];
 
-      // Spacer row
       const spacer = ws.getRow(currentRow);
       spacer.height = 8;
       for (let c = 1; c <= totalCols; c++) {
@@ -205,11 +195,9 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
       }
       currentRow++;
 
-      // Task row
       const row = ws.getRow(currentRow);
       row.height = 28;
 
-      // Task name
       const nameCell = row.getCell(1);
       nameCell.value = `${idx + 1}. ${t.description}`;
       nameCell.font = { size: 10, bold: true, color: { argb: "FF333333" } };
@@ -220,7 +208,6 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
         right: { style: "thin", color: { argb: "FFDDDDDD" } },
       };
 
-      // Assignee
       const assigneeCell = row.getCell(2);
       const assigneeName = t.dailyLog?.assignedUser?.fullName || "Unassigned";
       assigneeCell.value = assigneeName;
@@ -232,7 +219,6 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
         right: { style: "thin", color: { argb: "FFDDDDDD" } },
       };
 
-      // Status
       const statusCell = row.getCell(3);
       const statusKey = (t.status || "").toLowerCase().replace(/[\s_]+/g, "_");
       const statusLabel = statusKey === "in_progress" ? "In Progress"
@@ -250,7 +236,6 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
         right: { style: "thin", color: { argb: "FFDDDDDD" } },
       };
 
-      // Gantt bar — use local dates for consistent comparison
       const tStart = toLocalDate(new Date(t._start!));
       const tEnd = toLocalDate(new Date(t._end!));
 
@@ -273,7 +258,6 @@ export async function exportTaskReport({ tasks, projectName }: ExportTaskData) {
       currentRow++;
     }
 
-    // ── Download ──
     const buffer = await wb.xlsx.writeBuffer();
     const dateStr = new Date().toISOString().split("T")[0];
     const safeName = projectName.replace(/[^a-zA-Z0-9_-]/g, "_");

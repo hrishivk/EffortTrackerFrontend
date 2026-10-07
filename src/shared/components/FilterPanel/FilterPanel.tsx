@@ -15,7 +15,6 @@ export interface FilterOption {
 }
 
 export interface FilterField {
-  /** Key into the values record. */
   key: string;
   label: string;
   placeholder: string;
@@ -28,7 +27,6 @@ export interface FilterCategory {
   key: string;
   label: string;
   icon: React.ReactNode;
-  /** Small caption above the fields, e.g. "Filter by project and role". */
   caption: string;
   fields: FilterField[];
 }
@@ -43,7 +41,6 @@ const emptyValues = (categories: FilterCategory[]): FilterValues =>
     categories.flatMap((c) => c.fields.map((f) => [f.key, ""])),
   );
 
-/** The "Filters (n)" button that opens the panel. */
 export const FilterTrigger: React.FC<{
   count: number;
   onClick: () => void;
@@ -61,7 +58,6 @@ export const FilterTrigger: React.FC<{
   </button>
 );
 
-/** Single-select control: trigger box, expanding option list, removable chip. */
 const FilterSelect: React.FC<{
   field: FilterField;
   value: string;
@@ -149,7 +145,6 @@ interface FilterPanelProps {
   onClose: () => void;
   title: string;
   categories: FilterCategory[];
-  /** Values currently applied to the list. */
   values: FilterValues;
   onApply: (values: FilterValues) => void;
 }
@@ -163,7 +158,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   onApply,
 }) => {
   const [activeKey, setActiveKey] = useState(categories[0]?.key ?? "");
-  // Edits stay local until "Apply Filters" so Cancel is a true discard.
   const [draft, setDraft] = useState<FilterValues>(values);
 
   useEffect(() => {
@@ -171,8 +165,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       setDraft(values);
       setActiveKey(categories[0]?.key ?? "");
     }
-    // `categories` is rebuilt each render by callers, so it is intentionally
-    // not a dependency — only reopening should reset the panel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, values]);
 

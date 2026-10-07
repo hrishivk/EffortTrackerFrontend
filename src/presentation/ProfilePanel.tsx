@@ -222,7 +222,6 @@ export default function ProfileView({ onLogout }: ProfileViewProps) {
             )}
           </motion.div>
 
-          {/* Reporting Line */}
           {userData.reportingManager && (
             <motion.div className="pf-section-card pf-card-hover" variants={fadeUp}>
               <div className="pf-section-header">

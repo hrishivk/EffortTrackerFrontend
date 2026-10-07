@@ -3,15 +3,6 @@ import { FiCheck, FiMoon, FiSun } from "react-icons/fi";
 import { useTheme } from "../../../contexts/ThemeContext";
 import BoardLanes from "./BoardLanes";
 
-/**
- * Settings, for Super Admin and Account Manager.
- *
- * Appearance, then the board's lanes. The theme has always been reachable — a moon icon in
- * the header and a row in the account panel — but neither says what it does
- * until you press it, and neither shows you which of the two you are on. Here
- * both options are on screen at once with the current one marked, which is the
- * difference between a toggle and a setting.
- */
 
 const OPTIONS = [
   {
@@ -56,8 +47,6 @@ export default function Settings() {
                 role="radio"
                 aria-checked={on}
                 className={`set-theme${on ? " set-theme--on" : ""}`}
-                // The context only exposes a toggle, so a press on the option
-                // already in use is a no-op rather than a flip back.
                 onClick={() => {
                   if (!on) toggleTheme();
                 }}

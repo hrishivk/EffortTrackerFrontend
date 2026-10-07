@@ -33,7 +33,6 @@ export default function HolidayList() {
 
   return (
     <>
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="fw-bold mb-1" style={{ fontSize: "1.65rem" }}>
@@ -45,7 +44,6 @@ export default function HolidayList() {
         </div>
       </div>
 
-      {/* Table card */}
       <div
         className="rounded-2xl overflow-hidden"
         style={{
@@ -54,7 +52,6 @@ export default function HolidayList() {
           boxShadow: "var(--shadow-card)",
         }}
       >
-        {/* Table header */}
         <div
           className="grid items-center px-6 py-3"
           style={{
@@ -69,7 +66,6 @@ export default function HolidayList() {
           <span style={thStyle}>Classification</span>
         </div>
 
-        {/* Rows */}
         {holidays.map((row, i) => (
           <motion.div
             key={i}
@@ -101,7 +97,6 @@ export default function HolidayList() {
           </motion.div>
         ))}
 
-        {/* Footer */}
         <div
           className="px-6 py-3"
           style={{ borderTop: "1px solid var(--border-light)", textAlign: "right" }}

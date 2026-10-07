@@ -47,11 +47,6 @@ const StatCard = ({
           </div>
         )}
       </div>
-      {/*
-        * A tinted tile rather than a bare glyph: the measure's own colour, held
-        * in a wash of itself with a hairline of the same hue, so four cards in
-        * a row read as one set of four rather than four loose marks.
-        */}
       <div
         style={{
           width: 38,

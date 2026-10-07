@@ -1,171 +1,24 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import {
-  FiGrid,
-  FiUsers,
-  FiX,
-  FiLayers,
-  FiChevronDown,
-  FiChevronRight,
-  FiChevronsLeft,
-  FiHome,
-  FiLock,
-  FiSettings,
-  FiBarChart2,
-  FiBriefcase,
-} from "react-icons/fi";
+import { useState } from "react";
+import { useLocation } from "react-router-dom";
+import { FiChevronRight } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppSelector } from "../store/configureStore";
-import logo from "../assets/img/logo2.png.png";
-import { fetchWorkspace, fetchWorkspaces } from "../core/actions/workspaceAction";
-import {
-  WORKSPACES_CHANGED,
-  visibleWorkspaces,
-  workspaceGate,
-} from "../modules/workspace/data/workspaceHelpers";
+import { visibleWorkspaces } from "../modules/workspace/data/workspaceHelpers";
 import { useSnackbar } from "../contexts/SnackbarContext";
-import type { Workspace } from "../modules/user/types";
+import { dashboardPathFor } from "../shared/utils/roles";
+import { ROLE_LABELS, getSections } from "./sidebar/sidebarConfig";
+import { useSidebarWorkspaces } from "./sidebar/useSidebarWorkspaces";
+import NavSections from "./sidebar/NavSections";
+import WorkspaceTree from "./sidebar/WorkspaceTree";
+import { SidebarBrand, SidebarUserCard } from "./sidebar/SidebarChrome";
+import type { SidebarProps, ToggleMap } from "./sidebar/types";
 
-interface SidebarProps {
-  open: boolean;
-  onClose: () => void;
-  collapsed: boolean;
-  onToggleCollapse: () => void;
-}
+export type { SidebarProps, NavItem, NavSection } from "./sidebar/types";
 
-interface NavItem {
-  to: string;
-  label: string;
-  icon: React.ReactNode;
-  /** Rendered as a branch under this row, on the same guide line the
-   *  workspace tree uses. Ignored at rail width, where there is no room. */
-  children?: NavItem[];
-}
-
-interface NavSection {
-  title: string;
-  items: NavItem[];
-}
-
-const DASHBOARD_PATHS: Record<string, string> = {
-  SP: "/sp/dashboard",
-  AM: "/am/dashboard",
-  USER: "/user/dashboard",
-  DEVLOPER: "/user/dashboard",
-};
-
-/** The slide the active highlight uses, wherever it lands. */
-const TREE_SPRING = { type: "spring", damping: 30, stiffness: 350 } as const;
-
-const WS_STATUS: Record<string, string> = {
-  planning: "Planning",
-  active: "Active",
-  on_hold: "On Hold",
-  completed: "Completed",
-};
-
-const ROLE_LABELS: Record<string, string> = {
-  SP: "Super Admin",
-  AM: "Account Manager",
-  USER: "Team Member",
-  DEVLOPER: "Developer",
-};
-
-const getSections = (role?: string): NavSection[] => {
-  const icon = (El: React.ElementType) => <El size={15} />;
-
-  if (role === "SP") {
-    return [
-      {
-        title: "Main",
-        items: [
-          { to: "/sp/dashboard", label: "Dashboard", icon: icon(FiGrid) },
-          // { to: "/sp/attendance", label: "Attendance", icon: icon(FiCalendar) },
-        ],
-      },
-      {
-        title: "Manage",
-        items: [
-          { to: "/sp/userMangement", label: "User Management", icon: icon(FiUsers) },
-          { to: "/sp/domain-project", label: "Departments & Projects", icon: icon(FiLayers) },
-          { to: "/sp/workspaces", label: "Workspaces", icon: icon(FiBriefcase) },
-        ],
-      },
-      {
-        title: "Settings",
-        items: [
-          {
-            to: "/sp/settings",
-            label: "Settings",
-            icon: icon(FiSettings),
-            children: [
-              {
-                to: "/sp/settings/task-reports",
-                label: "Task Reports",
-                icon: icon(FiBarChart2),
-              },
-            ],
-          },
-        ],
-      },
-    ];
-  }
-
-  if (role === "AM") {
-    return [
-      {
-        title: "Main",
-        items: [
-          { to: "/am/dashboard", label: "Dashboard", icon: icon(FiGrid) },
-          // { to: "/am/attendance", label: "Attendance", icon: icon(FiCalendar) },
-        ],
-      },
-      {
-        title: "Manage",
-        items: [
-          { to: "/am/TeamManagement", label: "Team Management", icon: icon(FiUsers) },
-          { to: "/am/domain-project", label: "Departments & Projects", icon: icon(FiLayers) },
-          { to: "/am/workspaces", label: "Workspaces", icon: icon(FiBriefcase) },
-        ],
-      },
-      {
-        title: "Settings",
-        items: [
-          {
-            to: "/am/settings",
-            label: "Settings",
-            icon: icon(FiSettings),
-            children: [
-              {
-                to: "/am/settings/task-reports",
-                label: "Task Reports",
-                icon: icon(FiBarChart2),
-              },
-            ],
-          },
-        ],
-      },
-    ];
-  }
-
-  if (role === "USER" || role === "DEVLOPER") {
-    return [
-      {
-        title: "Main",
-        items: [
-          { to: "/user/dashboard", label: "Dashboard", icon: icon(FiGrid) },
-          // { to: "/user/attendance", label: "Attendance", icon: icon(FiCalendar) },
-          {
-            to: "/user/domain-project",
-            label: "Departments & Projects",
-            icon: icon(FiLayers),
-          },
-        ],
-      },
-    ];
-  }
-
-  return [];
+const useToggleMap = () => {
+  const [map, setMap] = useState<ToggleMap>({});
+  const toggle = (key: string) => setMap((c) => ({ ...c, [key]: !c[key] }));
+  return [map, toggle] as const;
 };
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -176,655 +29,82 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user } = useAppSelector((state) => state.user);
   const { showSnackbar } = useSnackbar();
-  // Creating a workspace is a manager's job, so the + is theirs.
-  const canCreate = user?.role === "SP" || user?.role === "AM";
-  /**
-   * The tree is a member's navigation: two or three workspaces, each one
-   * somewhere they work. A manager has every workspace there is, or every one
-   * they raised — a list without a limit, which reads as a table and has a page
-   * of its own under Manage. So they get the row, not the branch.
-   */
-  const treeInSidebar = !canCreate;
   const role = user?.role;
+  const treeInSidebar = !(role === "SP" || role === "AM");
   const { pathname, search } = useLocation();
-  /** Sections the user has folded away, by title. */
-  const [closed, setClosed] = useState<Record<string, boolean>>({});
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  /** One workspace is expanded at a time, by id. */
-  const [openWs, setOpenWs] = useState<string | null>(null);
-  /** Whether that workspace's Rooms branch is unfolded. */
-  const [roomsOpen, setRoomsOpen] = useState(true);
-  /**
-   * Full trees, by workspace id. `GET /workspaces` returns no rooms, so the
-   * room branch needs a second read — cached here so re-expanding is instant.
-   */
-  const [trees, setTrees] = useState<Record<string, Workspace>>({});
-
-  const loadWorkspaces = useCallback(async () => {
-    try {
-      setWorkspaces(await fetchWorkspaces());
-    } catch {
-      // The sidebar is no place for an error; the list just stays empty.
-      setWorkspaces([]);
-    }
-  }, []);
-
-  /**
-   * Re-read on each navigation, so a workspace just created appears without
-   * any extra wiring — leaving the Create Workspace page is itself one.
-   */
-  useEffect(() => {
-    void loadWorkspaces();
-  }, [loadWorkspaces, pathname]);
-
-  /**
-   * Something elsewhere changed the tree. The cached per-workspace trees go
-   * with the list, because a cached locked stub is exactly what would survive
-   * an unlock and keep the branch shut.
-   */
-  useEffect(() => {
-    const onChanged = () => {
-      setTrees({});
-      void loadWorkspaces();
-    };
-    window.addEventListener(WORKSPACES_CHANGED, onChanged);
-    return () => window.removeEventListener(WORKSPACES_CHANGED, onChanged);
-  }, [loadWorkspaces]);
-
-  const [loadingTree, setLoadingTree] = useState(false);
-
-  /**
-   * The workspace whose page is open, so its branch expands on its own.
-   *
-   * Without this, arriving at a workspace left the sidebar collapsed and the
-   * only way to see its rooms was to find the 16px caret — the name is a link,
-   * so clicking the obvious target navigated instead of expanding.
-   *
-   * Every one of these routes names the workspace `ws` — the room page adds
-   * `room` for the room, and room-tasks a `user` on top of that — so there is
-   * one key to read rather than a guess about which one holds a workspace.
-   */
-  const activeWsId = useMemo(() => {
-    const onWorkspacePage = ["/workspace", "/room", "/room-tasks"].some(
-      (suffix) => pathname.endsWith(suffix)
-    );
-    if (!onWorkspacePage) return "";
-    return new URLSearchParams(search).get("ws") || "";
-  }, [pathname, search]);
-
-  useEffect(() => {
-    if (activeWsId) setOpenWs(activeWsId);
-  }, [activeWsId]);
-
-  /** Loads the open workspace's rooms, once, and keeps them cached. */
-  useEffect(() => {
-    if (!openWs || trees[openWs]) return;
-    let live = true;
-    setLoadingTree(true);
-    void fetchWorkspace(openWs)
-      .then((tree) => {
-        if (live) setTrees((t) => ({ ...t, [openWs]: tree }));
-      })
-      .catch(() => {
-        // Leaves the branch empty rather than breaking the sidebar.
-      })
-      .finally(() => {
-        if (live) setLoadingTree(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [openWs, trees]);
+  const [closed, toggleSection] = useToggleMap();
+  const [shutBranches, toggleBranch] = useToggleMap();
+  const workspaceState = useSidebarWorkspaces(pathname, search);
 
   const sections = getSections(role);
-
-  /*
-   * Which nav branches are expanded. Open by default: a branch that hides its
-   * only child until you find the caret is just a link with a decoration.
-   */
-  const [shutBranches, setShutBranches] = useState<Record<string, boolean>>({});
+  const visible = visibleWorkspaces(workspaceState.workspaces, user ?? undefined);
 
   const displayName = user?.fullName
     ? user.fullName.charAt(0).toUpperCase() + user.fullName.slice(1)
     : "User";
-  const initial = displayName.charAt(0).toUpperCase();
   const roleLabel = ROLE_LABELS[role ?? ""] ?? "Member";
-  const profilePath = `${DASHBOARD_PATHS[role ?? ""] ?? "/"}?tab=profile`;
+  const profilePath = `${dashboardPathFor(role)}?tab=profile`;
   const rolePath = `/${(role ?? "").toLowerCase()}`;
   const workspacePath = (id: string) =>
     `${rolePath}/workspace?ws=${encodeURIComponent(id)}`;
   const roomPath = (wsId: string, roomId: string) =>
     `${rolePath}/room?ws=${encodeURIComponent(wsId)}&room=${encodeURIComponent(roomId)}`;
-  const here = `${pathname}${search}`;
+  const notify = (message: string) => showSnackbar({ message, severity: "info" });
 
-  const renderInner = (isCollapsed: boolean, pillId: string) => (
-    <div
-      className="sb flex flex-col h-full"
-      style={{
-        backgroundColor: "var(--bg-card)",
-        borderRadius: "inherit",
-        overflow: "hidden",
-      }}
-    >
-      {/* ─── Brand ─── */}
+  const renderInner = (isCollapsed: boolean, pillId: string) => {
+    const view = { isCollapsed, pillId, onClose };
+    return (
       <div
-        className={`flex items-center h-[56px] shrink-0 ${
-          isCollapsed ? "justify-center px-2" : "gap-2.5 px-4"
-        }`}
+        className="sb flex flex-col h-full"
+        style={{
+          backgroundColor: "var(--bg-card)",
+          borderRadius: "inherit",
+          overflow: "hidden",
+        }}
       >
-        <img
-          src={logo}
-          alt="KREW"
-          className="h-7 w-7 shrink-0 object-contain"
-        />
+        <SidebarBrand {...view} onToggleCollapse={onToggleCollapse} />
 
-        {!isCollapsed && (
-          <>
-            <div className="min-w-0 flex-1">
-              <p
-                className="truncate text-[14.5px] font-bold tracking-[0.02em]"
-                style={{ color: "var(--text-primary)", margin: 0 }}
-              >
-                KREW
-              </p>
-            </div>
+        <nav className={`sb-scroll pb-3 ${isCollapsed ? "px-2.5" : "px-3"}`}>
+          <NavSections
+            {...view}
+            sections={sections}
+            pathname={pathname}
+            closed={closed}
+            onToggleSection={toggleSection}
+            shutBranches={shutBranches}
+            onToggleBranch={toggleBranch}
+          />
 
-            {/* Collapse on desktop, close the drawer on mobile. */}
-            <button
-              onClick={onToggleCollapse}
-              title="Collapse sidebar"
-              className="hidden md:flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-              style={{ color: "var(--text-faint)" }}
-            >
-              <FiChevronsLeft size={15} />
-            </button>
-            <button
-              onClick={onClose}
-              title="Close menu"
-              className="md:hidden flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-              style={{
-                backgroundColor: "var(--bg-hover)",
-                color: "var(--text-faint)",
-              }}
-            >
-              <FiX size={15} />
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* ─── Nav sections ─── */}
-      <nav className={`sb-scroll pb-3 ${isCollapsed ? "px-2.5" : "px-3"}`}>
-        {sections.map((section, sectionIdx) => {
-          const isShut = !isCollapsed && !!closed[section.title];
-          return (
-            <div key={section.title} className="mb-4 last:mb-0">
-              {isCollapsed ? (
-                // A hairline stands in for the caption at rail width.
-                sectionIdx > 0 && (
-                  <div
-                    className="mx-auto mb-3 h-px w-6"
-                    style={{ backgroundColor: "var(--border-light)" }}
-                  />
-                )
-              ) : (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setClosed((c) => ({ ...c, [section.title]: !c[section.title] }))
-                  }
-                  className={`sb-caption${isShut ? " sb-caption--closed" : ""}`}
-                  title={isShut ? `Show ${section.title}` : `Hide ${section.title}`}
-                >
-                  {section.title}
-                  <span className="sb-caption__chevron">
-                    <FiChevronDown size={11} />
-                  </span>
-                </button>
-              )}
-
-              <AnimatePresence initial={false}>
-                {!isShut && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.18, ease: "easeOut" }}
-                    style={{ overflow: "hidden" }}
-                  >
-                    <div className="flex flex-col gap-0.5">
-                      {section.items.map((item) => {
-                        const kids = isCollapsed ? [] : item.children ?? [];
-                        /*
-                         * A branch matches its own path exactly. `startsWith`
-                         * would light the parent up whenever a child is open,
-                         * and then two rows in the same tree read as current.
-                         */
-                        const isActive = kids.length
-                          ? pathname.toLowerCase() === item.to.toLowerCase()
-                          : pathname.toLowerCase().startsWith(item.to.toLowerCase());
-                        const branchOpen = !shutBranches[item.to];
-
-                        const row = (
-                          <Link
-                            key={item.to}
-                            to={item.to}
-                            onClick={onClose}
-                            title={isCollapsed ? item.label : undefined}
-                            className={`sb-item${
-                              isActive
-                                ? isCollapsed
-                                  ? " sb-item--active sb-item--active-rail"
-                                  : " sb-item--active"
-                                : ""
-                            } ${
-                              isCollapsed
-                                ? "justify-center h-[34px] w-[34px] mx-auto"
-                                : "gap-2 h-[34px] px-2.5 text-[12.5px]"
-                            }`}
-                          >
-                            {isActive && (
-                              <motion.span
-                                layoutId={pillId}
-                                className="absolute inset-0"
-                                style={{
-                                  borderRadius: 9,
-                  
-                                  background: isCollapsed
-                                    ? "linear-gradient(135deg, #7c3aed, #a855f7)"
-                                    : "rgba(124, 58, 237, 0.1)",
-                                  boxShadow: isCollapsed
-                                    ? "0 4px 12px rgba(124, 58, 237, 0.3)"
-                                    : "none",
-                                }}
-                                transition={{
-                                  type: "spring",
-                                  damping: 30,
-                                  stiffness: 350,
-                                }}
-                              />
-                            )}
-
-                            <span className="sb-item__icon">{item.icon}</span>
-                            {!isCollapsed && (
-                              <span className="sb-item__label">{item.label}</span>
-                            )}
-                          </Link>
-                        );
-
-                        if (!kids.length) return row;
-
-                        return (
-                          <div key={item.to} className="sb-branch">
-                            <div className="sb-branch__row">
-                              {row}
-                              <button
-                                type="button"
-                                className={`sb-branch__caret${
-                                  branchOpen ? " sb-branch__caret--open" : ""
-                                }`}
-                                title={branchOpen ? "Collapse" : "Expand"}
-                                onClick={() =>
-                                  setShutBranches((c) => ({
-                                    ...c,
-                                    [item.to]: !c[item.to],
-                                  }))
-                                }
-                              >
-                                <FiChevronDown size={11} />
-                              </button>
-                            </div>
-
-                            <AnimatePresence initial={false}>
-                              {branchOpen && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: "auto", opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.18, ease: "easeOut" }}
-                                  style={{ overflow: "hidden" }}
-                                >
-                                  {/* The same guide line the workspace tree hangs off. */}
-                                  <div className="sb-tree__kids">
-                                    {kids.map((kid) => {
-                                      const on =
-                                        pathname.toLowerCase() === kid.to.toLowerCase();
-                                      return (
-                                        <Link
-                                          key={kid.to}
-                                          to={kid.to}
-                                          onClick={onClose}
-                                          className={`sb-tree__leaf${
-                                            on ? " sb-tree__leaf--active" : ""
-                                          }`}
-                                        >
-                                          {on && (
-                                            <motion.span
-                                              layoutId={pillId}
-                                              className="sb-tree__glow"
-                                              transition={TREE_SPRING}
-                                              /*
-                                               * Inline, not in the class.
-                                               *
-                                               * A shared `layoutId` moves the
-                                               * pill between rows by scaling
-                                               * it, and a scaled box has its
-                                               * corners squashed with it.
-                                               * Framer undoes that only for a
-                                               * `borderRadius` it can see as a
-                                               * style value — set in CSS it is
-                                               * invisible to the correction and
-                                               * the highlight lands square.
-                                               * 9px is what the nav rows above
-                                               * use, so the two match.
-                                               */
-                                              style={{ borderRadius: 9 }}
-                                            />
-                                          )}
-                                          {kid.icon}
-                                          {kid.label}
-                                        </Link>
-                                      );
-                                    })}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
-
-        {/*
-         * Workspaces — a tree, and a member's only one. One expands at a time
-         * to show its sections and, under Rooms, the rooms themselves.
-         * Collapsed by default so the sidebar stays navigation first.
-         *
-         * There is no + here any more: raising a workspace is a manager's job,
-         * and a manager's workspaces are on their own page now.
-         */}
-        {!isCollapsed && treeInSidebar && (
-          <div className="sb-heading">Workspaces</div>
-        )}
-
-        {/*
-         * At rail width the tree is simply absent — it needs the full width to
-         * read, and expanding the sidebar is how a member reaches a workspace.
-         */}
-        {!treeInSidebar || isCollapsed ? null : (
-          <div className="sb-tree">
-            {visibleWorkspaces(workspaces, user ?? undefined).map((ws) => {
-              const open = openWs === ws.id;
-              const rooms = trees[ws.id]?.rooms ?? [];
-              // Only an active workspace is open to its members; the branch
-              // still expands so they can see it exists.
-              const gate = workspaceGate(ws, user ?? undefined);
-              /*
-               * A private workspace this session has not unlocked comes back
-               * as a stub with `locked`, so there is nothing to list. The
-               * branch says why rather than showing an empty Rooms list — the
-               * key is entered on the workspace page.
-               */
-              const shut = trees[ws.id]?.locked === true || ws.locked === true;
-              return (
-                <div key={ws.id} className="sb-tree__node">
-                  <div
-                    className={`sb-tree__row${open ? " sb-tree__row--open" : ""}`}
-                    // The row is the target, not just the caret — the caret
-                    // alone was a 16px hit area beside a full-width link.
-                    onClick={() => setOpenWs(open ? null : ws.id)}
-                  >
-                    <button
-                      type="button"
-                      className="sb-tree__caret"
-                      title={open ? "Collapse" : "Expand"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenWs(open ? null : ws.id);
-                      }}
-                    >
-                      {open ? (
-                        <FiChevronDown size={12} />
-                      ) : (
-                        <FiChevronRight size={12} />
-                      )}
-                    </button>
-
-                    <span className="sb-tree__badge">
-                      {(ws.name[0] ?? "W").toUpperCase()}
-                    </span>
-
-                    {gate.open ? (
-                      <Link
-                        to={workspacePath(ws.id)}
-                        onClick={onClose}
-                        className="sb-tree__name"
-                        title={ws.name}
-                      >
-                        {ws.name}
-                      </Link>
-                    ) : (
-                      <button
-                        type="button"
-                        className="sb-tree__name sb-tree__name--shut"
-                        title={gate.reason}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          showSnackbar({ message: gate.reason, severity: "info" });
-                        }}
-                      >
-                        {ws.name}
-                      </button>
-                    )}
-
-                    {/*
-                      * A private workspace is only reachable with its code, so
-                      * the lock is worth showing beside the status — the two
-                      * together say what it takes to get in. Only rendered when
-                      * the field is actually present, since the API does not
-                      * store `visibility` yet.
-                      */}
-                    {ws.visibility === "private" && (
-                      <span
-                        className="sb-tree__lock"
-                        title="Private — members sign in with the workspace code"
-                      >
-                        <FiLock size={10} />
-                      </span>
-                    )}
-
-                    <span className={`sb-tree__pill sb-tree__pill--${ws.status}`}>
-                      {WS_STATUS[ws.status] ?? ws.status}
-                    </span>
-                  </div>
-
-                  <AnimatePresence initial={false}>
-                    {open && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.18, ease: "easeOut" }}
-                        style={{ overflow: "hidden" }}
-                      >
-                        {/* The guide line the branches hang off. */}
-                        <div className="sb-tree__kids">
-                          {shut ? (
-                            <Link
-                              to={workspacePath(ws.id)}
-                              onClick={onClose}
-                              className="sb-tree__leaf sb-tree__leaf--shut"
-                              title="Enter the workspace key to open this workspace"
-                            >
-                              <FiLock size={13} />
-                              Enter workspace key
-                            </Link>
-                          ) : (
-                          <>
-                          <Link
-                            to={workspacePath(ws.id)}
-                            onClick={(e) => {
-                              if (!gate.open) {
-                                e.preventDefault();
-                                showSnackbar({
-                                  message: gate.reason,
-                                  severity: "info",
-                                });
-                                return;
-                              }
-                              onClose();
-                            }}
-                            className={`sb-tree__leaf${
-                              here === workspacePath(ws.id)
-                                ? " sb-tree__leaf--active"
-                                : ""
-                            }`}
-                          >
-                            {/*
-                             * Shares `layoutId` with the nav items' pill, so
-                             * the highlight slides between the two rather than
-                             * disappearing from one and appearing in the other.
-                             * Only one target is ever active, which is what
-                             * makes a single shared id safe.
-                             */}
-                            {here === workspacePath(ws.id) && (
-                              <motion.span
-                                layoutId={pillId}
-                                className="sb-tree__glow"
-                                transition={TREE_SPRING}
-                                style={{ borderRadius: 9 }}
-                              />
-                            )}
-                            <FiHome size={13} />
-                            Overview
-                          </Link>
-
-                          <button
-                            type="button"
-                            className="sb-tree__leaf sb-tree__leaf--branch"
-                            onClick={() => setRoomsOpen((o) => !o)}
-                          >
-                            <FiUsers size={13} />
-                            Rooms
-                            <span
-                              className={`sb-tree__leaf-caret${
-                                roomsOpen ? " sb-tree__leaf-caret--open" : ""
-                              }`}
-                            >
-                              <FiChevronDown size={11} />
-                            </span>
-                          </button>
-
-                          <AnimatePresence initial={false}>
-                            {roomsOpen && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.16, ease: "easeOut" }}
-                                style={{ overflow: "hidden" }}
-                              >
-                                <div className="sb-tree__rooms">
-                                  {rooms.map((room) => {
-                                    const to = roomPath(ws.id, room.id);
-                                    return (
-                                      <Link
-                                        key={room.id}
-                                        to={to}
-                                        onClick={(e) => {
-                                          if (!gate.open) {
-                                            e.preventDefault();
-                                            showSnackbar({
-                                              message: gate.reason,
-                                              severity: "info",
-                                            });
-                                            return;
-                                          }
-                                          onClose();
-                                        }}
-                                        title={
-                                          gate.open ? room.name : gate.reason
-                                        }
-                                        className={`sb-tree__room${
-                                          here === to ? " sb-tree__room--active" : ""
-                                        }`}
-                                      >
-                                        {here === to && (
-                                          <motion.span
-                                            layoutId={pillId}
-                                            className="sb-tree__glow"
-                                            transition={TREE_SPRING}
-                                            style={{ borderRadius: 9 }}
-                                          />
-                                        )}
-                                        <span className="sb-tree__dot" />
-                                        {room.name}
-                                      </Link>
-                                    );
-                                  })}
-                                  {rooms.length === 0 && (
-                                    <p className="sb-tree__none">
-                                      {loadingTree ? "Loading…" : "No rooms"}
-                                    </p>
-                                  )}
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                          </>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              );
-            })}
-
-            {visibleWorkspaces(workspaces, user ?? undefined).length === 0 && (
-              <p className="sb-tree__none">No workspaces yet</p>
-            )}
-          </div>
-        )}
-      </nav>
-
-      {/* ─── Account, pinned to the bottom ─── */}
-      <div className={`shrink-0 pt-2 pb-3 ${isCollapsed ? "px-2.5" : "px-3"}`}>
-        <Link
-          to={profilePath}
-          onClick={onClose}
-          title={`${displayName} — ${roleLabel}`}
-          className={`sb-user${isCollapsed ? " sb-user--rail" : ""}`}
-        >
-          <span className="sb-user__avatar">{initial}</span>
-          {!isCollapsed && (
+          {treeInSidebar && !isCollapsed && (
             <>
-              <span className="min-w-0 flex-1">
-                <p className="sb-user__name">{displayName}</p>
-                <p className="sb-user__role">{roleLabel}</p>
-              </span>
-              <FiChevronRight
-                size={14}
-                className="shrink-0"
-                style={{ color: "var(--text-faint)" }}
+              <div className="sb-heading">Workspaces</div>
+              <WorkspaceTree
+                pillId={pillId}
+                onClose={onClose}
+                visible={visible}
+                user={user ?? undefined}
+                state={workspaceState}
+                here={`${pathname}${search}`}
+                workspacePath={workspacePath}
+                roomPath={roomPath}
+                notify={notify}
               />
             </>
           )}
-        </Link>
-      </div>
+        </nav>
 
-    </div>
-  );
+        <SidebarUserCard
+          {...view}
+          displayName={displayName}
+          roleLabel={roleLabel}
+          profilePath={profilePath}
+        />
+      </div>
+    );
+  };
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside
         className={`sb-panel hidden md:block z-40 ${
           collapsed ? "w-[62px]" : "w-[240px] xl:w-[248px]"
@@ -832,7 +112,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         {renderInner(collapsed, "sidebar-pill-desktop")}
 
-        {/* Floating handle, so a collapsed rail still shows the way back out. */}
         {collapsed && (
           <button
             type="button"
@@ -845,7 +124,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       </aside>
 
-      {/* Mobile drawer */}
       <AnimatePresence>
         {open && (
           <>

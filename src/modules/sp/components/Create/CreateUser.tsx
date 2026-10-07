@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  FormControl,
-  MenuItem,
-  Select,
-  TextField,
-  Switch,
-} from "@mui/material";
 import GroupsIcon from "@mui/icons-material/Groups";
-import BadgeIcon from "@mui/icons-material/Badge";
-import BusinessIcon from "@mui/icons-material/Business";
-import { Eye, EyeOff } from "lucide-react";
 
 import { adduser } from "../../../../core/actions/action";
 import { fetchAllExistProjects, fetchExistDomains } from "../../../../core/actions/spAction";
@@ -19,45 +9,20 @@ import { uservalidationSchema } from "../../../../utils/validation/Validation";
 import type { project } from "../../../../shared/types/Project";
 import type { Domain } from "../../../../shared/types/Domain";
 import { useAppSelector } from "../../../../store/configureStore";
+import PersonalInfoSection from "./CreateUser/PersonalInfoSection";
+import OrganizationSection from "./CreateUser/OrganizationSection";
+import TeamAssignmentSection from "./CreateUser/TeamAssignmentSection";
+import { ToggleCard } from "./CreateUser/formControls";
+import {
+  buildValidationPayload,
+  departmentOf,
+  initialForm,
+  normalize,
+  type UserForm,
+} from "./CreateUser/createUserUtils";
 
-const inputSx = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "8px",
-    backgroundColor: "var(--bg-surface)",
-    fontSize: 13,
-    fontWeight: 600,
-    "& fieldset": { borderColor: "var(--border-light)" },
-    "&:hover fieldset": { borderColor: "var(--border-light)" },
-    "&.Mui-focused fieldset": {
-      borderColor: "#7c3aed",
-      boxShadow: "0 0 0 2px rgba(124,58,237,0.12)",
-    },
-  },
-  "& .MuiInputBase-input": { padding: "10px 14px", fontSize: 13, fontWeight: 600 },
-  "& .MuiSelect-select": { padding: "10px 14px" },
-};
-
-const errorSx = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "8px",
-    backgroundColor: "#fef2f2",
-    fontSize: 13,
-    fontWeight: 600,
-    "& fieldset": { borderColor: "#ef4444" },
-    "&:hover fieldset": { borderColor: "#dc2626" },
-    "&.Mui-focused fieldset": {
-      borderColor: "#dc2626",
-      boxShadow: "0 0 0 2px rgba(239,68,68,0.12)",
-    },
-  },
-  "& .MuiInputBase-input": { padding: "10px 14px", fontSize: 13, fontWeight: 600 },
-  "& .MuiSelect-select": { padding: "10px 14px" },
-};
-
-const ErrorText = ({ message }: { message?: string }) =>
-  message ? (
-    <p style={{ fontSize: 11, color: "#ef4444", fontWeight: 500, margin: "4px 0 0" }}>{message}</p>
-  ) : null;
+const toggleIn = (list: string[], id: string) =>
+  list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 
 const CreateUser = () => {
   const navigate = useNavigate();
@@ -69,77 +34,21 @@ const CreateUser = () => {
   const backPath = role === "SP" ? "/sp/userMangement" : `/${currentRole}/TeamManagement`;
 
   const { showSnackbar } = useSnackbar();
-  /**
-   * Shared staff (testers, QA, designers) are always plain users — never
-   * managers — whoever creates them. Otherwise SP creates managers and AM
-   * creates its own team members.
-   */
   const roleOptionsFor = (shared: boolean) =>
     shared ? ["USER"] : role === "SP" ? ["AM"] : ["USER", "DEVLOPER"];
 
-  const [form, setForm] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    jobTitle: "",
-    employeeId: "",
-    contactNumber: "",
-    dateOfBirth: "",
-    bloodGroup: "",
-    role: "",
-    departments: [] as string[],
-    workSchedule: "",
-    joiningDate: "",
-    manager_id: "",
-    projects: [] as string[],
-    sendWelcomeEmail: true,
-    requirePasswordChange: true,
-    is_shared: false,
-    domains: [] as string[],
-  });
-
+  const [form, setForm] = useState<UserForm>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPassword, setShowPassword] = useState(false);
   const [projectList, setProjectList] = useState<project[]>([]);
   const [domainList, setDomainList] = useState<Domain[]>([]);
-  const todayStr = new Date().toISOString().split("T")[0];
 
-  // Sharing is scoped by domain and offered to managers only.
   const canShare = isAM;
   const isSharing = canShare && form.is_shared;
 
-  const roleOptions = roleOptionsFor(form.is_shared);
-
-  /**
-   * The department a project sits under, however this payload names it. The
-   * list sends `domain` as an object; `client_department` is the column behind
-   * the table's Client / Department column and is the fallback.
-   */
-  const departmentOf = (p: project & { domain?: unknown; client_department?: string }) => {
-    const d = p.domain as { name?: string } | string | undefined;
-    const name =
-      d && typeof d === "object" ? d.name : typeof d === "string" ? d : undefined;
-    return String(name ?? p.client_department ?? "").trim().toLowerCase();
-  };
-
-  const normalize = (name: string) => name.trim().toLowerCase();
-
-  /**
-   * Projects follow the departments chosen above, and wait for them.
-   *
-   * With no department picked the list is empty rather than complete: the
-   * department is the question this form asks first, and offering every project
-   * in the company before it is answered invites assigning somebody to work
-   * outside the departments they are being put in.
-   */
   const selectedDepartments = new Set(form.departments.map(normalize));
   const visibleProjects = projectList.filter((p) =>
     selectedDepartments.has(departmentOf(p))
   );
-
-  /** The first department picked stands in wherever the API still takes one. */
-  const primaryDepartment = form.departments[0] ?? "";
-  const departmentLabel = form.departments.join(", ");
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -148,7 +57,6 @@ const CreateUser = () => {
       const activeProjects = all.filter((p: any) => (p.status || "").toLowerCase().replace(/\s+/g, "_") === "active");
 
       if (isAM) {
-        // AM should only see projects they are assigned to
         setProjectList(
           activeProjects.filter((p: any) =>
             (p.teamAssigned || []).some((member: any) => String(member.id) === String(user?.id))
@@ -166,13 +74,6 @@ const CreateUser = () => {
     fetchProjects();
   }, [fetchProjects]);
 
-  /**
-   * Departments, for both things this form does with them: the shared-user
-   * flow assigns them, and the project picker below is grouped under them.
-   *
-   * `isShared=true` widens the list past our own departments, which is what a
-   * shared user needs; for the picker the plain list is the honest one.
-   */
   const loadDomains = useCallback(async () => {
     try {
       const response = await fetchExistDomains(isSharing || undefined);
@@ -186,31 +87,8 @@ const CreateUser = () => {
     loadDomains();
   }, [loadDomains]);
 
-  const toggleDomain = (id: string) => {
-    setForm((prev) => ({
-      ...prev,
-      domains: prev.domains.includes(id)
-        ? prev.domains.filter((d) => d !== id)
-        : [...prev.domains, id],
-    }));
-  };
-
-  const validateField = (field: string, nextForm: typeof form) => {
-    const payload: Record<string, any> = {
-      fullName: nextForm.fullName,
-      email: nextForm.email,
-      password: nextForm.password,
-      role: nextForm.role,
-      jobTitle: nextForm.jobTitle,
-      employeeId: nextForm.employeeId,
-      contactNumber: nextForm.contactNumber,
-      dateOfBirth: nextForm.dateOfBirth,
-      bloodGroup: nextForm.bloodGroup,
-      department: nextForm.departments[0] ?? "",
-      workSchedule: nextForm.workSchedule,
-      joiningDate: nextForm.joiningDate,
-    };
-    const result = uservalidationSchema.safeParse(payload);
+  const validateField = (field: string, nextForm: UserForm) => {
+    const result = uservalidationSchema.safeParse(buildValidationPayload(nextForm));
     setErrors((prev) => {
       const next = { ...prev };
       delete next[field];
@@ -224,15 +102,6 @@ const CreateUser = () => {
     });
   };
 
-  /**
-   * Adding a department also ticks every project in it.
-   *
-   * Somebody put in a department normally works across its projects, so the
-   * full set is the sensible starting point and unticking is the exception
-   * made — not a list built one checkbox at a time. Removing a department
-   * drops its projects; the departments still selected keep whatever was
-   * ticked or unticked in them.
-   */
   const handleDepartmentsChange = (names: string[]) => {
     setForm((prev) => {
       const before = new Set(prev.departments.map(normalize));
@@ -267,11 +136,8 @@ const CreateUser = () => {
     setForm((prev) => ({
       ...prev,
       is_shared: shared,
-      // A shared user gets domains instead of projects; managers in those
-      // domains assign the projects afterwards.
       projects: shared ? [] : prev.projects,
       domains: shared ? prev.domains : [],
-      // Force USER when shared; on unshare keep the role only if still offered.
       role: shared
         ? "USER"
         : nextOptions.includes(prev.role)
@@ -285,58 +151,25 @@ const CreateUser = () => {
     });
   };
 
-  const toggleProject = (id: string) => {
-    setForm((prev) => ({
-      ...prev,
-      projects: prev.projects.includes(id)
-        ? prev.projects.filter((p) => p !== id)
-        : [...prev.projects, id],
-    }));
-  };
-
-  const getInitials = (name: string) =>
-    name
-      .split(" ")
-      .filter(Boolean)
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-
   const handleSubmit = async () => {
+    const primaryDepartment = form.departments[0] ?? "";
     const payload: Record<string, any> = {
-      fullName: form.fullName,
-      email: form.email,
-      password: form.password,
-      role: form.role,
-      jobTitle: form.jobTitle,
-      employeeId: form.employeeId,
-      contactNumber: form.contactNumber,
-      dateOfBirth: form.dateOfBirth,
-      bloodGroup: form.bloodGroup,
-      // `department` / `projectCategory` are single text fields on the API, so
-      // they carry the first pick; the full list goes up as `departments`.
-      department: primaryDepartment,
+      ...buildValidationPayload(form),
       projectCategory: primaryDepartment,
       departments: form.departments,
-      workSchedule: form.workSchedule,
-      joiningDate: form.joiningDate,
       manager_id: form.manager_id,
       sendWelcomeEmail: form.sendWelcomeEmail,
       requirePasswordChange: form.requirePasswordChange,
-      // snake_case to match the API, alongside manager_id
       is_shared: isSharing,
     };
 
     if (isSharing) {
-      // Shared users are scoped by domain; projects come later.
       payload.domain_ids = form.domains;
       payload.projects = "";
     } else {
       payload.domain_ids = domainList
         .filter((d) => selectedDepartments.has(normalize(d.name)))
         .map((d) => String(d.id));
-      // Send projects as comma-separated string or empty string
       payload.projects = form.projects.length > 0 ? form.projects.join(",") : "";
     }
 
@@ -374,11 +207,8 @@ const CreateUser = () => {
     }
   };
 
-  const sx = (field: string) => (errors[field] ? errorSx : inputSx);
-
   return (
     <div className="container py-4" style={{ maxWidth: 900 }}>
-      {/* Breadcrumb + Header */}
       <div className="mb-4">
         <div className="d-flex align-items-center gap-1 mb-1">
           <button
@@ -399,644 +229,50 @@ const CreateUser = () => {
         </p>
       </div>
 
-      {/* Form Card */}
       <div className="rounded-3 p-4 mb-4" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}>
-        {/* ─── Avatar ─────────────────────────────────────── */}
-        <div className="text-center mb-4">
-          <div
-            style={{
-              width: 90,
-              height: 90,
-              borderRadius: "50%",
-              background: form.fullName
-                ? "linear-gradient(135deg, #7c3aed, #a855f7)"
-                : "#f3f4f6",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: form.fullName ? "3px solid #7c3aed" : "2px dashed #d1d5db",
-            }}
-          >
-            <span
-              style={{
-                fontSize: form.fullName ? 32 : 14,
-                fontWeight: 700,
-                color: form.fullName ? "#fff" : "#9ca3af",
-              }}
-            >
-              {form.fullName ? getInitials(form.fullName) : "?"}
-            </span>
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginTop: 8 }}>
-            {form.fullName || "New User"}
-          </div>
-        </div>
+        <PersonalInfoSection form={form} errors={errors} onChange={handleChange} />
 
-        {/* ─── Personal Information ──────────────────────────── */}
-        <div className="d-flex align-items-center gap-2 mb-3">
-          <BadgeIcon sx={{ fontSize: 18, color: "#7c3aed" }} />
-          <h5 className="fw-bold mb-0" style={{ fontSize: 15 }}>Personal Information</h5>
-        </div>
+        <OrganizationSection
+          form={form}
+          errors={errors}
+          canShare={canShare}
+          roleOptions={roleOptionsFor(form.is_shared)}
+          domainList={domainList}
+          onChange={handleChange}
+          onSharedToggle={handleSharedToggle}
+          onDepartmentsChange={handleDepartmentsChange}
+        />
 
-        {/* Full Name */}
-        <div className="mb-3">
-          <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-            Full Name <span style={{ color: "#ef4444" }}>*</span>
-          </label>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="e.g. John Doe"
-            value={form.fullName}
-            onChange={(e) => handleChange("fullName", e.target.value)}
-            error={!!errors.fullName}
-            helperText={errors.fullName}
-            sx={sx("fullName")}
-          />
-        </div>
+        <TeamAssignmentSection
+          form={form}
+          isSharing={isSharing}
+          domainList={domainList}
+          projectList={projectList}
+          visibleProjects={visibleProjects}
+          onToggleDomain={(id) => setForm((prev) => ({ ...prev, domains: toggleIn(prev.domains, id) }))}
+          onToggleProject={(id) => setForm((prev) => ({ ...prev, projects: toggleIn(prev.projects, id) }))}
+          onClearDomains={() => setForm((prev) => ({ ...prev, domains: [] }))}
+          onClearProjects={() => setForm((prev) => ({ ...prev, projects: [] }))}
+        />
 
-        {/* Email + Job Title */}
-        <div className="row mb-3">
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Professional Email <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="john.doe@company.com"
-              value={form.email}
-              onChange={(e) => handleChange("email", e.target.value)}
-              error={!!errors.email}
-              helperText={errors.email}
-              sx={sx("email")}
-            />
-          </div>
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Job Title <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="e.g. Senior Product Designer"
-              value={form.jobTitle}
-              onChange={(e) => handleChange("jobTitle", e.target.value)}
-              error={!!errors.jobTitle}
-              helperText={errors.jobTitle}
-              sx={sx("jobTitle")}
-            />
-          </div>
-        </div>
-
-        {/* Employee ID + Contact */}
-        <div className="row mb-3">
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Employee ID <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="e.g. RRX-001"
-              value={form.employeeId}
-              onChange={(e) => handleChange("employeeId", e.target.value)}
-              error={!!errors.employeeId}
-              helperText={errors.employeeId}
-              sx={sx("employeeId")}
-            />
-          </div>
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Contact Number <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="10-digit mobile number"
-              value={form.contactNumber}
-              onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
-                handleChange("contactNumber", digits);
-              }}
-              inputProps={{ inputMode: "numeric", maxLength: 10 }}
-              error={!!errors.contactNumber}
-              helperText={errors.contactNumber}
-              sx={sx("contactNumber")}
-            />
-          </div>
-        </div>
-
-        {/* DOB + Blood Group */}
-        <div className="row mb-3">
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Date of Birth <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <TextField
-              fullWidth
-              size="small"
-              type="date"
-              value={form.dateOfBirth}
-              onChange={(e) => handleChange("dateOfBirth", e.target.value)}
-              error={!!errors.dateOfBirth}
-              helperText={errors.dateOfBirth}
-              sx={sx("dateOfBirth")}
-            />
-          </div>
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Blood Group
-            </label>
-            <FormControl fullWidth size="small" error={!!errors.bloodGroup} sx={sx("bloodGroup")}>
-              <Select
-                displayEmpty
-                value={form.bloodGroup}
-                onChange={(e) => handleChange("bloodGroup", e.target.value)}
-                renderValue={(val) => val || "Select Blood Group"}
-                sx={{ color: form.bloodGroup ? "var(--text-primary)" : "var(--text-faint)" }}
-              >
-                {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
-                  <MenuItem key={bg} value={bg}>{bg}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <ErrorText message={errors.bloodGroup} />
-          </div>
-        </div>
-
-        {/* ─── Organizational Details ────────────────────────── */}
-        <div className="d-flex align-items-center gap-2 mb-3 mt-4">
-          <BusinessIcon sx={{ fontSize: 18, color: "#7c3aed" }} />
-          <h5 className="fw-bold mb-0" style={{ fontSize: 15 }}>Organizational Details</h5>
-        </div>
-
-        {/* Shared access — above Role because turning it on pins the role to USER */}
-        {canShare && (
-          <div
-            className="d-flex align-items-center justify-content-between p-3 mb-3 rounded-3"
-            style={{
-              backgroundColor: form.is_shared ? "#f5f3ff" : "var(--bg-surface)",
-              border: form.is_shared ? "1px solid #ddd6fe" : "1px solid var(--border-light)",
-            }}
-          >
-            <div className="d-flex align-items-center gap-2">
-              <span style={{ fontSize: 16, color: "#7c3aed" }}>&#128101;</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                  Shared across managers
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                  For staff who work across departments (testers, QA, designers). Choose the
-                  departments below — every manager in those departments will see this user.
-                </div>
-                {/* /edit-user is super-admin only, so an AM cannot undo this later. */}
-                {form.is_shared && (
-                  <div style={{ fontSize: 11, fontWeight: 500, color: "#d97706", marginTop: 4 }}>
-                    Only a super admin can change this later.
-                  </div>
-                )}
-              </div>
-            </div>
-            <Switch
-              checked={form.is_shared}
-              onChange={(e) => handleSharedToggle(e.target.checked)}
-              sx={{
-                "& .MuiSwitch-switchBase.Mui-checked": { color: "#7c3aed" },
-                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#7c3aed" },
-              }}
-            />
-          </div>
-        )}
-
-        {/* Role + Department */}
-        <div className="row mb-3">
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Role Assignment <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <FormControl fullWidth size="small" error={!!errors.role} sx={sx("role")}>
-              <Select
-                displayEmpty
-                value={form.role}
-                onChange={(e) => handleChange("role", e.target.value)}
-                renderValue={(val) => val || "Select Role"}
-                sx={{ color: form.role ? "var(--text-primary)" : "var(--text-faint)" }}
-              >
-                {roleOptions.map((r) => (
-                  <MenuItem key={r} value={r}>{r}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <ErrorText message={errors.role} />
-            {form.is_shared && (
-              <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "4px 0 0" }}>
-                Shared users are always created with the USER role.
-              </p>
-            )}
-          </div>
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Departments <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <FormControl fullWidth size="small" error={!!errors.department} sx={sx("department")}>
-              <Select
-                multiple
-                displayEmpty
-                value={form.departments}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  handleDepartmentsChange(typeof v === "string" ? v.split(",") : v);
-                }}
-                renderValue={(val) => (val.length ? val.join(", ") : "Select Departments")}
-                sx={{ color: form.departments.length ? "var(--text-primary)" : "var(--text-faint)" }}
-              >
-                {/*
-                  * The departments that exist, not a list written into the
-                  * form. It was seven names hard-coded here, so a department
-                  * created last week could not be chosen and one that was
-                  * never created still could.
-                  *
-                  * Names are what go up: the full list as `departments`, the
-                  * first as `department` / `projectCategory`, which the API
-                  * takes as text.
-                  */}
-                {domainList.length === 0 && (
-                  <MenuItem disabled value="">
-                    No departments yet — create one first
-                  </MenuItem>
-                )}
-                {domainList.map((domain) => (
-                  <MenuItem key={domain.id} value={domain.name}>
-                    <input
-                      type="checkbox"
-                      checked={form.departments.includes(domain.name)}
-                      readOnly
-                      style={{ width: 14, height: 14, marginRight: 8, accentColor: "#7c3aed" }}
-                    />
-                    {domain.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <ErrorText message={errors.department} />
-          </div>
-        </div>
-
-        {/* Work Schedule + Joining Date */}
-        <div className="row mb-3">
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Work Schedule <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <FormControl fullWidth size="small" error={!!errors.workSchedule} sx={sx("workSchedule")}>
-              <Select
-                displayEmpty
-                value={form.workSchedule}
-                onChange={(e) => handleChange("workSchedule", e.target.value)}
-                renderValue={(val) => val || "Select Schedule"}
-                sx={{ color: form.workSchedule ? "var(--text-primary)" : "var(--text-faint)" }}
-              >
-                {["Full-Time (10 AM - 7 PM)", "Part-Time", "Flexible", "Remote"].map((s) => (
-                  <MenuItem key={s} value={s}>{s}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <ErrorText message={errors.workSchedule} />
-          </div>
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Joining Date <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <TextField
-              fullWidth
-              size="small"
-              type="date"
-              value={form.joiningDate}
-              onChange={(e) => handleChange("joiningDate", e.target.value)}
-              inputProps={{ max: todayStr }}
-              error={!!errors.joiningDate}
-              helperText={errors.joiningDate}
-              sx={sx("joiningDate")}
-            />
-          </div>
-        </div>
-
-        {/* Password */}
-        <div className="row mb-3">
-          <div className="col-md-6">
-            <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-              Password <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <div style={{ position: "relative" }}>
-              <TextField
-                fullWidth
-                size="small"
-                type={showPassword ? "text" : "password"}
-                name="newUserPassword"
-                autoComplete="new-password"
-                placeholder="Enter password"
-                value={form.password}
-                onChange={(e) => handleChange("password", e.target.value)}
-                error={!!errors.password}
-                helperText={errors.password}
-                sx={sx("password")}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                tabIndex={-1}
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: errors.password ? "30%" : "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 4,
-                  display: "flex",
-                  alignItems: "center",
-                  color: "var(--text-muted)",
-                }}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── Team Assignment (Optional) ─────────────────────── */}
-        <div className="d-flex align-items-center gap-2 mb-1 mt-4">
-          <GroupsIcon sx={{ fontSize: 18, color: "#7c3aed" }} />
-          <h5 className="fw-bold mb-0" style={{ fontSize: 15 }}>
-            {isSharing ? "Department Access" : "Team Assignment"}
-          </h5>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: "var(--text-faint)",
-              backgroundColor: "var(--bg-hover)",
-              padding: "2px 8px",
-              borderRadius: 4,
-            }}
-          >
-            {isSharing ? "Required" : "Optional"}
-          </span>
-        </div>
-        <p className="mb-3" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          {isSharing
-            ? "Every manager assigned to these departments will see this user. They assign the projects afterwards."
-            : "You can assign projects now or do it later from the project page."}
-        </p>
-
-        {isSharing ? (
-          domainList.length > 0 ? (
-            <div className="mb-4">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                  {form.domains.length > 0
-                    ? `${form.domains.length} of ${domainList.length} selected`
-                    : `${domainList.length} domain${domainList.length === 1 ? "" : "s"} available`}
-                </span>
-                {form.domains.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, domains: [] }))}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      padding: 0,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: "#7c3aed",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Clear selection
-                  </button>
-                )}
-              </div>
-
-              <div
-                className="row g-2"
-                style={{
-                  maxHeight: 260,
-                  overflowY: "auto",
-                  overflowX: "hidden",
-                  margin: 0,
-                  paddingRight: 4,
-                }}
-              >
-                {domainList.map((domain) => {
-                  const isSelected = form.domains.includes(String(domain.id));
-                  return (
-                    <div key={domain.id} className="col-md-6">
-                      <div
-                        onClick={() => toggleDomain(String(domain.id))}
-                        className="d-flex align-items-center gap-3 p-3 rounded-3"
-                        style={{
-                          border: isSelected
-                            ? "2px solid #7c3aed"
-                            : "1px solid var(--border-light)",
-                          backgroundColor: isSelected ? "#f5f3ff" : "var(--bg-card)",
-                          cursor: "pointer",
-                          transition: "all 0.15s",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          readOnly
-                          style={{
-                            width: 16,
-                            height: 16,
-                            accentColor: "#7c3aed",
-                            cursor: "pointer",
-                          }}
-                        />
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                            {domain.name}
-                          </div>
-                          <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                            {domain.description || "Department"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div
-              className="d-flex align-items-center justify-content-center p-4 mb-4 rounded-3"
-              style={{ backgroundColor: "var(--bg-surface)", border: "1px dashed var(--border-light)" }}
-            >
-              <p className="mb-0" style={{ fontSize: 13, color: "var(--text-faint)" }}>
-                No departments available. Create a department first.
-              </p>
-            </div>
-          )
-        ) : projectList.length > 0 ? (
-          <div className="mb-4">
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                {form.projects.length > 0
-                  ? `${form.projects.length} of ${visibleProjects.length} selected`
-                  : form.departments.length
-                    ? `${visibleProjects.length} project${
-                        visibleProjects.length === 1 ? "" : "s"
-                      } in ${departmentLabel}`
-                    : "Choose a department to see its projects"}
-              </span>
-              {form.projects.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, projects: [] }))}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "#7c3aed",
-                    cursor: "pointer",
-                  }}
-                >
-                  Clear selection
-                </button>
-              )}
-            </div>
-
-            <div
-              className="row g-2"
-              style={{
-                maxHeight: 260,
-                overflowY: "auto",
-                overflowX: "hidden",
-                margin: 0,
-                paddingRight: 4,
-              }}
-            >
-              {visibleProjects.length === 0 && (
-                <p
-                  className="mb-0 text-center"
-                  style={{ fontSize: 12, color: "var(--text-faint)", padding: "16px 0" }}
-                >
-                  {form.departments.length
-                    ? `No active projects in ${departmentLabel} yet.`
-                    : "Pick a department above to see its projects."}
-                </p>
-              )}
-              {visibleProjects.map((proj) => {
-              const isSelected = form.projects.includes(proj.id);
-              return (
-                <div key={proj.id} className="col-md-6">
-                  <div
-                    onClick={() => toggleProject(proj.id)}
-                    className="d-flex align-items-center gap-3 p-3 rounded-3"
-                    style={{
-                      border: isSelected ? "2px solid #7c3aed" : "1px solid var(--border-light)",
-                      backgroundColor: isSelected ? "#f5f3ff" : "var(--bg-card)",
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      readOnly
-                      style={{
-                        width: 16,
-                        height: 16,
-                        accentColor: "#7c3aed",
-                        cursor: "pointer",
-                      }}
-                    />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                        {proj.name}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                        {proj.description || proj.domain || "Project"}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div
-            className="d-flex align-items-center justify-content-center p-4 mb-4 rounded-3"
-            style={{ backgroundColor: "var(--bg-surface)", border: "1px dashed var(--border-light)" }}
-          >
-            <p className="mb-0" style={{ fontSize: 13, color: "var(--text-faint)" }}>
-              No projects available. You can assign projects later.
-            </p>
-          </div>
-        )}
-
-        {/* ─── Settings Toggles ──────────────────────────────── */}
         <div className="d-flex flex-column gap-3 mb-2">
-          <div
-            className="d-flex align-items-center justify-content-between p-3 rounded-3"
-            style={{ backgroundColor: "var(--bg-surface)" }}
-          >
-            <div className="d-flex align-items-center gap-2">
-              <span style={{ fontSize: 16, color: "#7c3aed" }}>&#9993;</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                  Send Welcome Email
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                  Send an invitation to join the platform immediately.
-                </div>
-              </div>
-            </div>
-            <Switch
-              checked={form.sendWelcomeEmail}
-              onChange={(e) => handleChange("sendWelcomeEmail", e.target.checked)}
-              sx={{
-                "& .MuiSwitch-switchBase.Mui-checked": { color: "#7c3aed" },
-                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#7c3aed" },
-              }}
-            />
-          </div>
-
-          <div
-            className="d-flex align-items-center justify-content-between p-3 rounded-3"
-            style={{ backgroundColor: "var(--bg-surface)" }}
-          >
-            <div className="d-flex align-items-center gap-2">
-              <span style={{ fontSize: 16, color: "#7c3aed" }}>&#128274;</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                  Require Password Change
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                  Force the user to set a new password on first login.
-                </div>
-              </div>
-            </div>
-            <Switch
-              checked={form.requirePasswordChange}
-              onChange={(e) => handleChange("requirePasswordChange", e.target.checked)}
-              sx={{
-                "& .MuiSwitch-switchBase.Mui-checked": { color: "#7c3aed" },
-                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#7c3aed" },
-              }}
-            />
-          </div>
-
+          <ToggleCard
+            icon={"✉"}
+            title="Send Welcome Email"
+            description="Send an invitation to join the platform immediately."
+            checked={form.sendWelcomeEmail}
+            onToggle={(checked) => handleChange("sendWelcomeEmail", checked)}
+          />
+          <ToggleCard
+            icon={"\u{1F512}"}
+            title="Require Password Change"
+            description="Force the user to set a new password on first login."
+            checked={form.requirePasswordChange}
+            onToggle={(checked) => handleChange("requirePasswordChange", checked)}
+          />
         </div>
       </div>
 
-      {/* Footer */}
       <div className="d-flex justify-content-end gap-3">
         <button
           onClick={() => navigate(backPath)}

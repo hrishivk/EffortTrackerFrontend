@@ -13,7 +13,6 @@ interface AccountPanelProps {
   open: boolean;
   onClose: () => void;
   onLogout: () => void | Promise<void>;
-  /** Where "My Profile" goes — the role's dashboard on its profile tab. */
   profilePath: string;
 }
 
@@ -30,15 +29,6 @@ export default function AccountPanel({
   const [unread, setUnread] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
 
-  /*
-   * Read on first open rather than on mount, and once rather than every open:
-   * the panel is chrome, so there is no reason for it to cost anything until
-   * someone actually looks at it.
-   *
-   * Neither call is allowed to break the panel — a failed profile read just
-   * falls back to the name and email already in the session, and a failed
-   * count leaves the badge off.
-   */
   const loaded = useRef(false);
 
   useEffect(() => {
@@ -86,7 +76,6 @@ export default function AccountPanel({
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.15, ease: "easeOut" }}
         >
-          {/* Who you are — name and email, nothing else */}
           <div className="acp__head">
             <span className="acp__avatar">
               {profile?.image ? (
@@ -107,11 +96,6 @@ export default function AccountPanel({
               My Profile
             </Link>
 
-            {/*
-             * The design's middle row was "Settings". There is no settings
-             * page to send anyone to, so the slot does the one preference the
-             * app actually has rather than pointing at nothing.
-             */}
             <button type="button" className="acp__row" onClick={toggleTheme}>
               {theme === "light" ? <FiMoon size={15} /> : <FiSun size={15} />}
               {theme === "light" ? "Dark mode" : "Light mode"}

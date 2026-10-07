@@ -98,7 +98,6 @@ export default function AttendanceSummary() {
 
   return (
     <>
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="fw-bold mb-1" style={{ fontSize: "1.65rem" }}>
@@ -154,7 +153,6 @@ export default function AttendanceSummary() {
         </div>
       </div>
 
-      {/* Table card */}
       <div
         className="rounded-2xl overflow-hidden"
         style={{
@@ -163,7 +161,6 @@ export default function AttendanceSummary() {
           boxShadow: "var(--shadow-card)",
         }}
       >
-        {/* Table header */}
         <div
           className="grid items-center px-6 py-3"
           style={{
@@ -189,7 +186,6 @@ export default function AttendanceSummary() {
           }
         `}</style>
 
-        {/* Rows */}
         {dummyRows.map((row, i) => {
           const pct = hrsToPercent(row.totalHrs);
 
@@ -208,7 +204,6 @@ export default function AttendanceSummary() {
                 borderLeft: row.isToday ? "3px solid #7c3aed" : "3px solid transparent",
               }}
             >
-              {/* Date */}
               <div>
                 <span style={{ fontSize: 10, fontWeight: 700, color: "#7c3aed", letterSpacing: 0.5, display: "block", lineHeight: 1 }}>
                   {row.dayShort}
@@ -239,7 +234,6 @@ export default function AttendanceSummary() {
                 </div>
               </div>
 
-              {/* Status */}
               <div>
                 {row.isWeekend ? (
                   <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)" }}>Weekend</span>
@@ -267,7 +261,6 @@ export default function AttendanceSummary() {
                 )}
               </div>
 
-              {/* Work Timeline — based on 9-hour shift */}
               <div style={{ padding: "0 16px" }}>
                 <div
                   style={{
@@ -311,7 +304,6 @@ export default function AttendanceSummary() {
                       }}
                     />
                   )}
-                  {/* Shimmer sweep on today's bar */}
                   {row.isToday && pct > 0 && (
                     <div
                       style={{
@@ -339,7 +331,6 @@ export default function AttendanceSummary() {
                 </div>
               </div>
 
-              {/* Punch Times */}
               <div style={{ textAlign: "right" }}>
                 {row.punchIn ? (
                   <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-secondary)" }}>
@@ -352,7 +343,6 @@ export default function AttendanceSummary() {
                 )}
               </div>
 
-              {/* Total Hrs */}
               <div style={{ textAlign: "right" }}>
                 {row.isToday ? (
                   <motion.span
@@ -405,7 +395,6 @@ export default function AttendanceSummary() {
         </div>
       </div>
 
-      {/* Legend */}
       <div className="flex items-center justify-center gap-5 flex-wrap py-2">
         <div className="flex items-center gap-2">
           <span style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: "#14b8a6", display: "inline-block" }} />

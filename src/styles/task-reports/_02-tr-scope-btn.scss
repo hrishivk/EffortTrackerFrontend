@@ -1,0 +1,366 @@
+@use "../variables" as *;
+
+// The pill is a framer element, not a background on the button — it is one
+// node shared between the two tabs so it slides across on a change, exactly as
+// the dashboard's List / Board / Gantt tabs do. So no background or colour
+// here: both are set inline where the animation can reach them.
+//
+// `position: relative` is load-bearing. The pill is `position: absolute;
+// inset: 0`, so without it the pill measures itself against the page and
+// covers the whole report in a violet gradient.
+.tr-scope__btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 8px;
+  background-color: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s;
+}
+
+/* ── Trend + split row ── */
+.tr-trend {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+
+  @include respond-below($bp-md) { grid-template-columns: 1fr; }
+}
+
+// The per-member table sits between the two overview cards and the bottom row,
+// so it carries its own top gap rather than relying on a neighbour's margin.
+.tr-members { margin-top: 16px; }
+
+.tr-empty {
+  margin: 0;
+  padding: 44px 12px;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.tr-split {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+// The donut and the total that sits in its hole.
+.tr-split__chart {
+  position: relative;
+}
+
+.tr-split__centre {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+
+  b {
+    color: var(--text-primary);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  span {
+    color: var(--text-faint);
+    font-size: 10.5px;
+    font-weight: 500;
+  }
+}
+
+// Legend and direct labels in one. Text stays in ink tokens — the swatch and
+// the bar are the only things carrying colour, so the rows read the same to
+// everyone, which matters doubly for a single-hue ramp.
+.tr-split__keys {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    border-radius: 9px;
+    cursor: default;
+    transition: background-color 0.15s;
+  }
+
+  // The row under the pointer, and the row whose arc is raised.
+  li.is-on {
+    background-color: var(--bg-hover);
+  }
+}
+
+.tr-split__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+// The arc's proportion again, on a straight scale. Lengths from a common
+// baseline compare accurately; angles around a ring do not, which is the one
+// thing a donut is genuinely bad at.
+.tr-split__bar {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background-color: var(--bg-hover);
+  overflow: hidden;
+
+  > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.35s ease;
+  }
+}
+
+.tr-split__dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.tr-split__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tr-split__n {
+  color: var(--text-primary);
+  font-weight: 700;
+  // Tabular so the counts line up down the column rather than wobbling.
+  font-variant-numeric: tabular-nums;
+}
+
+.tr-split__pct {
+  width: 38px;
+  color: var(--text-faint);
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Export buttons ── */
+
+// A pair of compact buttons in a table card's head. They used to be a card of
+// their own, which gave two downloads the same weight on the page as a chart.
+.tr-exports {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.tr-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  background-color: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+
+  svg { flex-shrink: 0; color: var(--text-faint); transition: color 0.15s; }
+
+  &:hover:not(:disabled) {
+    border-color: rgba(124, 58, 237, 0.4);
+    color: #7c3aed;
+
+    svg { color: #7c3aed; }
+  }
+
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+}
+
+/* ── Custom range calendar ──────────────────────────────────────────
+   react-datepicker ships a light-only stylesheet with its own greys and a
+   blue accent. These overrides put it on the theme tokens instead, so it is
+   readable in dark mode and matches the rest of the page in light.        */
+
+.tr-field { position: relative; }
+
+// Sits in the field's label row, opposite "Date range" — the same slot the
+// member field puts its count badge in.
+.tr-cal__toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+}
+
+.tr-cal {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  // Above the cards below it, under the app's modals and the loader.
+  z-index: 30;
+}
+
+/* ── Printing the report ────────────────────────────────────────────
+   There is no PDF library on either side; the browser's own "Save as PDF"
+   renders this page, charts and all. These rules strip the app down to the
+   report itself — everything keyed on `.printing-report`, which the button
+   puts on `<body>` and `afterprint` takes off, so normal printing of any
+   other page is untouched.                                              */
+
+@media print {
+  body.printing-report {
+    background: #fff;
+
+    // The shell: nav, header, and anything fixed over the page.
+    .sb-panel,
+    .app-header,
+    .rxs-overlay {
+      display: none !important;
+    }
+
+    // The layout insets the content for a sidebar that is no longer there.
+    main {
+      margin: 0 !important;
+      padding-top: 0 !important;
+      background: #fff !important;
+    }
+
+    .tr-page {
+      max-width: none;
+      padding: 0;
+    }
+
+    // Controls print as noise: they are choices, not findings. The chosen
+    // window still reaches the page through the heading below.
+    .tr-config,
+    .tr-exports,
+    .tr-scope,
+    .tr-crumb {
+      display: none !important;
+    }
+
+    // A card split across a page break loses the tile its number belongs to.
+    .tr-card {
+      break-inside: avoid;
+      border: 1px solid #d4d4d8;
+      box-shadow: none;
+    }
+
+    // Both overview cards side by side survives portrait; the trend row does
+    // not, and a squeezed chart is worse than a stacked one.
+    .tr-trend {
+      grid-template-columns: 1fr;
+    }
+
+    .tr-table-wrap {
+      overflow: visible;
+    }
+
+    /*
+     * Three pages, one subject each.
+     *
+     *   1  the headline — both overview cards, tiles and completion rate
+     *   2  the shape of it — the trend area and the status ring
+     *   3  the detail — per member, and day by day
+     *
+     * Forced rather than left to flow: the same report should come out the
+     * same length every time, and a reader who has printed it once should find
+     * the member table where they found it last.
+     */
+    .tr-overview,
+    .tr-trend {
+      break-after: page;
+      page-break-after: always;
+    }
+
+    // Nothing after the last section, or the browser adds a fourth blank page.
+    .tr-bottom {
+      break-after: auto;
+      page-break-after: auto;
+    }
+
+    // Page 2 carries two charts and page 3 two tables; neither may split.
+    .tr-trend > .tr-card,
+    .tr-members,
+    .tr-bottom .tr-card {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}
+
+// What the report was for. Print only — on screen the configuration card is
+// right there saying the same thing.
+.tr-meta { display: none; }
+
+// Rows the screen hides and the printed report keeps.
+.tr-row--print { display: none; }
+
+@media print {
+  body.printing-report .tr-row--print { display: table-row; }
+
+  body.printing-report .tr-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin: 8px 0 0;
+    color: #3f3f46;
+    font-size: 11.5px;
+
+    b { color: #18181b; }
+
+    // A thin rule between the facts, so they read as a list and not a sentence.
+    span + span::before,
+    b + span::before {
+      content: "";
+      display: inline-block;
+      width: 1px;
+      height: 9px;
+      margin-right: 14px;
+      vertical-align: -1px;
+      background-color: #d4d4d8;
+    }
+  }
+}

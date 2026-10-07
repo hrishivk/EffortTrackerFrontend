@@ -1,17 +1,15 @@
-import { useState, useRef, useMemo, useEffect, useLayoutEffect } from "react";
-import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
-import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import { useState, useMemo } from "react";
 import SpinLoader from "../../../presentation/SpinLoader";
-import type { TaskGanttChartProps, GroupedTaskRow, TaskBarStatus } from "../types";
-import {
-  monthNames, PROJECT_COLORS, avatarColors, taskBarColors,
-  statusDisplay, BASE_COL_WIDTH, LEFT_PANEL_WIDTH, ROW_HEIGHT,
-} from "./ganttConstants";
-import {
-  getTaskBarStatus, getTaskProgress, getInitials,
-  formatShortDate, getAssigneeName, generateDayRange, dayIndex,
-} from "./ganttUtils";
+import type { TaskGanttChartProps } from "../types";
+import { computeGanttRange, groupGanttRows, buildMonthHeaders } from "./TaskGanttChart/ganttRows";
+import { useGanttLayout } from "./TaskGanttChart/useGanttLayout";
+import { useGanttScroll } from "./TaskGanttChart/useGanttScroll";
+import GanttToolbar from "./TaskGanttChart/GanttToolbar";
+import GanttLeftPanel from "./TaskGanttChart/GanttLeftPanel";
+import GanttTimelineHeader, { GanttGrid } from "./TaskGanttChart/GanttTimelineHeader";
+import GanttBarRow from "./TaskGanttChart/GanttBarRow";
+import GanttTooltip from "./TaskGanttChart/GanttTooltip";
+import GanttFooter from "./TaskGanttChart/GanttFooter";
 
 export default function TaskGanttChart({
   tasks,
@@ -27,531 +25,70 @@ export default function TaskGanttChart({
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [rangeOffset, setRangeOffset] = useState(0);
-  const timelineRef = useRef<HTMLDivElement>(null);
-  const leftPanelRef = useRef<HTMLDivElement>(null);
-
   const [extraBefore, setExtraBefore] = useState(1);
   const [extraAfter, setExtraAfter] = useState(1);
-  const isExtendingRef = useRef(false);
-  const scrollAdjustRef = useRef(0);
 
-  // Responsive breakpoints
-  const [screenWidth, setScreenWidth] = useState(() => window.innerWidth);
-  useEffect(() => {
-    const handler = () => setScreenWidth(window.innerWidth);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
-  const isMobile = screenWidth < 640;
-  const isTablet = screenWidth >= 640 && screenWidth < 1024;
-  const responsiveColWidth = isMobile ? 32 : isTablet ? 40 : BASE_COL_WIDTH;
-  const responsiveLeftPanel = isMobile ? 0 : isTablet ? 220 : LEFT_PANEL_WIDTH;
-  const responsiveRowHeight = isMobile ? 52 : isTablet ? 60 : ROW_HEIGHT;
+  const { screenWidth, isMobile, isTablet, colWidth, leftPanelWidth, rowHeight } = useGanttLayout(zoomLevel);
 
-  const colWidth = responsiveColWidth * zoomLevel;
-
-  // ─── Compute date range from tasks ─────────────────────────────
-  const { rangeStart, rangeDays, rangeLabel } = useMemo(() => {
-    let earliest: Date | null = null;
-    let latest: Date | null = null;
-
-    for (const task of tasks) {
-      const s = task.start_time || task.created_at || null;
-      const e = task.end_time || null;
-      if (s) {
-        const d = new Date(s);
-        d.setHours(0, 0, 0, 0);
-        if (!earliest || d < earliest) earliest = d;
-      }
-      if (e) {
-        const d = new Date(e);
-        d.setHours(0, 0, 0, 0);
-        if (!latest || d > latest) latest = d;
-      }
-    }
-
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
-    if (!earliest && !latest) {
-      earliest = new Date(now.getFullYear(), now.getMonth(), 1);
-      latest = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    } else if (!earliest) {
-      earliest = new Date(latest!);
-      earliest.setDate(earliest.getDate() - 14);
-    } else if (!latest) {
-      latest = new Date(earliest);
-      latest.setDate(latest.getDate() + 14);
-    }
-
-    const rStart = new Date(earliest!.getFullYear(), earliest!.getMonth(), 1);
-    const rEnd = new Date(latest!.getFullYear(), latest!.getMonth() + 1, 0);
-
-    if (rangeOffset !== 0) {
-      rStart.setMonth(rStart.getMonth() + rangeOffset);
-      rEnd.setMonth(rEnd.getMonth() + rangeOffset);
-    }
-
-    rStart.setMonth(rStart.getMonth() - extraBefore);
-    const targetEndMonth = rEnd.getMonth() + extraAfter;
-    rEnd.setTime(new Date(rEnd.getFullYear(), targetEndMonth + 1, 0).getTime());
-
-    const days = generateDayRange(rStart, rEnd);
-
-    const startMonth = `${monthNames[rStart.getMonth()]} ${rStart.getFullYear()}`;
-    const endMonth = `${monthNames[rEnd.getMonth()]} ${rEnd.getFullYear()}`;
-    const label = startMonth === endMonth ? startMonth : `${monthNames[rStart.getMonth()]} – ${endMonth}`;
-
-    return { rangeStart: rStart, rangeEnd: rEnd, rangeDays: days, rangeLabel: label };
-  }, [tasks, rangeOffset, extraBefore, extraAfter]);
+  const { rangeStart, rangeDays, rangeLabel } = useMemo(
+    () => computeGanttRange(tasks, rangeOffset, extraBefore, extraAfter),
+    [tasks, rangeOffset, extraBefore, extraAfter],
+  );
 
   const totalDays = rangeDays.length;
 
+  const groupedRows = useMemo(
+    () => groupGanttRows(tasks, rangeStart, totalDays, projectColorMap, getUserName),
+    [tasks, rangeStart, totalDays, projectColorMap, getUserName, users],
+  );
 
-  const groupedRows: GroupedTaskRow[] = useMemo(() => {
-    const groupMap = new Map<string, import("../../user/types").taskList[]>();
+  const monthHeaders = useMemo(() => buildMonthHeaders(rangeDays), [rangeDays]);
 
-    for (const task of tasks) {
-      const projName = typeof task.project === "object" && task.project !== null
-        ? (task.project as any).name : (task.project || "");
-      const projId = task.project_id || (typeof task.project === "object" && task.project !== null
-        ? (task.project as any).id : "");
-      const desc = (task.description || "").trim();
-      const proj = projId ? String(projId) : String(projName).trim();
-      const key = `${desc}|||${proj}`;
-      if (!groupMap.has(key)) groupMap.set(key, []);
-      groupMap.get(key)!.push(task);
-    }
+  const { timelineRef, leftPanelRef, handleTimelineScroll, handleLeftScroll } = useGanttScroll({
+    groupedRows, rangeDays, colWidth, extraBefore, setExtraBefore, setExtraAfter,
+  });
 
-    const rows: GroupedTaskRow[] = [];
-
-    for (const [, groupTasks] of groupMap) {
-      const first = groupTasks[0];
-      const projName = typeof first.project === "object" && first.project !== null
-        ? (first.project as any).name : (first.project || "");
-
-      let earliestStart: Date | null = null;
-      let latestEnd: Date | null = null;
-
-      for (const t of groupTasks) {
-        const s = t.start_time || t.created_at || null;
-        const e = t.end_time || null;
-        if (s) {
-          const sd = new Date(s);
-          if (!earliestStart || sd < earliestStart) earliestStart = sd;
-        }
-        if (e) {
-          const ed = new Date(e);
-          if (!latestEnd || ed > latestEnd) latestEnd = ed;
-        }
-      }
-
-      if (!earliestStart && !latestEnd) continue;
-
-      let startIdx = 0;
-      let endIdx = totalDays - 1;
-
-      if (earliestStart) {
-        startIdx = Math.max(0, dayIndex(earliestStart, rangeStart));
-      }
-      if (latestEnd) {
-        endIdx = Math.min(totalDays - 1, dayIndex(latestEnd, rangeStart));
-      }
-
-      if (!earliestStart && latestEnd) startIdx = Math.max(0, endIdx - 2);
-      if (earliestStart && !latestEnd) endIdx = Math.min(startIdx + 2, totalDays - 1);
-      if (endIdx - startIdx < 2) endIdx = Math.min(startIdx + 2, totalDays - 1);
-
-      if (startIdx > totalDays - 1 || endIdx < 0) continue;
-      startIdx = Math.max(0, startIdx);
-      endIdx = Math.min(totalDays - 1, endIdx);
-
-      const assignees = groupTasks.map(t => ({
-        name: getAssigneeName(t, getUserName),
-        status: getTaskBarStatus(t),
-        userId: t.assigned_to,
-      }));
-
-      const statusCounts: Record<TaskBarStatus, number> = {
-        completed: 0, in_progress: 0, overdue: 0, pending: 0,
-      };
-      for (const a of assignees) statusCounts[a.status]++;
-
-      let overallStatus: TaskBarStatus = "pending";
-      if (statusCounts.overdue > 0) overallStatus = "overdue";
-      else if (statusCounts.in_progress > 0) overallStatus = "in_progress";
-      else if (statusCounts.completed === assignees.length) overallStatus = "completed";
-      else if (statusCounts.completed > 0) overallStatus = "in_progress";
-
-      const totalProgress = groupTasks.reduce((sum, t) => sum + getTaskProgress(t), 0);
-      const progress = Math.round(totalProgress / groupTasks.length);
-
-      rows.push({
-        description: first.description,
-        projectName: projName,
-        projectColor: projectColorMap[projName] || PROJECT_COLORS[0],
-        tasks: groupTasks,
-        assignees,
-        startIdx,
-        endIdx,
-        statusCounts,
-        overallStatus,
-        progress,
-        earliestStart: earliestStart?.toISOString() || null,
-        latestEnd: latestEnd?.toISOString() || null,
-      });
-    }
-
-    rows.sort((a, b) => {
-      const aDate = a.earliestStart ? new Date(a.earliestStart).getTime() : Infinity;
-      const bDate = b.earliestStart ? new Date(b.earliestStart).getTime() : Infinity;
-      return aDate - bDate;
-    });
-
-    return rows;
-  }, [tasks, rangeStart, totalDays, projectColorMap, getUserName, users]);
-
-  // ─── Month headers for the timeline ────────────────────────────
-  const monthHeaders = useMemo(() => {
-    const headers: { label: string; startIdx: number; span: number }[] = [];
-    let curLabel = "";
-    let curStart = 0;
-    let curSpan = 0;
-
-    for (let i = 0; i < rangeDays.length; i++) {
-      const d = rangeDays[i];
-      const label = d.monthYear;
-      if (label !== curLabel) {
-        if (curLabel) headers.push({ label: curLabel, startIdx: curStart, span: curSpan });
-        curLabel = label;
-        curStart = i;
-        curSpan = 1;
-      } else {
-        curSpan++;
-      }
-    }
-    if (curLabel) headers.push({ label: curLabel, startIdx: curStart, span: curSpan });
-    return headers;
-  }, [rangeDays]);
-
-  const hasInitialScrolled = useRef(false);
-  useEffect(() => {
-    if (!timelineRef.current || groupedRows.length === 0 || hasInitialScrolled.current) return;
-    hasInitialScrolled.current = true;
-    const firstStartIdx = Math.min(...groupedRows.map((r) => r.startIdx));
-    const scrollTo = Math.max(0, firstStartIdx - 1) * colWidth;
-    timelineRef.current.scrollLeft = scrollTo;
-  }, [groupedRows, colWidth]);
-
-  useEffect(() => {
-    const el = timelineRef.current;
-    if (!el) return;
-
-    const handleEdgeScroll = () => {
-      if (isExtendingRef.current) return;
-      const threshold = 200;
-
-      if (el.scrollLeft + el.clientWidth >= el.scrollWidth - threshold) {
-        isExtendingRef.current = true;
-        setExtraAfter((prev) => prev + 1);
-        setTimeout(() => { isExtendingRef.current = false; }, 200);
-      }
-
-      if (el.scrollLeft <= threshold && el.scrollLeft > 0) {
-        isExtendingRef.current = true;
-        if (rangeDays.length > 0) {
-          const firstDay = rangeDays[0].date;
-          const prevMonthEnd = new Date(firstDay.getFullYear(), firstDay.getMonth(), 0);
-          scrollAdjustRef.current = prevMonthEnd.getDate() * colWidth;
-        }
-        setExtraBefore((prev) => prev + 1);
-      }
-    };
-
-    el.addEventListener("scroll", handleEdgeScroll);
-    return () => el.removeEventListener("scroll", handleEdgeScroll);
-  }, [rangeDays, colWidth]);
-
-  useLayoutEffect(() => {
-    if (scrollAdjustRef.current > 0 && timelineRef.current) {
-      timelineRef.current.scrollLeft += scrollAdjustRef.current;
-      scrollAdjustRef.current = 0;
-      setTimeout(() => { isExtendingRef.current = false; }, 200);
-    }
-  }, [extraBefore]);
-
-  const handleTimelineScroll = () => {
-    if (timelineRef.current && leftPanelRef.current) {
-      leftPanelRef.current.scrollTop = timelineRef.current.scrollTop;
-    }
-  };
-  const handleLeftScroll = () => {
-    if (leftPanelRef.current && timelineRef.current) {
-      timelineRef.current.scrollTop = leftPanelRef.current.scrollTop;
-    }
+  const changeRange = (next: (o: number) => number) => {
+    setRangeOffset(next);
+    setExtraBefore(1);
+    setExtraAfter(1);
   };
 
   if (loading) {
     return <SpinLoader isLoading />;
   }
 
+  const hoveredRow = hoveredIdx !== null ? groupedRows[hoveredIdx] : undefined;
+
   return (
     <div style={{ background: "var(--bg-card)", borderRadius: isMobile ? 10 : 16, border: "1px solid var(--border-light)", overflow: "hidden" }}>
-      {/* Navigation Header */}
-      <div
-        className="d-flex align-items-center justify-content-between"
-        style={{ padding: isMobile ? "10px 12px" : isTablet ? "12px 16px" : "14px 20px", borderBottom: "1px solid var(--border-light)" }}
-      >
-        <div className="d-flex align-items-center gap-2">
-          <button
-            onClick={() => { setRangeOffset(o => o - 1); setExtraBefore(1); setExtraAfter(1); }}
-            className="btn btn-sm p-1"
-            style={{ border: "1px solid var(--border-light)", borderRadius: 8, lineHeight: 1 }}
-          >
-            <KeyboardArrowLeftIcon sx={{ fontSize: isMobile ? 16 : 18, color: "var(--text-muted)" }} />
-          </button>
-          <button
-            className="btn btn-sm text-white d-flex align-items-center gap-1"
-            style={{
-              background: "linear-gradient(135deg, #7c3aed, #9333ea)",
-              borderRadius: isMobile ? 8 : 12,
-              padding: isMobile ? "5px 10px" : "6px 16px",
-              fontSize: isMobile ? 11 : 13,
-              fontWeight: 600,
-            }}
-            onClick={() => { setRangeOffset(0); setExtraBefore(1); setExtraAfter(1); }}
-          >
-            <CalendarMonthIcon sx={{ fontSize: isMobile ? 13 : 16 }} />
-            {rangeLabel}
-          </button>
-          <button
-            onClick={() => { setRangeOffset(o => o + 1); setExtraBefore(1); setExtraAfter(1); }}
-            className="btn btn-sm p-1"
-            style={{ border: "1px solid var(--border-light)", borderRadius: 8, lineHeight: 1 }}
-          >
-            <KeyboardArrowRightIcon sx={{ fontSize: isMobile ? 16 : 18, color: "var(--text-muted)" }} />
-          </button>
-        </div>
+      <GanttToolbar
+        rangeLabel={rangeLabel}
+        projects={projects}
+        projectColorMap={projectColorMap}
+        isMobile={isMobile}
+        isTablet={isTablet}
+        onPrev={() => changeRange(o => o - 1)}
+        onToday={() => changeRange(() => 0)}
+        onNext={() => changeRange(o => o + 1)}
+      />
 
-        {!isMobile && (
-          <div className="d-flex align-items-center gap-3">
-            {projects.filter(p => (p.status || "").toLowerCase() === "active").slice(0, isTablet ? 2 : 4).map((p: any, i: number) => {
-              const color = (projectColorMap[p.name] || PROJECT_COLORS[i % PROJECT_COLORS.length]).dot;
-              return (
-                <div key={p.id} className="d-flex align-items-center gap-1">
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: color, display: "inline-block" }} />
-                  <span style={{ fontSize: isTablet ? 10 : 11, color: "var(--text-muted)", fontWeight: 500 }}>{p.name}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Main Gantt Area */}
       <div style={{ display: "flex", maxHeight: isMobile ? 350 : isTablet ? 420 : 500, overflow: "hidden" }}>
-        {/* Fixed Left Panel — hidden on mobile */}
-        {!hideLeftPanel && !isMobile && <div
-          ref={leftPanelRef}
-          onScroll={handleLeftScroll}
-          style={{
-            width: responsiveLeftPanel,
-            minWidth: responsiveLeftPanel,
-            borderRight: "2px solid #e0d4f5",
-            boxShadow: "4px 0 8px rgba(124,58,237,0.06)",
-            overflowY: "auto",
-            overflowX: "hidden",
-            scrollbarWidth: "none",
-            backgroundColor: "var(--bg-card)",
-            zIndex: 3,
-          }}
-        >
-          {/* Left Header */}
-          <div
-            style={{
-              display: "flex",
-              position: "sticky",
-              top: 0,
-              zIndex: 4,
-              backgroundColor: "var(--bg-surface)",
-              borderBottom: "1px solid var(--border-light)",
-              minHeight: isTablet ? 58 : 68,
-              alignItems: "flex-end",
-            }}
-          >
-            <div style={{
-              flex: 1,
-              padding: isTablet ? "8px 10px" : "10px 16px",
-              fontSize: isTablet ? 9 : 10,
-              fontWeight: 700,
-              color: "var(--text-muted)",
-              letterSpacing: 1,
-              textTransform: "uppercase",
-            }}>
-              Task Details
-            </div>
-            {!isTablet && (
-              <div style={{
-                width: 100,
-                padding: "10px 8px",
-                fontSize: 10,
-                fontWeight: 700,
-                color: "var(--text-muted)",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                textAlign: "center",
-              }}>
-                Status
-              </div>
-            )}
-          </div>
+        {!hideLeftPanel && !isMobile && (
+          <GanttLeftPanel
+            panelRef={leftPanelRef}
+            onScroll={handleLeftScroll}
+            rows={groupedRows}
+            users={users}
+            width={leftPanelWidth}
+            rowHeight={rowHeight}
+            isTablet={isTablet}
+            hoveredIdx={hoveredIdx}
+            setHoveredIdx={setHoveredIdx}
+            onTaskClick={onTaskClick}
+          />
+        )}
 
-          {/* Left Task Rows */}
-          {groupedRows.length > 0 ? groupedRows.map((row, idx) => {
-            const isMulti = row.assignees.length > 1;
-            return (
-              <div
-                key={idx}
-                onMouseEnter={() => setHoveredIdx(idx)}
-                onMouseLeave={() => setHoveredIdx(null)}
-                onClick={() => onTaskClick?.(row.tasks[0])}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  height: responsiveRowHeight,
-                  borderBottom: "1px solid var(--border-table)",
-                  background: hoveredIdx === idx ? "var(--bg-hover)" : "var(--bg-card)",
-                  transition: "background 0.15s",
-                  cursor: onTaskClick ? "pointer" : undefined,
-                }}
-              >
-                <div style={{ flex: 1, padding: isTablet ? "4px 10px" : "6px 16px", overflow: "hidden" }}>
-                  <div style={{
-                    fontSize: isTablet ? 11 : 13,
-                    fontWeight: 600,
-                    color: row.overallStatus === "in_progress" ? "#2563eb" : "var(--text-primary)",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    marginBottom: isTablet ? 2 : 4,
-                  }}>
-                    {row.description}
-                  </div>
-                  <div className="d-flex align-items-center gap-2">
-                    <span style={{
-                      backgroundColor: row.projectColor.bg,
-                      color: row.projectColor.text,
-                      fontSize: 9,
-                      fontWeight: 600,
-                      padding: "1px 6px",
-                      borderRadius: 4,
-                      flexShrink: 0,
-                    }}>
-                      {row.projectName}
-                    </span>
-
-                    <div style={{ display: "flex", marginLeft: 2 }}>
-                      {row.assignees.slice(0, 4).map((a, i) => {
-                        const aIdx = users.findIndex(u => String(u.id) === String(a.userId));
-                        const color = avatarColors[Math.max(0, aIdx) % avatarColors.length];
-                        return (
-                          <div
-                            key={i}
-                            title={`${a.name} - ${statusDisplay[a.status].label}`}
-                            style={{
-                              width: 22,
-                              height: 22,
-                              borderRadius: "50%",
-                              backgroundColor: color,
-                              color: "#fff",
-                              fontSize: 8,
-                              fontWeight: 700,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              border: "2px solid #fff",
-                              marginLeft: i > 0 ? -6 : 0,
-                              zIndex: row.assignees.length - i,
-                              flexShrink: 0,
-                            }}
-                          >
-                            {getInitials(a.name)}
-                          </div>
-                        );
-                      })}
-                      {row.assignees.length > 4 && (
-                        <div style={{
-                          width: 22, height: 22, borderRadius: "50%",
-                          backgroundColor: "var(--bg-hover)", color: "var(--text-muted)",
-                          fontSize: 8, fontWeight: 700,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          border: "2px solid var(--bg-card)", marginLeft: -6, flexShrink: 0,
-                        }}>
-                          +{row.assignees.length - 4}
-                        </div>
-                      )}
-                    </div>
-
-                    {isMulti && (
-                      <span style={{ fontSize: 10, color: "var(--text-faint)", fontWeight: 600 }}>
-                        {row.assignees.length} assigned
-                      </span>
-                    )}
-                    {!isMulti && (
-                      <span style={{ fontSize: 10, color: "var(--text-faint)" }}>
-                        {formatShortDate(row.latestEnd || row.earliestStart)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {!isTablet && (
-                  <div style={{ width: 100, textAlign: "center", flexShrink: 0, padding: "0 4px" }}>
-                    {isMulti ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
-                        {row.statusCounts.completed > 0 && (
-                          <span style={{ fontSize: 9, fontWeight: 700, color: "#7c3aed", backgroundColor: "#f3e8ff", padding: "1px 6px", borderRadius: 4 }}>
-                            {row.statusCounts.completed} Done
-                          </span>
-                        )}
-                        {row.statusCounts.in_progress > 0 && (
-                          <span style={{ fontSize: 9, fontWeight: 700, color: "#9333ea", backgroundColor: "#f5f3ff", padding: "1px 6px", borderRadius: 4 }}>
-                            {row.statusCounts.in_progress} Active
-                          </span>
-                        )}
-                        {row.statusCounts.pending > 0 && (
-                          <span style={{ fontSize: 9, fontWeight: 700, color: "#6b7280", backgroundColor: "#f3f4f6", padding: "1px 6px", borderRadius: 4 }}>
-                            {row.statusCounts.pending} Pending
-                          </span>
-                        )}
-                        {row.statusCounts.overdue > 0 && (
-                          <span style={{ fontSize: 9, fontWeight: 700, color: "#dc2626", backgroundColor: "#fee2e2", padding: "1px 6px", borderRadius: 4 }}>
-                            {row.statusCounts.overdue} Overdue
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span style={{
-                        fontSize: 10, fontWeight: 700,
-                        color: statusDisplay[row.overallStatus].color,
-                        backgroundColor: statusDisplay[row.overallStatus].bg,
-                        padding: "3px 8px", borderRadius: 6,
-                      }}>
-                        {statusDisplay[row.overallStatus].label}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          }) : (
-            <div style={{ padding: 40, textAlign: "center", color: "var(--text-faint)", fontSize: 13 }}>
-              No tasks found for this period
-            </div>
-          )}
-        </div>}
-
-        {/* Scrollable Right Panel (Timeline) */}
         <div
           ref={timelineRef}
           onScroll={handleTimelineScroll}
@@ -559,366 +96,42 @@ export default function TaskGanttChart({
           style={{ flex: 1, overflowX: "auto", overflowY: "auto" }}
         >
           <div style={{ minWidth: totalDays * colWidth }}>
-            {/* Month Header Row */}
-            <div
-              style={{
-                display: "flex",
-                position: "sticky",
-                top: 0,
-                zIndex: 4,
-                backgroundColor: "var(--bg-surface)",
-                borderBottom: "1px solid var(--border-light)",
-                minHeight: 24,
-              }}
-            >
-              {monthHeaders.map((mh, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: mh.span * colWidth,
-                    minWidth: mh.span * colWidth,
-                    textAlign: "center",
-                    fontSize: isMobile ? 9 : isTablet ? 10 : 11,
-                    fontWeight: 700,
-                    color: "#7c3aed",
-                    padding: isMobile ? "3px 0" : "4px 0",
-                    borderLeft: i > 0 ? "1px solid #e0d6ff" : undefined,
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  {mh.label}
-                </div>
-              ))}
-            </div>
+            <GanttTimelineHeader
+              monthHeaders={monthHeaders}
+              rangeDays={rangeDays}
+              colWidth={colWidth}
+              isMobile={isMobile}
+              isTablet={isTablet}
+            />
 
-            {/* Day Column Headers */}
-            <div
-              style={{
-                display: "flex",
-                position: "sticky",
-                top: isMobile ? 20 : 24,
-                zIndex: 3,
-                backgroundColor: "var(--bg-surface)",
-                borderBottom: "1px solid var(--border-light)",
-                minHeight: isMobile ? 32 : isTablet ? 38 : 44,
-              }}
-            >
-              {rangeDays.map((d, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: colWidth,
-                    minWidth: colWidth,
-                    textAlign: "center",
-                    padding: isMobile ? "3px 0" : "6px 0",
-                    borderLeft: d.isFirstOfMonth ? "2px solid #d8b4fe" : "1px solid #f0f0f0",
-                    backgroundColor: d.isToday ? "#f5f3ff" : d.isWeekend ? "var(--bg-surface)" : undefined,
-                  }}
-                >
-                  <div style={{
-                    fontSize: isMobile ? 8 : 10,
-                    fontWeight: 600,
-                    color: d.isToday ? "#7c3aed" : "var(--text-secondary)",
-                    letterSpacing: 0.3,
-                  }}>
-                    {String(d.day).padStart(2, "0")}
-                  </div>
-                  {!isMobile && (
-                    <div style={{
-                      fontSize: 8,
-                      fontWeight: 500,
-                      color: d.isToday ? "#7c3aed" : "var(--text-faint)",
-                      letterSpacing: 0.5,
-                    }}>
-                      {d.dowLabel}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Timeline Bar Rows — shared grid overlay + per-row bars */}
             <div style={{ position: "relative" }}>
-              {/* Shared grid lines (rendered once, not per row) */}
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none", zIndex: 0 }}>
-                {rangeDays.map((d, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      position: "absolute",
-                      left: i * colWidth,
-                      top: 0,
-                      bottom: 0,
-                      width: colWidth,
-                      borderLeft: d.isFirstOfMonth ? "2px solid #ede9fe" : "1px solid #f5f5f5",
-                      backgroundColor: d.isWeekend ? "rgba(249,250,251,0.5)" : undefined,
-                    }}
-                  />
-                ))}
-                {/* Today marker (single element) */}
-                {(() => {
-                  const todayIdx = rangeDays.findIndex(d => d.isToday);
-                  return todayIdx >= 0 ? (
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: todayIdx * colWidth + colWidth / 2,
-                        top: 0,
-                        bottom: 0,
-                        width: 2,
-                        backgroundColor: "#7c3aed",
-                        opacity: 0.3,
-                        zIndex: 2,
-                      }}
-                    />
-                  ) : null;
-                })()}
-              </div>
+              <GanttGrid rangeDays={rangeDays} colWidth={colWidth} />
 
-              {groupedRows.map((row, idx) => {
-              const barColor = taskBarColors[row.overallStatus];
-              const barWidthPx = Math.max((row.endIdx - row.startIdx + 1) * colWidth - 4, 20);
-              const isMulti = row.assignees.length > 1;
-
-              let barLabel: string;
-              if (isMulti) {
-                const doneCount = row.statusCounts.completed;
-                barLabel = barWidthPx < 100
-                  ? `${doneCount}/${row.assignees.length}`
-                  : `${doneCount}/${row.assignees.length} Done`;
-              } else {
-                barLabel = barWidthPx < 120
-                  ? (row.overallStatus === "completed" ? "DONE" : row.overallStatus === "overdue" ? "!" : row.overallStatus === "in_progress" ? "ACTIVE" : "NEW")
-                  : (row.overallStatus === "completed" ? "COMPLETED" : row.overallStatus === "overdue" ? "OVERDUE" : row.overallStatus === "in_progress" ? "IN PROGRESS" : "PENDING");
-              }
-
-              return (
-                <div
+              {groupedRows.map((row, idx) => (
+                <GanttBarRow
                   key={idx}
+                  row={row}
+                  colWidth={colWidth}
+                  rowHeight={rowHeight}
+                  isMobile={isMobile}
+                  isTablet={isTablet}
+                  isHovered={hoveredIdx === idx}
                   onMouseEnter={() => setHoveredIdx(idx)}
                   onMouseLeave={() => { setHoveredIdx(null); setTooltipPos(null); }}
-                  style={{
-                    position: "relative",
-                    height: responsiveRowHeight,
-                    borderBottom: "1px solid var(--border-table)",
-                    background: hoveredIdx === idx ? "var(--bg-hover)" : undefined,
-                    transition: "background 0.15s",
-                    overflow: "hidden",
-                    zIndex: 1,
-                  }}
-                >
-                  {/* Task Bar */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: row.startIdx * colWidth + 2,
-                      width: barWidthPx,
-                      top: isMobile ? (isMulti ? 8 : 12) : isTablet ? (isMulti ? 10 : 14) : (isMulti ? 12 : 18),
-                      height: isMobile ? (isMulti ? 24 : 22) : isTablet ? (isMulti ? 28 : 24) : (isMulti ? 32 : 28),
-                      borderRadius: 6,
-                      background: barColor.bg,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 4,
-                      paddingInline: 6,
-                      zIndex: 3,
-                      cursor: "pointer",
-                      boxShadow: hoveredIdx === idx
-                        ? "0 3px 12px rgba(0,0,0,0.18)"
-                        : "0 1px 4px rgba(0,0,0,0.08)",
-                      transition: "box-shadow 0.2s",
-                      overflow: "hidden",
-                      whiteSpace: "nowrap",
-                    }}
-                    onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
-                    onClick={() => onTaskClick?.(row.tasks[0])}
-                  >
-                    {isMulti && barWidthPx >= (isMobile ? 60 : 80) && !isMobile && (
-                      <div style={{ display: "flex", marginRight: 2 }}>
-                        {row.assignees.slice(0, 3).map((a, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              width: isTablet ? 14 : 18, height: isTablet ? 14 : 18, borderRadius: "50%",
-                              backgroundColor: "rgba(255,255,255,0.3)",
-                              color: "#fff", fontSize: isTablet ? 6 : 7, fontWeight: 700,
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              marginLeft: i > 0 ? -4 : 0,
-                              border: "1.5px solid rgba(255,255,255,0.5)",
-                            }}
-                          >
-                            {getInitials(a.name)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <span style={{ fontSize: isMobile ? 7 : isTablet ? 8 : 10, fontWeight: 700, color: barColor.text }}>
-                      {barLabel}
-                    </span>
-                    {row.overallStatus === "overdue" && barWidthPx >= 120 && (
-                      <span style={{ fontSize: 12, marginLeft: 2 }}>&#9888;</span>
-                    )}
-                  </div>
-
-                  {isMulti && (
-                    <div style={{
-                      position: "absolute",
-                      left: row.startIdx * colWidth + 2,
-                      width: barWidthPx,
-                      top: isMobile ? 34 : isTablet ? 40 : 48,
-                      height: 3,
-                      borderRadius: 2,
-                      backgroundColor: "rgba(0,0,0,0.06)",
-                      zIndex: 3,
-                    }}>
-                      <div style={{
-                        width: `${(row.statusCounts.completed / row.assignees.length) * 100}%`,
-                        height: "100%",
-                        borderRadius: 2,
-                        backgroundColor: "#7c3aed",
-                        transition: "width 0.3s",
-                      }} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  onMouseMove={setTooltipPos}
+                  onTaskClick={onTaskClick}
+                />
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tooltip */}
-      {hoveredIdx !== null && tooltipPos && groupedRows[hoveredIdx] && !isMobile && (() => {
-        const row = groupedRows[hoveredIdx];
-        const isMulti = row.assignees.length > 1;
-        return (
-          <div
-            style={{
-              position: "fixed",
-              left: Math.min(tooltipPos.x + 14, screenWidth - 260),
-              top: tooltipPos.y - (isMulti ? 120 : 80),
-              background: "var(--bg-card)",
-              borderRadius: 12,
-              padding: isTablet ? "10px 14px" : "14px 18px",
-              fontSize: isTablet ? 11 : 12,
-              zIndex: 9999,
-              pointerEvents: "none",
-              boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
-              border: "1px solid var(--border-light)",
-              minWidth: isTablet ? 200 : 240,
-              maxWidth: isTablet ? 260 : 320,
-            }}
-          >
-            <div className="d-flex align-items-center gap-2 mb-2">
-              {/* Clamped — a long name would otherwise stretch the tooltip.
-                  The full text is in the task detail modal. */}
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: 14,
-                  color: "var(--text-primary)",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                  wordBreak: "break-word",
-                }}
-              >
-                {row.description}
-              </span>
-            </div>
-            <div style={{ color: "var(--text-muted)", marginBottom: 6 }}>
-              Project: <span style={{ fontWeight: 600, color: row.projectColor.text }}>{row.projectName}</span>
-            </div>
-            <div style={{ marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)" }}>
-                {row.assignees.length} Assignee{row.assignees.length > 1 ? "s" : ""}:
-              </span>
-              <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 3 }}>
-                {row.assignees.slice(0, 5).map((a, i) => {
-                  const sd = statusDisplay[a.status];
-                  return (
-                    <div key={i} className="d-flex align-items-center gap-2">
-                      <span style={{
-                        width: 6, height: 6, borderRadius: "50%",
-                        backgroundColor: sd.color, display: "inline-block", flexShrink: 0,
-                      }} />
-                      <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{a.name}</span>
-                      <span style={{
-                        fontSize: 9, fontWeight: 600, color: sd.color,
-                        backgroundColor: sd.bg, padding: "1px 5px", borderRadius: 3, marginLeft: "auto",
-                      }}>
-                        {sd.label}
-                      </span>
-                    </div>
-                  );
-                })}
-                {row.assignees.length > 5 && (
-                  <span style={{ fontSize: 10, color: "#9ca3af" }}>+{row.assignees.length - 5} more</span>
-                )}
-              </div>
-            </div>
-            <div style={{ color: "var(--text-muted)", marginBottom: 4 }}>
-              {formatShortDate(row.earliestStart)} &rarr; {formatShortDate(row.latestEnd)}
-            </div>
-          </div>
-        );
-      })()}
+      {hoveredRow && tooltipPos && !isMobile && (
+        <GanttTooltip row={hoveredRow} pos={tooltipPos} screenWidth={screenWidth} isTablet={isTablet} />
+      )}
 
-      {/* Footer: Legend + Zoom */}
-      <div
-        className="d-flex align-items-center justify-content-between flex-wrap"
-        style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", backgroundColor: "#fafafa" }}
-      >
-        <div className="d-flex align-items-center gap-4">
-          <div className="d-flex align-items-center gap-1">
-            <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#7c3aed", display: "inline-block" }} />
-            <span style={{ fontSize: 11, color: "#6b7280" }}>In Progress</span>
-          </div>
-          <div className="d-flex align-items-center gap-1">
-            <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#9333ea", display: "inline-block" }} />
-            <span style={{ fontSize: 11, color: "#6b7280" }}>Completed</span>
-          </div>
-          <div className="d-flex align-items-center gap-1">
-            <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#c084fc", display: "inline-block" }} />
-            <span style={{ fontSize: 11, color: "#6b7280" }}>Pending</span>
-          </div>
-        </div>
-
-        <div className="d-flex align-items-center gap-2">
-          <span style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: 1, textTransform: "uppercase" }}>
-            Zoom
-          </span>
-          <button
-            onClick={() => setZoomLevel(z => Math.max(0.5, +(z - 0.1).toFixed(1)))}
-            style={{
-              width: 22, height: 22, borderRadius: "50%", border: "1px solid #d1d5db",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 14, color: "#6b7280", background: "#fff", cursor: "pointer",
-            }}
-          >
-            &minus;
-          </button>
-          <input
-            type="range" min={0.5} max={2} step={0.1}
-            value={zoomLevel}
-            onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
-            style={{ width: 100, accentColor: "#7c3aed", cursor: "pointer" }}
-          />
-          <button
-            onClick={() => setZoomLevel(z => Math.min(2, +(z + 0.1).toFixed(1)))}
-            style={{
-              width: 22, height: 22, borderRadius: "50%", border: "1px solid #d1d5db",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 14, color: "#6b7280", background: "#fff", cursor: "pointer",
-            }}
-          >
-            +
-          </button>
-        </div>
-      </div>
+      <GanttFooter zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
     </div>
   );
 }

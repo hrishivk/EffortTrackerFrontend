@@ -1,12 +1,5 @@
 import { parseServerTime } from "./serverTime";
 
-/**
- * Status filter for `/role-user/task-list`.
- *
- * The API accepts exactly these snake_case values, one or many. Many is sent as
- * a comma-separated string (`status=in_progress,yet_to_start`); omitting the
- * param entirely returns every status.
- */
 export const TASK_STATUSES = [
   "yet_to_start",
   "in_progress",
@@ -16,15 +9,6 @@ export const TASK_STATUSES = [
 
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
-/**
- * Normalise one or more statuses into the comma-separated string the API wants.
- * An array would also work (axios serialises it as `status[]=a&status[]=b`, which
- * the backend handles), but the comma form avoids depending on the serializer.
- *
- * Values are no longer checked against `TASK_STATUSES`: a status can now be any
- * board group's name, and the filter's options come from the API's group list, so
- * whitelisting here would silently drop every custom group.
- */
 export const toStatusParam = (
   status?: string | string[] | null
 ): string | undefined => {
@@ -33,11 +17,6 @@ export const toStatusParam = (
   return values.length ? Array.from(new Set(values)).join(",") : undefined;
 };
 
-/**
- * Fallback options for the Status field, used only when the API's group list is
- * unavailable — normally the options are built from the board groups so the
- * filter offers exactly the lanes that exist. "" means all statuses.
- */
 export const TASK_STATUS_FILTER_OPTIONS = [
   { value: "in_progress,yet_to_start", label: "Active (In Progress + Yet to Start)" },
   { value: "in_progress", label: "In Progress" },
@@ -46,16 +25,6 @@ export const TASK_STATUS_FILTER_OPTIONS = [
   { value: "blocked", label: "Blocked" },
 ];
 
-/**
- * How urgent a task's deadline is, or null when there is nothing to flag.
- *
- * `overdue` outranks `today`: a deadline already missed is the more mandatory of
- * the two, and the UI escalates it accordingly.
- *
- * Only open work is ever flagged. A finished task's deadline is history, and a
- * task parked in a board group has had its status overwritten with the group's
- * name, so we cannot tell there and stay quiet rather than cry wolf.
- */
 export type DueState = "overdue" | "today" | null;
 
 export const dueState = (
@@ -76,7 +45,6 @@ export const dueState = (
   return day.getTime() < today.getTime() ? "overdue" : null;
 };
 
-/** Whole days a deadline has been missed by. 0 when it is not overdue. */
 export const daysOverdue = (dueDate?: string | null): number => {
   const d = toLocalDate(dueDate);
   if (!d) return 0;
@@ -88,12 +56,6 @@ export const daysOverdue = (dueDate?: string | null): number => {
   return diff > 0 ? Math.round(diff / 86400000) : 0;
 };
 
-/**
- * `due_date` / `start_date` arrive as plain `YYYY-MM-DD` — a calendar day, with
- * no time and no zone. Running those through `parseServerTime` treats them as
- * UTC midnight, which renders as the *previous* day anywhere behind UTC. So a
- * bare date is built in local time and only a real timestamp is parsed.
- */
 export const toLocalDate = (value?: string | null): Date | null => {
   if (!value) return null;
   const plain = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
@@ -105,31 +67,16 @@ export const toLocalDate = (value?: string | null): Date | null => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
-/**
- * A `Date` as the `YYYY-MM-DD` an `<input type="date">` wants, read in local
- * time. `toISOString()` is the trap here: it converts to UTC first, so anywhere
- * ahead of UTC a local midnight lands on the previous day and the picker shows
- * yesterday. See `toLocalDate` above for the same problem in reverse.
- */
 export const toDateInput = (date: Date): string => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${date.getFullYear()}-${month}-${day}`;
 };
 
-/**
- * A stored `start_date` / `due_date` as the `YYYY-MM-DD` an `<input type="date">`
- * wants, or "" when there is none — which is what an empty picker reads back as,
- * so a form can compare the two directly.
- *
- * Both arrive as bare calendar days, but nothing stops the API sending a
- * timestamp, so the value goes through `toLocalDate` first.
- */
 export const toDateValue = (value?: string | null): string => {
   const d = toLocalDate(value);
   return d ? toDateInput(d) : "";
 };
 
-/** True when the value is a bare calendar day rather than a timestamp. */
 export const isPlainDate = (value?: string | null): boolean =>
   !!value && /^\d{4}-\d{2}-\d{2}$/.test(value.trim());

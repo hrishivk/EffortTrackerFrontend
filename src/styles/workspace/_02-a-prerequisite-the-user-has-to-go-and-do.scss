@@ -1,0 +1,355 @@
+// ─── A prerequisite the user has to go and do ───────────────────
+// Shown when step 2 has nothing to offer, in place of a bare "none found".
+.cws__setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 26px;
+  border: 1px dashed rgba(124, 58, 237, 0.3);
+  border-radius: 16px;
+  background-color: rgba(124, 58, 237, 0.04);
+  text-align: center;
+}
+
+.cws__setup-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
+
+.cws__setup-title {
+  margin: 14px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__setup-caption {
+  margin: 5px 0 0;
+  max-width: 460px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+// Left-aligned inside a centred block: the steps are read in order, and
+// centred list text is hard to follow.
+.cws__setup-steps {
+  margin: 18px 0 0;
+  padding-left: 20px;
+  max-width: 480px;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+
+  li + li {
+    margin-top: 8px;
+  }
+
+  li::marker {
+    color: #7c3aed;
+    font-weight: 700;
+  }
+
+  strong {
+    color: var(--text-primary);
+  }
+}
+
+.cws__setup-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 20px;
+
+  // These two are links, not buttons, so the default underline has to go and
+  // the colour has to be stated — otherwise they render as dark underlined
+  // text rather than as actions.
+  a {
+    height: 36px;
+    padding: 0 16px;
+    font-size: 12.5px;
+    text-decoration: none;
+    color: #fff;
+  }
+
+  // The secondary action: filled, but a step back from the gradient.
+  .cws__ghost {
+    border-color: transparent;
+    background-color: #8b5cf6;
+
+    &:hover {
+      background-color: #7c3aed;
+    }
+  }
+}
+
+// ─── Two chips as a choice ──────────────────────────────────────
+// Used for Access. Both options sit on one row and the picked one fills, so
+// the current state reads without opening anything.
+.cws__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.cws__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  // Tight enough for both chips to sit side by side in a quarter-width cell.
+  padding: 9px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s,
+    box-shadow 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.4);
+    color: var(--text-primary);
+  }
+
+  &--on {
+    border-color: transparent;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3);
+
+    &:hover {
+      border-color: transparent;
+      color: #fff;
+    }
+  }
+}
+
+// A line under a field explaining what it is for, or why it is needed.
+.cws__note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-faint);
+
+  &--warn {
+    color: #b45309;
+  }
+}
+
+.cws__req {
+  margin-left: 2px;
+  color: #dc2626;
+}
+
+.cws__label {
+  margin: 16px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}
+
+.cws__input {
+  width: 100%;
+  height: 44px;
+  padding: 0 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+
+  &:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  }
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+
+  // The creator is whoever is signed in, so it shows rather than invites input.
+  &--locked {
+    color: var(--text-muted);
+    cursor: default;
+  }
+}
+
+.cws__textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: 11px 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+
+  &:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  }
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+}
+
+// ─── Live summary column ────────────────────────────────────────
+// A preview of the workspace as it is described: a violet banner carrying the
+// identity, the details as icon rows beneath, and a meter for what is left.
+.cws__side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cws__side-card {
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+}
+
+.cws__side-banner {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+}
+
+.cws__side-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 11px;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cws__side-ident {
+  flex: 1;
+  min-width: 0;
+}
+
+.cws__side-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.cws__side-caption {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.cws__side-chip {
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 7px;
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cws__facts {
+  margin: 0;
+  padding: 6px 15px;
+}
+
+// Icon, label, then the value against the right edge.
+.cws__fact {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 0;
+
+  & + & {
+    border-top: 1px solid var(--border-light);
+  }
+
+  // Still blank — visible, but clearly not filled in.
+  &--empty .cws__fact-value {
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+
+  &--empty .cws__fact-icon {
+    background-color: var(--bg-hover);
+    color: var(--text-faint);
+  }
+}
+
+.cws__fact-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background-color: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+}
+
+.cws__fact-label {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.cws__fact-value {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}

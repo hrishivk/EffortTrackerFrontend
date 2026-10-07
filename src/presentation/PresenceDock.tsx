@@ -8,28 +8,10 @@ import { useAppSelector } from "../store/configureStore";
 import { fetchAllUsers } from "../core/actions/spAction";
 import type { formUserData } from "../shared/types/User";
 
-/**
- * Who is around, in the corner of every page.
- *
- * Presence is read, not reported: `lastSeenAt` is already stamped on every user
- * and already drives the Last Active column, so this needs nothing new from the
- * API — it just asks the question the table cannot, which is "who could I reach
- * right now", and answers it from wherever you happen to be standing.
- *
- * It opens the way the notification panel does — in from the right, over a dim —
- * because it is the same kind of thing: a tray you glance at and dismiss, not a
- * place you go.
- *
- * Managers only. The roster comes from `/list-users`, which is theirs; a member
- * has their room for this, and asking would only earn them a 403.
- */
 
-/** Seen inside this many minutes and you are on. */
 const ONLINE_MINUTES = 5;
-/** Beyond this, away becomes offline. */
 const AWAY_MINUTES = 30;
 
-/** How often the roster is asked again while the dock is on screen. */
 const REFRESH_MS = 60_000;
 
 type Presence = "online" | "away" | "offline";
@@ -40,7 +22,6 @@ type Person = {
   role: string;
   email: string;
   state: Presence;
-  /** "now", "12m", "3h", "18 Sep" — short enough for the end of a row. */
   when: string;
 };
 
@@ -59,10 +40,6 @@ const initialsOf = (name: string) =>
     .toUpperCase()
     .slice(0, 2);
 
-/**
- * One colour per person, picked from their id rather than their position, so a
- * face keeps its colour as the roster reorders around it.
- */
 const TINTS = [
   ["#7c3aed", "#a855f7"],
   ["#0ea5e9", "#38bdf8"],
@@ -78,14 +55,6 @@ const tintOf = (id: string) => {
   return TINTS[n];
 };
 
-/**
- * Where somebody is, from the one timestamp we have.
- *
- * `lastSeenAt` is not always a date: an account that has never signed in comes
- * back as the sentence "No login activity recorded", which the Last Active
- * column renders as-is. Anything unparseable is simply offline here, with
- * nothing claimed about when.
- */
 const readPresence = (raw?: string | null): { state: Presence; when: string } => {
   const seen = raw ? dayjs(raw) : null;
   if (!seen || !seen.isValid()) return { state: "offline", when: "never" };
@@ -112,7 +81,6 @@ export default function PresenceDock() {
   const [open, setOpen] = useState(false);
   const [people, setPeople] = useState<Person[]>([]);
   const [onlyOnline, setOnlyOnline] = useState(false);
-  /** Hidden for good once the roster proves unreachable. */
   const [denied, setDenied] = useState(false);
 
   const load = useCallback(async () => {
@@ -121,7 +89,6 @@ export default function PresenceDock() {
       const rows: formUserData[] = res?.data ?? [];
       setPeople(
         rows
-          // Your own row is not company: you know where you are.
           .filter((u) => String(u.id) !== String(user?.id))
           .map((u) => {
             const { state, when } = readPresence(u.lastSeenAt as string | null);
@@ -136,7 +103,6 @@ export default function PresenceDock() {
           })
       );
     } catch {
-      // A roster this caller cannot read is a dock with nothing to show.
       setDenied(true);
     }
   }, [user?.id]);
@@ -145,7 +111,6 @@ export default function PresenceDock() {
     if (!isManager) return;
     void load();
     const id = window.setInterval(() => void load(), REFRESH_MS);
-    // Coming back to the tab is exactly when the answer is most stale.
     const onFocus = () => void load();
     window.addEventListener("focus", onFocus);
     return () => {
@@ -197,8 +162,6 @@ export default function PresenceDock() {
             />
 
             <motion.aside
-              // The notification panel's entrance, to the frame: these are the
-              // same kind of thing, so they should arrive the same way.
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}

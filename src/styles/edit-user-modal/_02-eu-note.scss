@@ -1,0 +1,185 @@
+@use "../variables" as *;
+
+.eu-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: $text-secondary;
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: $text-muted;
+  }
+}
+
+/* ── Footer ── */
+.eu-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 24px 20px;
+  flex-shrink: 0;
+
+  @include respond-below($bp-sm) {
+    padding: 12px 14px 16px;
+  }
+}
+
+.eu-btn-cancel {
+  padding: 9px 22px;
+  border: 1px solid $border-light;
+  border-radius: 9px;
+  background: $bg-white;
+  color: $text-dark;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: $bg-light;
+  }
+}
+
+.eu-btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 22px;
+  border: none;
+  border-radius: 9px;
+  background: $purple-gradient;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.2s, opacity 0.2s;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/* Edit icon in the users table, beside the delete icon */
+.eu-edit-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #ede9fe;
+  background-color: $bg-white;
+  color: #d1d5db;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $purple-light;
+    color: $purple-primary;
+    border-color: #c4b5fd;
+  }
+
+  @include respond-below($bp-md) {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+.eu-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Department picker (shared users) ──────────────────────────────
+   Editable here for a super admin. Two across where the modal allows it,
+   stacked where it does not — a department name plus its description does
+   not survive a third column.                                           */
+
+.eu-domains {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 2px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.eu-domain {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-card);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+
+  &:hover { border-color: rgba(124, 58, 237, 0.4); }
+
+  &.is-on {
+    border-color: #7c3aed;
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+}
+
+// A box rather than a native checkbox: the whole row is the target, and a real
+// checkbox inside a button is a control inside a control.
+.eu-domain__box {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 5px;
+  background-color: var(--bg-surface);
+  color: #fff;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.eu-domain.is-on .eu-domain__box {
+  border-color: #7c3aed;
+  background-color: #7c3aed;
+}
+
+.eu-domain__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  b {
+    color: var(--text-primary);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  span {
+    overflow: hidden;
+    color: var(--text-faint);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

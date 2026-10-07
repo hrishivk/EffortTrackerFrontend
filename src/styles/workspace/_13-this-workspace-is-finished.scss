@@ -1,0 +1,115 @@
+// ─── "This workspace is finished" ───────────────────────────────
+// A strip under the hero rather than a control on it. It exists only while the
+// workspace is completed, so it has room to say what it is for — which an icon
+// on the band could only do through a tooltip.
+.wsd__done {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 13px 15px;
+  border: 1px solid rgba(13, 148, 136, 0.28);
+  border-radius: 13px;
+  background-color: rgba(13, 148, 136, 0.07);
+
+  @media (max-width: 620px) {
+    flex-wrap: wrap;
+  }
+}
+
+// Once it has been sent, the strip stops asking and just confirms.
+.wsd__done--sent {
+  border-color: rgba(22, 163, 74, 0.28);
+  background-color: rgba(22, 163, 74, 0.06);
+
+  .wsd__done-icon {
+    background-color: rgba(22, 163, 74, 0.14);
+    color: #16a34a;
+  }
+
+  .wsd__done-go {
+    background-color: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+
+    &:hover {
+      border-color: #0d9488;
+      background-color: transparent;
+      color: #0d9488;
+    }
+  }
+}
+
+.wsd__done-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background-color: rgba(13, 148, 136, 0.14);
+  color: #0d9488;
+}
+
+.wsd__done-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  b {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  small {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+}
+
+.wsd__done-go {
+  flex-shrink: 0;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 9px;
+  background-color: #0d9488;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background-color: #0f766e;
+  }
+}
+
+// What the managers will actually receive, shown before it is sent.
+.wsd__announce-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-light);
+  border-radius: 10px;
+  background-color: var(--bg-surface);
+
+  b {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  span {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+}

@@ -1,0 +1,326 @@
+// ─── Status, as a life-cycle rail on the hero ───────────────────
+// Planned, opened, sometimes paused — a sequence, so it reads as a track. It
+// sits on the violet band, so the rule and the unvisited dots are white and
+// only the current stage takes a real colour.
+// ─── Status control and actions menu ────────────────────────────
+.wsd__status {
+  position: relative;
+  flex-shrink: 0;
+  padding-left: 20px;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+
+  @media (max-width: 900px) {
+    padding-left: 0;
+    border-left: none;
+  }
+}
+
+.wsd__status-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.wsd__status-info {
+  display: inline-flex;
+  color: rgba(255, 255, 255, 0.68);
+  cursor: help;
+}
+
+// A pill rather than a select: it reads as the current state first and as a
+// control second, which is the order it matters in.
+.wsd__status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 172px;
+  padding: 7px 9px 7px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.17);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.27);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.8;
+  }
+}
+
+.wsd__status-caret {
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+
+  &--up {
+    transform: rotate(180deg);
+  }
+}
+
+// The one mark of which state a workspace is in, on the band and in the menu.
+.wsd__status-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #cbd5e1;
+
+  &--active {
+    background-color: #4ade80;
+  }
+
+  &--planning {
+    background-color: #fbbf24;
+  }
+
+  &--on_hold {
+    background-color: #94a3b8;
+  }
+
+  &--completed {
+    background-color: #2dd4bf;
+  }
+}
+
+.wsd__more {
+  position: relative;
+  flex-shrink: 0;
+  padding-left: 20px;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+
+  @media (max-width: 900px) {
+    padding-left: 0;
+    margin-left: auto;
+    border-left: none;
+  }
+}
+
+.wsd__more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.17);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.29);
+  }
+}
+
+/*
+ * Both hero dropdowns. Hung from the right edge of whichever control opened
+ * it, because each sits at the end of the band — dropping left would take it
+ * off the page.
+ */
+.wsd__drop {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  min-width: 224px;
+  padding: 6px;
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.24);
+
+  &--status {
+    min-width: 268px;
+  }
+}
+
+.wsd__drop-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 11px;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.12s;
+
+  svg {
+    flex-shrink: 0;
+    color: var(--text-faint);
+  }
+
+  &:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  &--on {
+    background-color: var(--bg-hover);
+  }
+}
+
+// The status options carry their consequence under the label.
+.wsd__drop-text {
+  flex: 1;
+  min-width: 0;
+
+  b {
+    display: block;
+    font-weight: 600;
+  }
+
+  small {
+    display: block;
+    margin-top: 1px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-faint);
+  }
+}
+
+.wsd__drop-row--danger {
+  color: #dc2626;
+
+  svg {
+    color: #dc2626;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: rgba(239, 68, 68, 0.09);
+  }
+}
+
+.wsd__hero-key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 7px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.wsd__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.28);
+  }
+}
+
+.wsd__hero-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+// Counts, each ruled off from the next as in the reference.
+.wsd__stats {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+
+  @media (max-width: 900px) {
+    width: 100%;
+    padding-top: 16px;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.22);
+  }
+}
+
+.wsd__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 0 20px;
+  color: #fff;
+
+  & + & {
+    border-left: 1px solid rgba(255, 255, 255, 0.22);
+  }
+
+  @media (max-width: 900px) {
+    flex: 1;
+    min-width: 0;
+    padding: 0 10px;
+  }
+}
+
+.wsd__stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 33px;
+  height: 33px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 11px;
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.wsd__stat-label {
+  margin-top: 9px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.wsd__stat-n {
+  margin-top: 2px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+// ─── Description strip ──────────────────────────────────────────
+.wsd__note {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 13px;
+  background-color: var(--bg-card);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}

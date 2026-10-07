@@ -16,52 +16,27 @@ import { useAppSelector, type AppDispatch } from "../store/configureStore";
 import { reset } from "../store/authSlice";
 import { authLogout } from "../core/actions/action";
 import { useTheme } from "../contexts/ThemeContext";
+import { dashboardPathFor } from "../shared/utils/roles";
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
-/**
- * Where the sidebar's width is remembered.
- *
- * It has to be remembered somewhere outside the component: `<Routes>` is keyed
- * on the pathname so the page can animate between routes, which remounts
- * everything under it on every navigation — including this layout. A collapsed
- * sidebar would spring back open the moment you clicked a nav row.
- *
- * Storage also makes it survive a reload, which is what anyone who narrows a
- * sidebar expects of it anyway.
- */
 const SIDEBAR_KEY = "krew:sidebar-collapsed";
 
 const readCollapsed = () => {
   try {
     return localStorage.getItem(SIDEBAR_KEY) === "1";
   } catch {
-    // Private windows and blocked site data: the sidebar simply opens wide.
     return false;
   }
 };
 
-const DASHBOARD_PATHS: Record<string, string> = {
-  SP: "/sp/dashboard",
-  AM: "/am/dashboard",
-  USER: "/user/dashboard",
-  DEVLOPER: "/user/dashboard",
-};
-
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Read at mount, not in an effect, so a remount paints at the right width
-  // rather than opening wide and snapping shut.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readCollapsed);
   const { user } = useAppSelector((state) => state.user);
 
-  /**
-   * The 2.0 release. The first sign-in after it gets a banner across the top
-   * of the page; dismissing it, or opening the full note from it, retires it
-   * for good. The header pill opens the note any time after.
-   */
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [whatsNewSeen, setWhatsNewSeen] = useState(hasSeenWhatsNew);
   const retireBanner = () => {
@@ -85,9 +60,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     : "User";
   const initial = displayName.charAt(0).toUpperCase();
 
-  const profilePath = `${DASHBOARD_PATHS[user?.role ?? ""] ?? "/"}?tab=profile`;
+  const profilePath = `${dashboardPathFor(user?.role)}?tab=profile`;
 
-  // Close the account menu on outside click, and whenever the route changes.
   useEffect(() => {
     const handleOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -104,7 +78,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     try {
       localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed ? "1" : "0");
     } catch {
-      // Nothing to do: the preference just does not outlive this page.
     }
   }, [sidebarCollapsed]);
 
@@ -116,17 +89,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         window.location.href = "/";
       }
     } catch {
-      // The session is being torn down anyway — send the user to login.
       await dispatch(reset());
       window.location.href = "/";
     }
   };
 
-  // Sidebar occupies the full viewport height, so the header and main content
-  // are both inset by its current width.
-  // The header spans the full viewport and the sidebar card sits below it, so
-  // only the main content is offset — by the card's width plus both 12px
-  // gutters. Keep these in step with --sb-gap in _sidebar.scss.
   const mainInset = sidebarCollapsed
     ? "md:ml-[86px]"
     : "md:ml-[264px] xl:ml-[272px]";
@@ -140,7 +107,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
       />
 
-      {/* ─── Header ─── */}
       <header className="app-header fixed top-0 left-0 right-0 z-30 h-[64px]">
         <div className="flex h-full items-center gap-3 px-4 sm:px-6">
           <button
@@ -154,7 +120,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
           <div className="flex-1" />
 
-          {/* Right controls */}
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <button
               type="button"
@@ -182,7 +147,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
             <NotificationPanel />
 
-            {/* Account menu — profile and sign out */}
             <div ref={menuRef} className="relative">
               <button
                 onClick={() => setMenuOpen((prev) => !prev)}
@@ -237,13 +201,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         {children}
       </main>
 
-      {/*
-        * The presence dock — the bubble in the bottom-right corner and the
-        * roster it opens. Parked at the user's request until they say
-        * otherwise: uncomment the line below to put it back, nothing else.
-        *
-        * <PresenceDock />
-        */}
     </div>
   );
 };

@@ -1,0 +1,97 @@
+@use "../variables" as *;
+
+/* ═══════════════════════════════════════════
+   EMPTY & SKELETON
+   ═══════════════════════════════════════════ */
+/* ── Loader ── */
+.pf-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120px 20px;
+  gap: 14px;
+}
+
+.pf-loader-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-muted;
+  letter-spacing: 0.01em;
+}
+
+.pf-empty-text {
+  font-size: 13px;
+  color: $text-muted;
+  font-style: italic;
+  margin: 0;
+}
+
+.pf-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+
+  @include respond-below($bp-sm) {
+    padding: 48px 16px;
+  }
+}
+
+.pf-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f3e8ff, #ede9fe);
+  color: $purple-primary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.pf-empty-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: $text-dark;
+  margin: 0 0 6px;
+}
+
+.pf-empty-sub {
+  font-size: 13px;
+  color: $text-muted;
+  margin: 0;
+}
+
+.pf-skeleton {
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: pf-shimmer 1.5s ease-in-out infinite;
+
+  &--lg {
+    width: 140px;
+    height: 18px;
+  }
+  &--md {
+    width: 200px;
+    height: 14px;
+  }
+  &--circle {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+  }
+  &--block {
+    width: 100%;
+    height: 80px;
+    border-radius: 14px;
+  }
+}
+
+@keyframes pf-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

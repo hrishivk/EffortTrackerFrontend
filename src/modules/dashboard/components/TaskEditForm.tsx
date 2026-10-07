@@ -15,17 +15,6 @@ import { PRIORITIES, PRIORITY_COLORS, miniSelectSx } from "./boardConstants";
 import SubtaskEditor from "./SubtaskEditor";
 import type { SubtaskAssignee, SubtaskDraft } from "./CreateTaskModal";
 
-/**
- * Editing work that already exists, from inside the detail panel.
- *
- * Two forms, because they are two different jobs against two different
- * endpoints — changing a row (`PATCH /updateTask`) and adding children to it
- * (`POST /task/subtask`) — but they share a look, so they share a file.
- *
- * Neither owns any data. Each collects fields, hands them up and lets the panel
- * decide what to do with the answer; a rejected save leaves the form standing
- * with what was typed still in it.
- */
 
 const menuProps = {
   PaperProps: {
@@ -48,7 +37,6 @@ const TAG_COLORS = [
   { bg: "rgba(245, 158, 11, 0.14)", text: "#d97706" },
 ];
 
-/** The chips, with the same add-on-Enter box both create forms use. */
 function TagField({
   tags,
   onChange,
@@ -110,13 +98,10 @@ function TagField({
 }
 
 interface TaskEditFormProps {
-  /** The row being edited — a main task or one subtask. */
   task: taskList;
-  /** `sequential` orders a parent's children, so only a main task offers it. */
   isMain: boolean;
   saving: boolean;
   onCancel: () => void;
-  /** Never rejects: the panel reports a refusal and keeps the form open. */
   onSave: (fields: TaskEditFields) => void | Promise<void>;
 }
 
@@ -139,17 +124,6 @@ export default function TaskEditForm({
 
   const nameMissing = touched && !name.trim();
 
-  /**
-   * What actually moved, and nothing else.
-   *
-   * An untouched field must stay out of the body: sending a field back
-   * unchanged is harmless, but sending every one would overwrite whatever
-   * somebody else changed in the meantime.
-   *
-   * Dates are not here at all. Moving a deadline is an extension — recorded,
-   * with a reason — and this form's unlogged `PATCH` is exactly the hole that
-   * feature closes, so it does not offer the field.
-   */
   const changes = (): TaskEditFields => {
     const fields: TaskEditFields = {};
     if (name.trim() !== wasName) fields.description = name.trim();
@@ -164,8 +138,6 @@ export default function TaskEditForm({
     setTouched(true);
     if (!name.trim()) return;
     const fields = changes();
-    // Nothing moved. The API answers an empty body with a 400, and there is
-    // nothing to save anyway — so this is a close, not a request.
     if (Object.keys(fields).length === 0) {
       onCancel();
       return;
@@ -221,8 +193,6 @@ export default function TaskEditForm({
 
         <TagField tags={tags} onChange={setTags} />
 
-        {/* A subtask has no children to order, and the API refuses the field
-            on one — so it is not offered there. */}
         {isMain && (
           <label
             className="tdp__edit-seq"
@@ -263,39 +233,15 @@ export default function TaskEditForm({
 }
 
 interface AddSubtasksFormProps {
-  /** The room's roster. Empty outside a room, which hides the assignee field. */
   roomMembers?: SubtaskAssignee[];
-  /** The parent's window, which a new child starts inside. */
   defaultStartDate?: string;
   defaultDueDate?: string;
-  /** The parent's order flag, so the toggle starts where the task already is. */
   sequential: boolean;
   saving: boolean;
   onCancel: () => void;
-  /**
-   * Resolves with how many rows the API actually took.
-   *
-   * A count rather than nothing, because each subtask is its own request and so
-   * partial success is a real outcome: four rows can leave two on the server and
-   * two in the form. What was taken is dropped here and what was refused stays
-   * put, ready to be fixed and sent again.
-   */
   onAdd: (rows: AddSubtaskInput[], sequential: boolean) => Promise<number>;
 }
 
-/**
- * Children added to a task that already exists — several at a time.
- *
- * This is the same editor the create form drafts its subtasks in, which is the
- * point: breaking a task down is one job whether it happens while the task is
- * being raised or a week later, so it should be one control. Rows are named,
- * ordered by dragging and given their own assignee and dates here, then sent in
- * listed order.
- *
- * Order is the whole reason they go up one at a time rather than in a batch:
- * the endpoint appends, so the order they are sent in is the order they end up
- * in — and with "Run in order" on, that order *is* the plan.
- */
 export function AddSubtasksForm({
   roomMembers = [],
   defaultStartDate = "",
@@ -313,7 +259,6 @@ export function AddSubtasksForm({
 
   const submit = async () => {
     setTouched(true);
-    // A blank name is a 400 the form can see coming.
     if (!rows.length || blank) return;
 
     const added = await onAdd(
@@ -327,8 +272,6 @@ export function AddSubtasksForm({
       runInOrder
     );
 
-    // All of them landed and the panel has closed this form. Anything less and
-    // the rows that failed are the ones still listed.
     if (added > 0 && added < rows.length) {
       setRows(rows.slice(added));
       setTouched(false);

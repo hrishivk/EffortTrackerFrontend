@@ -1,6 +1,5 @@
 import CheckIcon from "@mui/icons-material/Check";
 
-/** Where the decorative specks sit around the ring, as % offsets. */
 const SPECKS = [
   { top: "4%", left: "16%", size: 4 },
   { top: "0%", left: "72%", size: 3 },
@@ -10,7 +9,6 @@ const SPECKS = [
   { top: "48%", left: "2%", size: 3 },
 ];
 
-/** Copy per lane, so an empty Completed reads differently from an empty group. */
 const emptyCopy = (laneKey: string, label: string) => {
   switch (laneKey) {
     case "completed":

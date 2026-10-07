@@ -7,24 +7,10 @@ import MyTasksView from "../../dashboard/components/MyTasksView";
 import { fetchWorkspace } from "../../../core/actions/workspaceAction";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
 import { useAppSelector } from "../../../store/configureStore";
-import { canOpenMemberTasks, initials } from "../data/workspaceHelpers";
+import { canOpenMemberTasks, initials, roomPath } from "../data/workspaceHelpers";
 import type { Workspace } from "../../user/types";
-
-/**
- * One room member's tasks, without leaving the workspace.
- *
- * The List / Board / Gantt views are `MyTasksView`, rendered here rather than
- * reimplemented — it already takes `viewUserId` and `viewProject` and carries
- * its own view toggle, filters and create form. Linking to the dashboard would
- * have worked too, but it drops the reader out of the workspace, which is the
- * thing this page exists to avoid: the header keeps the room breadcrumb and
- * the back button returns to the ring.
- */
-
-const apiMessage = (error: unknown, fallback: string): string => {
-  const res = (error as { response?: { data?: { message?: string } } })?.response;
-  return res?.data?.message || fallback;
-};
+import { apiMessage } from "../../../shared/utils/apiMessage";
+import CenterMessage from "./common/CenterMessage";
 
 export default function RoomMemberTasks() {
   const navigate = useNavigate();
@@ -73,11 +59,6 @@ export default function RoomMemberTasks() {
     [room, memberId]
   );
 
-  /**
-   * The room's roster, in the shape the create form wants. This is what lets a
-   * subtask be handed to somebody else in the room — the API validates each
-   * `subtasks[].assigned_to` against exactly this list.
-   */
   const roomMembers = useMemo(
     () =>
       (room?.members ?? []).map((m) => ({
@@ -88,57 +69,35 @@ export default function RoomMemberTasks() {
     [room]
   );
 
+  const backToRoom = () =>
+    navigate(roomPath(rolePath, workspaceId ?? "", roomId ?? ""));
+
   if (loading) return <SpinLoader isLoading />;
 
-  /*
-   * The ring only links a member to their own tasks, but a URL can be typed —
-   * so the page applies the same rule rather than trusting the link that got
-   * someone here. A manager still reaches anyone in the room.
-   *
-   * This is a courtesy, not the boundary: `/task-list` is what actually has
-   * to scope a member to their own tasks.
-   */
   if (member && !canOpenMemberTasks(workspace, user, member.id)) {
     return (
-      <div className="wsd">
-        <div className="wsl__center">
-          <h2 className="wsl__empty-title">That is not your task list</h2>
-          <p className="wsl__empty-caption">
+      <CenterMessage
+        title="That is not your task list"
+        caption={
+          <>
             {member.fullName}&rsquo;s tasks are theirs to see. You can open
             your own from the room.
-          </p>
-          <button
-            type="button"
-            className="cws__ghost"
-            onClick={() =>
-              navigate(
-                `/${rolePath}/room?ws=${encodeURIComponent(
-                  workspaceId ?? ""
-                )}&room=${encodeURIComponent(roomId ?? "")}`
-              )
-            }
-          >
-            <ArrowBackRoundedIcon sx={{ fontSize: 17 }} /> Back to the room
-          </button>
-        </div>
-      </div>
+          </>
+        }
+        actionLabel="Back to the room"
+        onAction={backToRoom}
+      />
     );
   }
 
   if (!member) {
     return (
-      <div className="wsd">
-        <div className="wsl__center">
-          <h2 className="wsl__empty-title">Member not found</h2>
-          <p className="wsl__empty-caption">
-            They may have been moved out of this room, or you may not have
-            access to it.
-          </p>
-          <button type="button" className="cws__ghost" onClick={() => navigate(-1)}>
-            <ArrowBackRoundedIcon sx={{ fontSize: 17 }} /> Back
-          </button>
-        </div>
-      </div>
+      <CenterMessage
+        title="Member not found"
+        caption="They may have been moved out of this room, or you may not have access to it."
+        actionLabel="Back"
+        onAction={() => navigate(-1)}
+      />
     );
   }
 
@@ -149,13 +108,7 @@ export default function RoomMemberTasks() {
           type="button"
           className="cws__icon-btn"
           title="Back to the room"
-          onClick={() =>
-            navigate(
-              `/${rolePath}/room?ws=${encodeURIComponent(
-                workspaceId ?? ""
-              )}&room=${encodeURIComponent(roomId ?? "")}`
-            )
-          }
+          onClick={backToRoom}
         >
           <ArrowBackRoundedIcon sx={{ fontSize: 20 }} />
         </button>
@@ -172,12 +125,6 @@ export default function RoomMemberTasks() {
         </div>
       </div>
 
-      {/*
-       * `viewProject` scopes what is listed and stays changeable from the
-       * panel's filter tray. `lockedProject` is the create form's project: a
-       * task raised here belongs to the workspace's project, so the field is
-       * shown but fixed.
-       */}
       <div className="wsd__tasks">
         <MyTasksView
           viewUserId={member.id}

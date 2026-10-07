@@ -2,13 +2,6 @@ import { useEffect, useState } from "react";
 
 import RxSpinner from "./RxSpinner";
 
-/**
- * A page to look at the spinner on, at the sizes it will actually be used at.
- *
- * Here rather than in Storybook because there is no Storybook — and a spinner
- * is a thing you have to watch for a few seconds to judge, which a screenshot
- * cannot tell you. Delete the route when the loader is settled.
- */
 
 const SIZES = [
   { size: 140, note: "Splash" },
@@ -21,8 +14,6 @@ export default function RxSpinnerPreview() {
   const [onDark, setOnDark] = useState(false);
   const [overlay, setOverlay] = useState(false);
 
-  // The overlay blocks the page, so it lets itself go rather than needing a
-  // dismiss control that the real loader will never have.
   useEffect(() => {
     if (!overlay) return;
     const t = window.setTimeout(() => setOverlay(false), 5000);

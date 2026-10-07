@@ -1,0 +1,304 @@
+// Create Workspace — a full-page wizard.
+//
+// A header, a horizontal stepper strip, the step body, and a footer carrying
+// the progress bar. Laid out here because it is a full-height column whose
+// middle row is the only thing that scrolls.
+
+.cws {
+  display: flex;
+  flex-direction: column;
+  // Fills the content area: viewport, less the header, less the page gutters.
+  height: calc(100vh - 64px - 28px);
+  min-height: 560px;
+  margin: 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+
+  @media (max-width: 860px) {
+    height: auto;
+    margin: 10px;
+  }
+}
+
+// ─── Header ─────────────────────────────────────────────────────
+.cws__head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  flex-shrink: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.cws__title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__caption {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.cws__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  // Pinned to the right edge whatever the title wraps to.
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+// ─── Stepper ────────────────────────────────────────────────────
+// One row across the full width, each step joined to the next by a short rule.
+.cws__steps {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  gap: 4px;
+  margin: 0;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-light);
+  list-style: none;
+  overflow-x: auto;
+
+  @media (max-width: 900px) {
+    padding: 10px 12px;
+  }
+}
+
+.cws__step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  // Every step claims the same slice, so the rules between them line up.
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+// The rule joining one step to the next.
+.cws__step-link {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 1.5px;
+  background-color: var(--border-light);
+
+  @media (max-width: 900px) {
+    width: 12px;
+  }
+}
+
+// A step's own link is the one leading away from it, so only a finished step
+// tints it — the current step's link ahead stays grey.
+.cws__step--past .cws__step-link {
+  background-color: rgba(124, 58, 237, 0.35);
+}
+
+.cws__step-btn {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 11px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:not(:disabled):hover {
+    background-color: var(--bg-hover);
+  }
+}
+
+.cws__step-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.cws__step-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cws__step-caption {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--text-faint);
+
+  @media (max-width: 1100px) {
+    display: none;
+  }
+}
+
+// Not reached yet.
+.cws__step--next {
+  .cws__step-dot {
+    background-color: var(--bg-hover);
+    color: var(--text-faint);
+  }
+  .cws__step-label {
+    color: var(--text-muted);
+  }
+}
+
+// Current — the whole row is highlighted.
+.cws__step--on .cws__step-btn {
+  background-color: rgba(124, 58, 237, 0.09);
+
+  .cws__step-dot {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+  }
+  .cws__step-label {
+    color: #7c3aed;
+  }
+}
+
+// Done — clickable, to go back and change something.
+.cws__step--past {
+  .cws__step-dot {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+  }
+  .cws__step-label {
+    color: var(--text-primary);
+  }
+}
+
+// ─── Step content ───────────────────────────────────────────────
+.cws__main {
+  // The header, stepper and footer are fixed; this row takes the rest.
+  flex: 1;
+  min-height: 0;
+  padding: 22px 24px 26px;
+  overflow-y: auto;
+
+  @media (max-width: 640px) {
+    padding: 16px;
+  }
+}
+
+.cws__section-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 20px;
+}
+
+.cws__tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+
+  &--sm {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+
+  // Every project reads in the one brand violet, not a colour each.
+  &--project {
+    background-color: rgba(124, 58, 237, 0.1);
+    color: #7c3aed;
+  }
+
+  // The page's own icon, beside the title.
+  &--brand {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.16), rgba(168, 85, 247, 0.16));
+    color: #7c3aed;
+  }
+}
+
+.cws__section-title {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__section-caption {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+// ─── Fields ─────────────────────────────────────────────────────
+// The details step is a form beside a live summary, so the step uses the whole
+// width instead of leaving the right half empty.
+.cws__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 296px;
+  gap: 22px;
+  align-items: start;
+
+  @media (max-width: 1040px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.cws__form {
+  min-width: 0;
+}
+
+// The four details sit on one row: code, access, creator, status. Explicit
+// columns rather than auto-fit, because the row order is the point — auto-fit
+// would reflow them into 3 + 1 as the width changed.
+.cws__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 16px;
+  margin-top: 16px;
+  align-items: start;
+
+  // Two per row before the cells get too narrow for their contents.
+  @media (max-width: 1180px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 620px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

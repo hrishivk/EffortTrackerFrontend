@@ -22,7 +22,6 @@ import type { ProjectRow } from "../../types";
 import type { formUserData } from "../../../../shared/types/User";
 import Dialoge from "../../../../presentation/Dialog";
 
-/** Candidates per request, and per press of Next. */
 const ROSTER_PAGE = 10;
 
 const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: () => void }) => {
@@ -30,9 +29,7 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
   const loggedInRole = useSelector((state: any) => state.user.user.role);
   const isSP = loggedInRole?.toUpperCase() === "SP";
   const isAM = loggedInRole?.toUpperCase() === "AM";
-  /** Staffing a project belongs to whoever runs it, not to everyone on it. */
   const canManage = ["SP", "AM"].includes(String(loggedInRole ?? "").toUpperCase());
-  /** Who is on the project, answered by the project itself. */
   const [assignedMembers, setAssignedMembers] = useState<formUserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [removeTarget, setRemoveTarget] = useState<formUserData | null>(null);
@@ -40,25 +37,12 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
 
-  /**
-   * Candidates, a page at a time and only once the dialog is open.
-   *
-   * The whole roster used to be pulled the moment a row was expanded — a
-   * request for every project you glance at, to fill a list most of those
-   * glances never open. It is asked for when somebody actually goes to assign
-   * somebody, and then a page at a time, the way the report's picker does it.
-   */
   const [candidates, setCandidates] = useState<formUserData[]>([]);
   const [rosterPage, setRosterPage] = useState(1);
   const [rosterPages, setRosterPages] = useState(1);
   const [rosterLoading, setRosterLoading] = useState(false);
 
 
-  /**
-   * The project answers "who is on it" directly now. It used to be worked out
-   * by fetching every user and filtering on their own `projects[]`, which is a
-   * lot of rows to read to list three names.
-   */
   const loadMembers = useCallback(async () => {
     setLoading(true);
     try {
@@ -70,14 +54,9 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
     } finally {
       setLoading(false);
     }
-    // showSnackbar is stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.id]);
 
-  /**
-   * An SP removes anyone. An AM removes any USER or DEVLOPER on the team,
-   * whoever created them — but not other AMs.
-   */
   const canRemove = (member: formUserData) => {
     if (isSP) return true;
     if (!isAM) return false;
@@ -89,14 +68,6 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
     loadMembers();
   }, [loadMembers]);
 
-  /**
-   * One page of candidates, replacing the page before it.
-   *
-   * An SP staffs projects with managers, an AM with its own team. The API
-   * filters on one role and an AM needs two, so their pages are narrowed here
-   * afterwards — which, together with dropping whoever is already on the
-   * project, means a page can render short. Harmless when Next is right there.
-   */
   const loadCandidates = useCallback(
     async (page: number) => {
       setRosterLoading(true);
@@ -123,7 +94,6 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
         setRosterLoading(false);
       }
     },
-    // showSnackbar is stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isSP, assignedMembers]
   );
@@ -327,10 +297,6 @@ const ProjectExpandedRow = ({ row, onRefresh }: { row: ProjectRow; onRefresh?: (
             )}
           </div>
 
-          {/*
-            * One page at a time, with the way back beside the way on — the
-            * same control the report's team picker uses.
-            */}
           {rosterPages > 1 && (
             <div
               className="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2"

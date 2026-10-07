@@ -1,0 +1,131 @@
+// ─── The log, in the task panel ────────────────────────────────────
+.tdp__slip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background-color: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+  font-size: 9.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tdp__event-reason {
+  margin: 3px 0 0;
+  padding-left: 9px;
+  border-left: 2px solid rgba(245, 158, 11, 0.4);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/**
+ * How many times a task's deadline has moved, beside the date in the List
+ * view. Amber, like the dialog and the log — a slip is not a neutral fact.
+ */
+.task-slip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background-color: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+
+  &:hover {
+    border-color: rgba(217, 119, 6, 0.55);
+    background-color: rgba(245, 158, 11, 0.26);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #d97706;
+    outline-offset: 1px;
+  }
+}
+
+// ─── The log itself, wherever it is shown ──────────────────────────
+.xlog {
+  min-width: 0;
+}
+
+.xlog__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #d97706;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.xlog__count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background-color: rgba(245, 158, 11, 0.16);
+  font-size: 9.5px;
+}
+
+.xlog__list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  max-height: 168px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.xlog__item {
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-left: 2px solid rgba(245, 158, 11, 0.55);
+  border-radius: 9px;
+  background-color: var(--bg-surface);
+}
+
+.xlog__move {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.xlog__was {
+  text-decoration: line-through;
+}
+
+.xlog__arrow {
+  color: #d97706;
+}
+
+.xlog__now {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.xlog__reason {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.xlog__by {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: var(--text-faint);
+}

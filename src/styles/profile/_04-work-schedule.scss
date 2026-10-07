@@ -1,0 +1,359 @@
+@use "../variables" as *;
+
+/* ═══════════════════════════════════════════
+   WORK SCHEDULE
+   ═══════════════════════════════════════════ */
+.pf-schedule-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: $purple-primary;
+  background: linear-gradient(135deg, #f3e8ff, #ede9fe);
+  padding: 5px 14px;
+  border-radius: 999px;
+  margin-left: auto;
+  white-space: nowrap;
+
+  @include respond-below($bp-sm) {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+}
+
+.pf-schedule-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+
+  @include respond-below($bp-lg) {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  @include respond-below($bp-sm) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.pf-schedule-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.pf-schedule-block-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: $purple-primary;
+  margin-bottom: 10px;
+  opacity: 0.8;
+}
+
+.pf-schedule-times {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+
+  @include respond-below($bp-sm) {
+    gap: 10px;
+  }
+}
+
+.pf-schedule-time {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.pf-time-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: $text-dark;
+  letter-spacing: -0.03em;
+  line-height: 1;
+
+  @include respond-below($bp-lg) {
+    font-size: 20px;
+  }
+
+  @include respond-below($bp-sm) {
+    font-size: 18px;
+  }
+}
+
+.pf-time-period {
+  font-size: 13px;
+  font-weight: 700;
+  color: $text-muted;
+
+  @include respond-below($bp-sm) {
+    font-size: 12px;
+  }
+}
+
+.pf-time-separator {
+  display: block;
+  width: 1px;
+  height: 30px;
+  background: linear-gradient(180deg, transparent, $border-light, transparent);
+}
+
+.pf-schedule-shift-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: $text-muted;
+  margin-top: 4px;
+}
+
+/* ── Work Days ── */
+.pf-work-days {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+
+  @include respond-below($bp-sm) {
+    gap: 5px;
+  }
+}
+
+.pf-work-day {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: $text-muted;
+  background: #f3f4f6;
+  transition: all 0.25s ease;
+
+  &--active {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(124, 58, 237, 0.2);
+  }
+
+  @include respond-below($bp-sm) {
+    width: 30px;
+    height: 30px;
+    font-size: 10px;
+    border-radius: 8px;
+  }
+}
+
+/* ── Timezone ── */
+.pf-timezone-block {
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 40%, #a855f7 100%);
+  border-radius: 18px;
+  padding: 18px;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.2);
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .pf-schedule-block-label {
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  @include respond-below($bp-sm) {
+    border-radius: 14px;
+    padding: 14px;
+  }
+}
+
+.pf-timezone-name {
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+  display: block;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+
+  @include respond-below($bp-sm) {
+    font-size: 15px;
+  }
+}
+
+.pf-timezone-local {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+
+  @include respond-below($bp-sm) {
+    font-size: 11px;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   DETAIL GRID — responsive
+   ═══════════════════════════════════════════ */
+.pf-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+
+  @include respond-below($bp-sm) {
+    grid-template-columns: 1fr;
+  }
+
+  &--compact .pf-detail-item {
+    padding: 10px 0;
+    border-bottom: none;
+    border-right: none;
+
+    &:nth-child(odd):not(.pf-detail-item--full) {
+      padding-right: 14px;
+      border-right: none;
+    }
+    &:nth-child(even) {
+      padding-left: 14px;
+    }
+
+    @include respond-below($bp-sm) {
+      padding: 8px 0;
+      &:nth-child(odd) { padding-right: 0; }
+      &:nth-child(even) { padding-left: 0; }
+    }
+  }
+}
+
+.pf-detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid $border-light;
+  transition: background 0.2s;
+
+  &--full {
+    grid-column: 1 / -1;
+  }
+
+  &:nth-last-child(-n + 2) {
+    border-bottom: none;
+  }
+
+  &:nth-child(odd):not(.pf-detail-item--full) {
+    padding-right: 18px;
+
+    @include respond-above($bp-sm) {
+      border-right: 1px solid $border-light;
+    }
+  }
+
+  &:nth-child(even) {
+    padding-left: 18px;
+
+    @include respond-below($bp-sm) {
+      padding-left: 0;
+    }
+  }
+
+  @include respond-below($bp-sm) {
+    padding: 12px 0;
+    gap: 10px;
+
+    &:nth-child(odd) {
+      padding-right: 0;
+      border-right: none;
+    }
+    &:nth-last-child(1) {
+      border-bottom: none;
+    }
+    &:nth-last-child(2) {
+      border-bottom: 1px solid $border-light;
+    }
+  }
+}
+
+.pf-detail-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #f3e8ff, #ede9fe);
+  color: $purple-primary;
+
+  @include respond-below($bp-sm) {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+}
+
+.pf-detail-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $text-muted;
+  margin-bottom: 3px;
+}
+
+.pf-detail-value {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-dark;
+  word-break: break-word;
+
+  @include respond-below($bp-sm) {
+    font-size: 13px;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   REPORTING INLINE (Employment)
+   ═══════════════════════════════════════════ */
+.pf-reporting-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.pf-reporting-inline-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(124, 58, 237, 0.12);
+  flex-shrink: 0;
+
+  @include respond-below($bp-sm) {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+.pf-reporting-inline-role {
+  display: block;
+  font-size: 11px;
+  color: $text-muted;
+  font-weight: 500;
+}

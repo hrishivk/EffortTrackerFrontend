@@ -1,0 +1,196 @@
+.elegant-input {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  border-radius: 12px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(4px);
+  transition: all 0.3s ease;
+}
+
+.elegant-input:focus {
+  outline: none;
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.3);
+  background-color: var(--input-bg-focus);
+}
+.css-1pk1fka {
+  height: 0.8em !important;
+}
+
+.advanced-table-wrapper {
+  margin-top: 0;
+}
+
+
+
+.advanced-card {
+  background: var(--bg-card);
+  border-radius: 14px;
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+
+
+.advanced-header {
+  padding: 18px 24px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.advanced-header h5 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.advanced-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+
+.advanced-table thead th {
+  background: var(--bg-table-header);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-light);
+  text-align: left;
+}
+
+.advanced-table tbody td {
+  padding: 18px 20px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-table);
+  vertical-align: middle;
+}
+
+
+.table-row {
+  background: var(--bg-table-row);
+}
+
+.table-row:hover {
+  background: var(--bg-hover);
+}
+
+
+.advanced-table tbody tr:nth-child(even) {
+  background: var(--bg-table-row-alt);
+}
+
+
+.advanced-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+
+
+.expanded-row {
+  background: var(--bg-expanded);
+}
+
+.expanded-content {
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+}
+
+
+/*
+ * The cell is the target, not the 16px arrow inside it — so the cursor and the
+ * colour change belong to the cell, and the whole square answers the pointer.
+ */
+.chevron-cell {
+  cursor: pointer;
+  width: 60px;
+  text-align: center;
+}
+
+.chevron {
+  font-size: 16px;
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+
+.chevron-cell:hover .chevron {
+  color: #7c3aed;
+}
+
+/* The turn is animated in the component now; this is the no-JS resting state. */
+.chevron.rotate {
+  transform: rotate(180deg);
+}
+
+
+
+.empty-state {
+  padding: 60px 20px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-faint);
+}
+
+
+
+.advanced-pagination {
+  margin-top: 20px;
+  padding: 10px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pagination-left {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+
+.pagination .page-link {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  margin: 0 3px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  cursor: pointer;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--pagination-active-bg);
+  border-color: var(--pagination-active-border);
+  color: var(--pagination-active-text);
+  cursor: default;
+}
+
+.pagination .page-item.disabled .page-link {
+  cursor: not-allowed;
+}
+
+.pagination .page-link:focus {
+  box-shadow: none;
+}
+
+ 
+
+

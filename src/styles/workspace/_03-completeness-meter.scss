@@ -1,0 +1,358 @@
+// ─── Completeness meter ─────────────────────────────────────────
+.cws__meter {
+  padding: 11px 15px 13px;
+  border-top: 1px solid var(--border-light);
+  background-color: var(--bg-surface);
+}
+
+.cws__meter-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.cws__meter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.cws__meter-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7c3aed;
+}
+
+.cws__meter-track {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background-color: var(--border-light);
+  overflow: hidden;
+}
+
+.cws__meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #7c3aed, #a855f7);
+  transition: width 0.25s ease;
+}
+
+// ─── What happens next ──────────────────────────────────────────
+.cws__side-next {
+  padding: 14px 15px;
+  border: 1px dashed rgba(124, 58, 237, 0.3);
+  border-radius: 14px;
+  background-color: rgba(124, 58, 237, 0.05);
+}
+
+.cws__side-next-title {
+  margin: 0 0 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #7c3aed;
+}
+
+.cws__side-steps {
+  margin: 0;
+  padding-left: 17px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+
+  li::marker {
+    color: #7c3aed;
+    font-weight: 700;
+  }
+}
+
+// ─── Project cards ──────────────────────────────────────────────
+// A workspace covers one project, so these behave as a radio group: the picked
+// card is outlined and the rest stay quiet.
+.cws__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.cws__card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-card);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.35);
+  }
+
+  &--on {
+    border-color: #7c3aed;
+    background-color: rgba(124, 58, 237, 0.06);
+    box-shadow: 0 0 0 1px #7c3aed;
+  }
+}
+
+.cws__card-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cws__card-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--text-faint);
+}
+
+.cws__card--on {
+  .cws__card-name {
+    color: #7c3aed;
+  }
+
+  .cws__card-mark {
+    background-color: #7c3aed;
+    color: #fff;
+  }
+}
+
+// ─── The picked project and the rooms inside it ─────────────────
+.cws__proj {
+  margin-bottom: 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  overflow: hidden;
+}
+
+.cws__proj-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+}
+
+.cws__proj-name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+// "3 Rooms" beside the name.
+.cws__proj-pill {
+  flex-shrink: 0;
+  // Takes the slack so the controls sit at the right edge.
+  margin-right: auto;
+  padding: 3px 9px;
+  border-radius: 7px;
+  background-color: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cws__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+.cws__proj-body {
+  padding: 0 14px 14px;
+}
+
+// A project with nothing in it yet — the whole panel adds the first room.
+.cws__proj-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  padding: 26px 16px;
+  border: 1px dashed var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.4);
+  }
+}
+
+.cws__proj-empty-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__proj-empty-caption {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+// ─── Rooms ──────────────────────────────────────────────────────
+// Room tiles sit side by side and wrap, with the add tile taking the slack on
+// the last line the way the reference does.
+.cws__rooms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cws__room {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 1 1 232px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 11px;
+  background-color: var(--bg-surface);
+
+  &--new {
+    border-color: rgba(124, 58, 237, 0.4);
+    background-color: var(--bg-card);
+  }
+}
+
+.cws__room-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__room-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.cws__room-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+}
+
+.cws__room-ok {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(124, 58, 237, 0.2);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.cws__room-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+  }
+}
+
+.cws__room-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 1 1 232px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px dashed var(--border-light);
+  border-radius: 11px;
+  background: none;
+  color: #7c3aed;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.45);
+    background-color: rgba(124, 58, 237, 0.05);
+  }
+}

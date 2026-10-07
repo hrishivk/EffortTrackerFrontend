@@ -1,0 +1,358 @@
+// ─── Add-room dialog ────────────────────────────────────────────
+.wsd__modal {
+  padding: 20px 22px 18px;
+}
+
+.wsd__modal-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 18px;
+}
+
+.wsd__modal-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__modal-caption {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.wsd__modal-count {
+  font-weight: 500;
+  color: var(--text-faint);
+}
+
+// Scrolls rather than growing the dialog past the viewport.
+// The app's violet scrollbar (see .mnp__list), for the workspace pickers and
+// the dialogs that hold them.
+@mixin wsd-violet-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #a855f7 var(--bg-surface, #f5f3ff);
+
+  &::-webkit-scrollbar {
+    width: 7px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--bg-surface, #f5f3ff);
+    border-radius: 8px;
+    margin: 4px 0;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #7c3aed, #a855f7);
+    border-radius: 8px;
+
+    &:hover {
+      background: linear-gradient(180deg, #6d28d9, #9333ea);
+    }
+
+    &:active {
+      background: linear-gradient(180deg, #5b21b6, #7c3aed);
+    }
+  }
+}
+
+.wsd__pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 244px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+  @include wsd-violet-scroll;
+}
+
+// The dialog itself, when a short window makes it scroll.
+.wsd__modal-paper {
+  @include wsd-violet-scroll;
+}
+
+.wsd__pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+  }
+
+  &--on {
+    border-color: rgba(124, 58, 237, 0.35);
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+}
+
+.wsd__pick-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wsd__pick-role {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+// Empty until picked, so the row keeps its shape either way.
+.wsd__pick-tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 50%;
+  color: #fff;
+}
+
+.wsd__pick-row--on .wsd__pick-tick {
+  border-color: #7c3aed;
+  background-color: #7c3aed;
+}
+
+.wsd__modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+// The card's tile and its two actions share the top line.
+.wsd__room-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wsd__room-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+// Quiet until the card is hovered, so four cards are not a wall of icons —
+// but always visible to keyboard focus, which has no hover to rely on.
+.wsd__room-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(124, 58, 237, 0.12);
+    color: #7c3aed;
+  }
+
+  &--danger:hover:not(:disabled) {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
+.wsd__room:hover .wsd__room-act {
+  opacity: 1;
+}
+
+// Touch has no hover, so the actions stay visible there.
+@media (hover: none) {
+  .wsd__room-act {
+    opacity: 1;
+  }
+}
+
+
+.wsd__struct-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__struct-caption {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.wsd__tree {
+  /*
+   * No `min-content` floor. It used to be here to stop the row wrapping, but
+   * with seven rooms it forced the chart — and with it the whole page — past
+   * the viewport, so the document itself scrolled sideways and the last card
+   * was cut off. The rows are chunked in the component instead.
+   */
+  padding-top: 22px;
+}
+
+.wsd__tree-top {
+  display: flex;
+  justify-content: center;
+}
+
+.wsd__tree-root {
+  position: relative;
+  min-width: 152px;
+  padding: 26px 22px 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-surface);
+  text-align: center;
+}
+
+.wsd__tree-root-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  // The ring lifts the badge off the card behind it.
+  border: 4px solid var(--bg-card);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.wsd__tree-root-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__tree-root-kind {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+// The drop from the root down to the bus.
+.wsd__tree-stem {
+  display: block;
+  width: 0;
+  height: 24px;
+  margin: 0 auto;
+  border-left: 1.5px dashed rgba(124, 58, 237, 0.4);
+}
+
+.wsd__tree-row {
+  display: flex;
+  align-items: stretch;
+  // Room for the hover shadow on the outermost cards.
+  padding-bottom: 4px;
+
+  // Below this the four cards would be too narrow to read, so the row wraps.
+  // The connectors go slightly out of true when it does, which is a better
+  // outcome than cards squeezed to nothing.
+  @media (max-width: 900px) {
+    flex-wrap: wrap;
+  }
+}
+
+.wsd__tree-branch {
+  position: relative;
+  // Shares the row equally with its siblings and never pushes past it — the
+  // card inside can shrink, the row cannot overflow.
+  flex: 1 1 0;
+  min-width: 0;
+  // No gap between branches — the padding is inside, so the bus is continuous.
+  padding: 26px 8px 0;
+
+  @media (max-width: 900px) {
+    flex: 1 1 240px;
+    min-width: 240px;
+  }
+
+  // The branch's share of the horizontal bus.
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    border-top: 1.5px dashed rgba(124, 58, 237, 0.4);
+  }
+
+  // The drop from the bus into the card.
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 0;
+    height: 26px;
+    border-left: 1.5px dashed rgba(124, 58, 237, 0.4);
+  }
+
+  // The outer halves of the bus are trimmed, so it starts and ends on a stub.
+  &:first-child::before {
+    left: 50%;
+  }
+
+  &:last-child::before {
+    right: 50%;
+  }
+
+  // A lone room needs no bus at all — the stem already reaches it.
+  &:only-child::before {
+    display: none;
+  }
+}
+
+// Hosts MyTasksView inside the workspace. It brings its own card chrome, so
+// this only supplies the gap under the page header.
+.wsd__tasks {
+  margin-top: 18px;
+}

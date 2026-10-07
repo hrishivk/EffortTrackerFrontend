@@ -1,0 +1,186 @@
+// ─── Activity tab ────────────────────────────────────────────────
+.tdp__activity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tdp__event {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+
+  &:hover {
+    background-color: var(--bg-hover);
+  }
+}
+
+.tdp__event-icon {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.tdp__event-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tdp__event-when {
+  margin: 1px 0 0;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.tdp__event-by {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+// ─── Right rail ──────────────────────────────────────────────────
+.tdp__team {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tdp__team-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  background-color: var(--bg-surface);
+}
+
+.tdp__team-name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tdp__team-owner {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.tdp__team-count {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tdp__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.tdp__progress-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tdp__progress-count {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.tdp__progress-pct {
+  font-size: 19px;
+  font-weight: 700;
+  color: #7c3aed;
+  font-variant-numeric: tabular-nums;
+}
+
+// One block per piece of work. Equal shares of the width, so the bar stays
+// readable whether the task has two children or twenty.
+.tdp__track {
+  display: flex;
+  gap: 3px;
+  height: 10px;
+}
+
+.tdp__track-seg {
+  flex: 1;
+  min-width: 4px;
+  border-radius: 3px;
+  transition: background-color 0.25s ease-out;
+}
+
+// Three short counts, inline under the track.
+.tdp__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+}
+
+.tdp__legend-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.tdp__legend-name {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.tdp__legend-n {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}

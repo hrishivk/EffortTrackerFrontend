@@ -23,7 +23,6 @@ import FilterPanel, {
 
 const ITEMS_PER_PAGE = 10;
 
-/** What an AM's team is made of — the only two roles they can hold. */
 const TEAM_ROLES = ["USER", "DEVLOPER"];
 
 const searchSx = {
@@ -69,7 +68,6 @@ const TeamManagement: React.FC = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // A narrowed list is shorter than the page you were reading.
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, filters]);
@@ -138,14 +136,6 @@ const TeamManagement: React.FC = () => {
   const columns = getUserColumns({ onViewTasks, onEditUser, onDeleteUser });
   const activeFilterCount = countActiveFilters(filters);
 
-  /**
-   * The two questions worth asking of a team list: who is on which project, and
-   * who does what. Both are server-side filters on `/list-users`, so the pager
-   * below stays honest — a client-side narrowing would leave pages short.
-   *
-   * The projects offered are the AM's own, the same ones the page already
-   * loaded; a project they do not run has nobody of theirs on it.
-   */
   const filterCategories: FilterCategory[] = [
     {
       key: "team",

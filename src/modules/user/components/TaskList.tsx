@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import { CCardBody, CCard, CPagination, CPaginationItem } from "@coreui/react";
+import { CCardBody, CCard } from "@coreui/react";
 import { useAppSelector, type AppDispatch } from "../../../store/configureStore";
 import { useParams } from "react-router-dom";
 import {
@@ -9,16 +9,7 @@ import {
   taskWithDateValidationSchema,
 } from "../../../utils/validation/Validation";
 import { useSnackbar } from "../../../contexts/SnackbarContext";
-import { parseServerTime } from "../../../shared/utils/serverTime";
-import {
-  type SelectChangeEvent,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormHelperText,
-  OutlinedInput,
-} from "@mui/material";
+import { type SelectChangeEvent, TextField } from "@mui/material";
 import {
   addTask,
   fetchTask,
@@ -31,10 +22,16 @@ import { motion } from "framer-motion";
 import SpinLoader from "../../../presentation/SpinLoader";
 
 import type { taskList, CreateTaskPayload } from "../types";
-import { TextField } from "@mui/material";
 import { fetchExistProjects } from "../../../core/actions/spAction";
 import type { project } from "../../../shared/types/Project";
 import Dialoge from "../../../presentation/Dialog";
+import TaskRow from "./TaskRow";
+import NewTaskRow from "./NewTaskRow";
+import TaskPagination from "./TaskPagination";
+import { collectZodErrors, isToday } from "../utils/taskTime";
+import { exportTasksCsv } from "../utils/exportTasksCsv";
+
+const ITEMS_PER_PAGE = 10;
 
 const TaskList: React.FC = () => {
   const { showSnackbar } = useSnackbar();
@@ -52,23 +49,14 @@ const TaskList: React.FC = () => {
   const [project, setProject] = useState<project[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
   const [openDialog, setOpenDialog] = useState(false);
   const [taskData, setTaskData] = useState<CreateTaskPayload>({
     created_by: user?.id,
-    assigned_to:paramId ||user?.id,
+    assigned_to: paramId || user?.id,
     project: "",
     description: "",
-    priority: "",   
+    priority: "",
   });
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    );
-  };
 
   const listAllData = useCallback(async () => {
     try {
@@ -92,6 +80,11 @@ const TaskList: React.FC = () => {
       }
     }
   }, [selectedDate, id, showSnackbar, page]);
+
+  const showFieldErrors = (errorMessage: { [key: string]: string }) => {
+    setFieldErrors(errorMessage);
+    showSnackbar({ message: Object.values(errorMessage)[0], severity: "error" });
+  };
 
   const handleChange = (
     e:
@@ -120,7 +113,7 @@ const TaskList: React.FC = () => {
         await listAllData();
       }
       setData((prevData) =>
-        prevData.map((task: any) =>
+        prevData.map((task) =>
           task.id === taskId ? { ...task, status: newStatus } : task
         )
       );
@@ -134,21 +127,11 @@ const TaskList: React.FC = () => {
   };
 
   const handleDateChange = (date: Date) => {
-    const dateString = date.toISOString();
     const validationResult = taskWithDateValidationSchema.safeParse({
-      dueDate: dateString,
+      dueDate: date.toISOString(),
     });
-
     if (!validationResult.success) {
-      const errorMessage: { [key: string]: string } = {};
-      validationResult.error.errors.forEach((err) => {
-        if (err.path.length > 0) {
-          errorMessage[err.path[0] as string] = err.message;
-        }
-      });
-      setFieldErrors(errorMessage);
-      const firstErrorMessage = Object.values(errorMessage)[0];
-      showSnackbar({ message: firstErrorMessage, severity: "error" });
+      showFieldErrors(collectZodErrors(validationResult.error));
     } else {
       setSelectedDate(date);
       setPage(1);
@@ -160,15 +143,7 @@ const TaskList: React.FC = () => {
     try {
       const result = taskValidationSchema.safeParse(taskData);
       if (!result.success) {
-        const errorMessage: { [key: string]: string } = {};
-        result.error.errors.forEach((err) => {
-          if (err.path.length > 0) {
-            errorMessage[err.path[0] as string] = err.message;
-          }
-        });
-        setFieldErrors(errorMessage);
-        const firstErrorMessage = Object.values(errorMessage)[0];
-        showSnackbar({ message: firstErrorMessage, severity: "error" });
+        showFieldErrors(collectZodErrors(result.error));
         return;
       }
 
@@ -179,8 +154,8 @@ const TaskList: React.FC = () => {
           severity: "success",
         });
         setTaskData({
-         created_by: user?.id,
-          assigned_to:paramId,
+          created_by: user?.id,
+          assigned_to: paramId,
           project: "",
           description: "",
           priority: "",
@@ -195,6 +170,7 @@ const TaskList: React.FC = () => {
       });
     }
   };
+
   const handleSubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setOpenDialog(true);
@@ -203,6 +179,7 @@ const TaskList: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
   };
+
   const handleConfirmLock = async () => {
     try {
       if (id) {
@@ -237,80 +214,7 @@ const TaskList: React.FC = () => {
   const filterData = data.filter((task) =>
     task.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const exportToCSV = () => {
-    if (!filterData || filterData.length === 0) return;
-    const headers = [
-      "Project",
-      "Task Description",
-      "Priority",
-      "Start Time",
-      "End Time",
-      "Total Spent",
-      "Status",
-    ];
-    const rows = filterData.map((task) => {
-      const start = task.start_time
-        ? new Date(parseServerTime(task.start_time)).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "Not Started";
-
-      const end = task.end_time
-        ? new Date(parseServerTime(task.end_time)).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "Not Ended";
-
-      const spent =
-        task.start_time && task.end_time
-          ? (() => {
-              const diffMs =
-                parseServerTime(task.end_time) -
-                parseServerTime(task.start_time);
-              if (isNaN(diffMs) || diffMs < 0) return "Invalid Time";
-              const h = Math.floor(diffMs / 3600000);
-              const m = Math.floor((diffMs % 3600000) / 60000);
-              const s = Math.floor((diffMs % 60000) / 1000);
-              return `${h}h ${m}m ${s}s`;
-            })()
-          : "";
-
-      return [
-        task.project || "",
-        task.description || "",
-        task.priority || "",
-        start,
-        end,
-        spent || "0",
-        task.status || "",
-      ];
-    });
-
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((r) =>
-        r.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
-      ),
-    ].join("\n");
-
-    const BOM = "\uFEFF";
-    const blob = new Blob([BOM + csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `tasks_${selectedDate.toISOString().split("T")[0]}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const today = isToday(selectedDate);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -352,7 +256,7 @@ const TaskList: React.FC = () => {
           <div className="mb-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
               <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--text-primary)" }}>Task List</h1>
-              {isToday(selectedDate) && (
+              {today && (
                 <button
                   className="rx-loader-btn cursor-pointer text-white border-0 transition-all duration-300 ease-in-out"
                   style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
@@ -378,15 +282,9 @@ const TaskList: React.FC = () => {
                   borderRadius: "8px",
                   fontSize: 13,
                   fontWeight: 600,
-                  "& fieldset": {
-                    border: "none",
-                  },
-                  "&:hover fieldset": {
-                    border: "none",
-                  },
-                  "&.Mui-focused fieldset": {
-                    border: "none",
-                  },
+                  "& fieldset": { border: "none" },
+                  "&:hover fieldset": { border: "none" },
+                  "&.Mui-focused fieldset": { border: "none" },
                 },
                 "& .MuiInputBase-input": { padding: "6px 12px", fontSize: 13, fontWeight: 600 },
               }}
@@ -412,108 +310,8 @@ const TaskList: React.FC = () => {
               </thead>
               <tbody className="divide-y" style={{ borderColor: "var(--border-light)" }}>
                 {data.length > 0 ? (
-                  filterData.map((task: any, index) => (
-                    <tr key={index} className="hover:bg-gray-50" style={{ backgroundColor: "var(--bg-card)" }}>
-                      <td className="px-4 py-4">{task.project}</td>
-                      <td className="px-4 py-4 text-purple-600">
-                        {task.description}
-                      </td>
-                      <td className="px-4 py-4">
-                        <select
-                          value={task.priority}
-                          className={`status-badge px-4 py-2 rounded-full text-xs font-medium ${
-                            task.priority === "High"
-                              ? "bg-[#FF7779] text-white"
-                              : task.priority === "Medium"
-                              ? "bg-[#FFC574] text-white"
-                              : task.priority === "Low"
-                              ? "bg-[#6ACD79] text-white"
-                              : ""
-                          }`}
-                          disabled
-                        >
-                          <option value={task.priority}>{task.priority}</option>
-                        </select>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span>
-                          {task.start_time
-                            ? new Date(parseServerTime(task.start_time)).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : "Not Started"}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-4">
-                        <span>
-                          {task.end_time
-                            ? new Date(parseServerTime(task.end_time)).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : "Not Ended"}
-                        </span>
-                      </td>
-
-                      <td className="px-2 py-4">
-                        <span>
-                          {task.start_time && task.end_time
-                            ? (() => {
-                                const start = new Date(parseServerTime(task.start_time));
-                                const end = new Date(parseServerTime(task.end_time));
-
-                                if (
-                                  isNaN(start.getTime()) ||
-                                  isNaN(end.getTime())
-                                )
-                                  return "Invalid Time";
-
-                                const diffMs = end.getTime() - start.getTime();
-                                if (diffMs < 0) return "Invalid Time";
-
-                                const hours = Math.floor(
-                                  diffMs / (1000 * 60 * 60)
-                                );
-                                const minutes = Math.floor(
-                                  (diffMs % (1000 * 60 * 60)) / (1000 * 60)
-                                );
-                                const seconds = Math.floor(
-                                  (diffMs % (1000 * 60)) / 1000
-                                );
-
-                                return `${hours}h ${minutes}m ${seconds}s`;
-                              })()
-                            : ""}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <select
-                          value={task.status}
-                          className={`status-badge ${
-                            task.status === "Completed"
-                              ? "bg-[#2BA912] text-white"
-                              : task.status === "In Progress"
-                              ? "bg-[#3A96FF] text-white"
-                              : task.status === "yet to start"
-                              ? "bg-[#FFA041] text-white"
-                              : ""
-                          }`}
-                          onChange={(e) =>
-                            handleStatusChange(task.id, e.target.value)
-                          }
-                        >
-                          <option value="yet to start">{task.status}</option>
-                          {task.status === "yet to start" && (
-                            <option value="In Progress">In Progress</option>
-                          )}
-                          {task.status === "In Progress" && (
-                            <option value="Completed">Completed</option>
-                          )}
-                        </select>
-                      </td>
-                    </tr>
+                  filterData.map((task, index) => (
+                    <TaskRow key={index} task={task} onStatusChange={handleStatusChange} />
                   ))
                 ) : (
                   <tr>
@@ -522,139 +320,24 @@ const TaskList: React.FC = () => {
                     </td>
                   </tr>
                 )}
-                {isToday(selectedDate) && (
-                  <tr className="animate-rowEnter !w-full transition-all duration-500 ease-in-out bg-[#EFD1FA]/90 backdrop-blur-lg rounded-xl border-t border-purple-300 group">
-                    <td className="px-6 py-4 !min-w-[200px]">
-                      <FormControl
-                        fullWidth
-                        size="small"
-                        error={Boolean(fieldErrors.project)}
-                      >
-                        <InputLabel id="project-select-label">
-                          Select Project
-                        </InputLabel>
-                        <Select
-                          labelId="project-select-label"
-                          name="project"
-                          value={taskData.project || ""}
-                          onChange={(e) => handleChange(e as SelectChangeEvent<string>)}
-                          input={
-                            <OutlinedInput
-                              sx={{
-                                borderRadius: "8px",
-                              }}
-                            />
-                          }
-                        >
-                          {project.map((item) => (
-                            <MenuItem key={item.id} value={item.name}>
-                              {item.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {fieldErrors.project && (
-                          <FormHelperText>{fieldErrors.project}</FormHelperText>
-                        )}
-                      </FormControl>
-                    </td>
-
-                    <td className="px-6 py-4 !min-w-[250px]">
-                      <TextField
-                        fullWidth
-                        name="description"
-                        label="Task Description"
-                        placeholder="Enter task description"
-                        value={taskData.description}
-                        onChange={handleChange}
-                        error={Boolean(fieldErrors.description)}
-                        helperText={
-                          fieldErrors.description
-                            ? "Description is required"
-                            : ""
-                        }
-                        variant="outlined"
-                        size="small"
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            borderRadius: "8px",
-                          },
-                        }}
-                      />
-                    </td>
-                    <td className="px-6 py-4 !min-w-[200px]">
-                      <FormControl
-                        fullWidth
-                        size="small"
-                        error={Boolean(fieldErrors.priority)}
-                      >
-                        <InputLabel id="priority-select-label">
-                          Select Priority
-                        </InputLabel>
-                        <Select
-                          labelId="priority-select-label"
-                          name="priority"
-                          value={taskData.priority || ""}
-                          onChange={handleChange}
-                          input={
-                            <OutlinedInput
-                              label="Select Priority"
-                              sx={{ borderRadius: "8px" }}
-                            />
-                          }
-                        >
-                          <MenuItem value="">Select Priority</MenuItem>
-                          <MenuItem value="High">High</MenuItem>
-                          <MenuItem value="Medium">Medium</MenuItem>
-                          <MenuItem value="Low">Low</MenuItem>
-                        </Select>
-                        {fieldErrors.priority && (
-                          <FormHelperText>Priority is required</FormHelperText>
-                        )}
-                      </FormControl>
-                    </td>
-                    <td className=" py-4"></td>
-                    <td className=" py-4"></td>
-                    <td className=" py-4 text-sm" style={{ color: "var(--text-muted)" }}></td>
-
-                    <td className="px-4 py-4">
-                      <select
-                        className="status-badge px-3 py-2 rounded-full text-xs font-medium bg-[#FFA041] text-gray-700"
-                        disabled
-                      >
-                        <option>Yet to start</option>
-                      </select>
-                    </td>
-                  </tr>
+                {today && (
+                  <NewTaskRow
+                    taskData={taskData}
+                    projects={project}
+                    fieldErrors={fieldErrors}
+                    onChange={handleChange}
+                  />
                 )}
               </tbody>
             </table>
           </div>
-          {totalPages > 1 && (
-            <div className="d-flex align-items-center justify-content-between mt-3 px-2">
-              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                Page {page} of {totalPages}
-              </span>
-              <CPagination size="sm" className="mb-0">
-                <CPaginationItem disabled={page === 1} onClick={() => setPage(page - 1)}>
-                  Prev
-                </CPaginationItem>
-                {[...Array(totalPages)].map((_, i) => (
-                  <CPaginationItem key={i} active={i + 1 === page} onClick={() => setPage(i + 1)}>
-                    {i + 1}
-                  </CPaginationItem>
-                ))}
-                <CPaginationItem disabled={page === totalPages} onClick={() => setPage(page + 1)}>
-                  Next
-                </CPaginationItem>
-              </CPagination>
-            </div>
-          )}
-          {isToday(selectedDate) && (
+          <TaskPagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          {today && (
             <div className="flex flex-row space-x-4  sm:!flex-row  justify-end items-center space-y-2 sm:space-y-0 sm:!space-x-4 mt-4">
               <button
                 className="rx-loader-btn cursor-pointer text-black border-0 transition-all duration-300 ease-in-out"
                 style={{ backgroundColor: "#F0E8F2", borderRadius: 8, fontSize: 13, fontWeight: 600, padding: "6px 16px" }}
-                onClick={exportToCSV}
+                onClick={() => exportTasksCsv(filterData, selectedDate)}
               >
                 Export to CSV
               </button>

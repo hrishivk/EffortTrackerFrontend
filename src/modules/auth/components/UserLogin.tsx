@@ -10,12 +10,7 @@ import { useSnackbar } from "../../../contexts/SnackbarContext";
 import { login } from "../../../core/actions/action";
 import { useNavigate } from "react-router-dom";
 import type { LoginResponse } from "../types";
-const roleRedirectMap: Record<string, string> = {
-  SP: "/sp/dashboard",
-  AM: "/am/dashboard",
-  USER: "/user/dashboard",
-  DEVLOPER: "/user/dashboard",
-};
+import { dashboardPathFor } from "../../../shared/utils/roles";
 
 const UserLogin: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -25,10 +20,9 @@ const UserLogin: React.FC = () => {
   const existingToken = useAppSelector((state) => state.user.token);
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
-  // Auto-redirect if already logged in
   useEffect(() => {
     if (existingUser?.email && existingToken) {
-      const path = roleRedirectMap[existingUser.role] || "/";
+      const path = dashboardPathFor(existingUser.role);
       navigate(path, { replace: true });
     }
   }, [existingUser, existingToken, navigate]);

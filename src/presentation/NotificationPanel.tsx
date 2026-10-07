@@ -26,7 +26,6 @@ import {
   markAllNotificationsRead,
 } from "../core/actions/notificationAction";
 
-// ─── Types ───
 interface Notification {
   id: string;
   user_id: string;
@@ -38,7 +37,6 @@ interface Notification {
   created_at: string;
 }
 
-// ─── Icon + color per notification type ───
 const typeConfig: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
   leave_applied:          { icon: <FiSend size={12} />,        color: "#2563eb", bg: "#dbeafe" },
   leave_manager_approved: { icon: <FiCheckCircle size={12} />, color: "#16a34a", bg: "#dcfce7" },
@@ -48,22 +46,16 @@ const typeConfig: Record<string, { icon: React.ReactNode; color: string; bg: str
   leave_rejected:         { icon: <FiXCircle size={12} />,     color: "#dc2626", bg: "#fee2e2" },
   leave_cancelled:        { icon: <FiSlash size={12} />,       color: "#6b7280", bg: "#f3f4f6" },
 
-  // Shared room tasks. `task_subtask_unblocked` is the one that carries weight —
-  // it is what tells the next person their turn has come, so it is the only one
-  // given the running-blue treatment rather than a neutral grey.
   task_subtask_assigned:  { icon: <FiUserPlus size={12} />,      color: "#7c3aed", bg: "#f5f3ff" },
   task_subtask_unblocked: { icon: <FiPlayCircle size={12} />,    color: "#2563eb", bg: "#dbeafe" },
   task_comment:           { icon: <FiMessageSquare size={12} />, color: "#0d9488", bg: "#ccfbf1" },
   task_comment_mention:   { icon: <FiAtSign size={12} />,        color: "#d97706", bg: "#fef3c7" },
 
-  // Raised by a person, not by an event: someone finished a workspace and chose
-  // who should hear about it. Teal, matching the Completed status chip.
   workspace_completed:    { icon: <FiAward size={12} />,          color: "#0d9488", bg: "#ccfbf1" },
 };
 
 const defaultConfig = { icon: <FiBell size={12} />, color: "#7c3aed", bg: "#f5f3ff" };
 
-// ─── Helpers ───
 function timeAgo(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
@@ -78,7 +70,6 @@ function timeAgo(dateStr: string): string {
   return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
-// ─── Notification Card ───
 function NotiCard({ n, onRead, onNavigate }: { n: Notification; onRead: (id: string) => void; onNavigate: (n: Notification) => void }) {
   const config = typeConfig[n.type] || defaultConfig;
 
@@ -103,7 +94,6 @@ function NotiCard({ n, onRead, onNavigate }: { n: Notification; onRead: (id: str
       )}
 
       <div className="flex items-start gap-2.5">
-        {/* Icon */}
         <div
           className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
           style={{ backgroundColor: config.bg, color: config.color }}
@@ -112,7 +102,6 @@ function NotiCard({ n, onRead, onNavigate }: { n: Notification; onRead: (id: str
         </div>
 
         <div className="flex-1 min-w-0">
-          {/* Title + Time */}
           <div className="flex items-center justify-between gap-1">
             <span
               className="text-[12px] font-semibold truncate"
@@ -125,7 +114,6 @@ function NotiCard({ n, onRead, onNavigate }: { n: Notification; onRead: (id: str
             </span>
           </div>
 
-          {/* Message */}
           <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
             {n.message}
           </p>
@@ -137,23 +125,15 @@ function NotiCard({ n, onRead, onNavigate }: { n: Notification; onRead: (id: str
 
 
 const typeToTab: Record<string, string> = {
-  leave_applied: "teamLeaves",           // AM sees pending requests
-  leave_manager_approved: "myLeaves",    // USER sees their leave status
-  leave_manager_rejected: "myLeaves",    // USER sees rejection
-  leave_pending_admin: "teamLeaves",     // SP sees manager-approved requests
-  leave_approved: "myLeaves",            // USER sees final approval
-  leave_rejected: "myLeaves",            // USER sees final rejection
-  leave_cancelled: "teamLeaves",         // AM sees cancellation
+  leave_applied: "teamLeaves",
+  leave_manager_approved: "myLeaves",
+  leave_manager_rejected: "myLeaves",
+  leave_pending_admin: "teamLeaves",
+  leave_approved: "myLeaves",
+  leave_rejected: "myLeaves",
+  leave_cancelled: "teamLeaves",
 };
 
-/**
- * Notifications about a task, which open the task list rather than a leave tab.
- *
- * `reference_id` is always the **parent** task id, never the subtask — a
- * subtask has no card of its own, so that is the id worth opening. It is
- * carried through as `?task=`, which the task list uses to open that task's
- * detail panel once its page has loaded.
- */
 const TASK_TYPES = new Set([
   "task_subtask_assigned",
   "task_subtask_unblocked",
@@ -161,7 +141,6 @@ const TASK_TYPES = new Set([
   "task_comment_mention",
 ]);
 
-/** Opens the workspace itself; `reference_id` is the workspace id. */
 const WORKSPACE_TYPES = new Set(["workspace_completed"]);
 
 export default function NotificationPanel() {
@@ -204,11 +183,9 @@ export default function NotificationPanel() {
       const res = await fetchUnreadCount();
       setUnreadCount(res.data?.unreadCount || 0);
     } catch {
-      /* silent */
     }
   }, []);
 
-  // Fetch notifications when panel opens
   const loadNotifications = useCallback(async (p: number) => {
     setLoading(true);
     try {
@@ -220,7 +197,6 @@ export default function NotificationPanel() {
       }
       setTotalPages(res.totalPages || 1);
     } catch {
-      /* silent */
     } finally {
       setLoading(false);
     }
@@ -231,7 +207,6 @@ export default function NotificationPanel() {
     if (user?.id) loadCount();
   }, [user?.id, loadCount]);
 
-  // When panel opens, refresh count and load the list from page 1
   useEffect(() => {
     if (open) {
       setPage(1);
@@ -247,7 +222,6 @@ export default function NotificationPanel() {
     return () => window.removeEventListener(OPEN_NOTIFICATIONS, onAsk);
   }, []);
 
-  // Escape to close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -320,7 +294,6 @@ export default function NotificationPanel() {
               className="fixed inset-0 bg-black/10 z-[80]"
             />
 
-            {/* Sidebar */}
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
@@ -329,7 +302,6 @@ export default function NotificationPanel() {
               className="fixed top-[74px] right-2 bottom-2 w-[380px] max-w-[calc(100vw-1rem)] rounded-xl z-[81] flex flex-col shadow-lg overflow-hidden"
               style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}
             >
-              {/* Header */}
               <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-light)" }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -367,7 +339,6 @@ export default function NotificationPanel() {
                 </div>
               </div>
 
-              {/* List */}
               <div className="flex-1 overflow-y-auto">
                 {loading && notifications.length === 0 ? (
                   <div className="flex items-center justify-center py-12">
@@ -393,7 +364,6 @@ export default function NotificationPanel() {
                   </AnimatePresence>
                 )}
 
-                {/* Load More */}
                 {page < totalPages && notifications.length > 0 && (
                   <div className="flex justify-center py-3">
                     <button

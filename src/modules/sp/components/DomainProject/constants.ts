@@ -42,7 +42,6 @@ export const pdAvatarColors = [
   "#d97706", "#db2777", "#0d9488", "#4f46e5",
 ];
 
-/** Project Category options, shared by Create Project and the Edit Project modal. */
 export const PROJECT_CATEGORIES = [
   "Engineering",
   "Design",

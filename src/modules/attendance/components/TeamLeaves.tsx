@@ -40,7 +40,6 @@ export default function TeamLeaves() {
         : await fetchPendingForAdmin();
       setLeaves(res.data || []);
     } catch {
-      /* API not ready */
     } finally {
       setLoading(false);
     }
@@ -93,7 +92,6 @@ export default function TeamLeaves() {
         className="rounded-2xl overflow-hidden"
         style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-card)", boxShadow: "var(--shadow-card)" }}
       >
-        {/* Header */}
         <div
           className="grid items-center px-6 py-3"
           style={{ gridTemplateColumns: "1.2fr 1fr 0.8fr 0.8fr 0.6fr 1.5fr 1fr", borderBottom: "1px solid var(--border-light)" }}
@@ -125,7 +123,6 @@ export default function TeamLeaves() {
               className="px-6 py-4"
               style={{ borderBottom: i < leaves.length - 1 ? "1px solid var(--border-light)" : "none" }}
             >
-              {/* Main row */}
               <div
                 className="grid items-center"
                 style={{ gridTemplateColumns: "1.2fr 1fr 0.8fr 0.8fr 0.6fr 1.5fr 1fr" }}
@@ -194,7 +191,6 @@ export default function TeamLeaves() {
                 </div>
               </div>
 
-              {/* Remarks input */}
               <div className="mt-2" style={{ maxWidth: 400, marginLeft: "auto" }}>
                 <TextField
                   fullWidth
@@ -215,7 +211,6 @@ export default function TeamLeaves() {
                 />
               </div>
 
-              {/* Show manager remarks for admin view */}
               {isAdmin && leave.manager_remarks && (
                 <div className="mt-2" style={{ textAlign: "right" }}>
                   <span style={{ fontSize: 11, color: "var(--text-faint)" }}>

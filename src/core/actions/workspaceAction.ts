@@ -54,7 +54,6 @@ export const updateWorkspace = async (
   return response.data.data as Workspace;
 };
 
-/** Cascades to every room and assignment under it. */
 export const deleteWorkspace = async (id: string) => {
   const response = await userServiceMethood.deleteWorkspace(
     `/workspaces?id=${encodeURIComponent(id)}`
@@ -142,7 +141,6 @@ export const fetchWorkspaceManagers = async (
   return (response.data?.data ?? []) as WorkspaceManager[];
 };
 
-/** AMs who could be assigned: active, not the creator, not already on it. */
 export const fetchWorkspaceManagerCandidates = async (
   workspaceId: string
 ): Promise<WorkspaceManager[]> => {
@@ -153,7 +151,6 @@ export const fetchWorkspaceManagerCandidates = async (
   return (response.data?.data ?? []) as WorkspaceManager[];
 };
 
-/** Answers with the updated managers list. */
 export const assignWorkspaceManagers = async (
   workspaceId: string,
   userIds: string[]
@@ -165,7 +162,6 @@ export const assignWorkspaceManagers = async (
   return (response.data?.data ?? []) as WorkspaceManager[];
 };
 
-/** Answers with the updated managers list. */
 export const removeWorkspaceManager = async (
   workspaceId: string,
   userId: string

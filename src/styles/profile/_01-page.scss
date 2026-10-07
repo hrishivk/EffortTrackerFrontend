@@ -1,0 +1,200 @@
+@use "../variables" as *;
+
+/* ═══════════════════════════════════════════
+   PAGE
+   ═══════════════════════════════════════════ */
+.pf-page {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+
+  @include respond-below($bp-sm) {
+    padding: 0 10px 32px;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   BANNER
+   ═══════════════════════════════════════════ */
+.pf-banner-section {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 25%, #a855f7 55%, #c084fc 100%);
+  min-height: 180px;
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 22px;
+  box-shadow:
+    0 4px 24px rgba(124, 58, 237, 0.18),
+    0 1px 3px rgba(124, 58, 237, 0.1);
+
+  @include respond-below($bp-md) {
+    min-height: 150px;
+    border-radius: 20px;
+  }
+
+  @include respond-below($bp-sm) {
+    min-height: 120px;
+    border-radius: 16px;
+    margin-bottom: 16px;
+  }
+}
+
+.pf-banner-mesh {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.06) 0%, transparent 40%),
+    radial-gradient(ellipse at 60% 80%, rgba(168,85,247,0.3) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.pf-banner-overlay {
+  position: relative;
+  z-index: 2;
+  padding: 32px 36px;
+  width: 100%;
+
+  @include respond-below($bp-md) {
+    padding: 24px 24px;
+  }
+
+  @include respond-below($bp-sm) {
+    padding: 18px 16px;
+  }
+}
+
+.pf-banner-greeting {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+
+  @include respond-below($bp-md) {
+    font-size: 22px;
+  }
+
+  @include respond-below($bp-sm) {
+    font-size: 18px;
+    margin-bottom: 3px;
+  }
+}
+
+.pf-banner-sub {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  font-weight: 400;
+
+  @include respond-below($bp-sm) {
+    font-size: 11px;
+  }
+}
+
+.pf-banner-decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.pf-banner-circle-1 {
+  position: absolute;
+  top: -50px;
+  right: -30px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  animation: pf-float 6s ease-in-out infinite;
+
+  @include respond-below($bp-sm) {
+    width: 120px;
+    height: 120px;
+    top: -30px;
+    right: -20px;
+  }
+}
+
+.pf-banner-circle-2 {
+  position: absolute;
+  bottom: -40px;
+  left: 25%;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  animation: pf-float 8s ease-in-out infinite reverse;
+
+  @include respond-below($bp-sm) {
+    width: 90px;
+    height: 90px;
+  }
+}
+
+.pf-banner-circle-3 {
+  position: absolute;
+  top: 20%;
+  right: 25%;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  animation: pf-float 7s ease-in-out infinite 1s;
+
+  @include respond-below($bp-sm) {
+    display: none;
+  }
+}
+
+
+
+@keyframes pf-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+/* ═══════════════════════════════════════════
+   BODY LAYOUT — fully responsive
+   ═══════════════════════════════════════════ */
+.pf-body {
+  display: grid;
+  grid-template-columns: 310px 1fr;
+  gap: 22px;
+  align-items: start;
+
+  @include respond-below($bp-lg) {
+    grid-template-columns: 280px 1fr;
+    gap: 18px;
+  }
+
+  @include respond-below($bp-md) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.pf-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+
+  @include respond-below($bp-md) {
+    gap: 16px;
+  }
+}
+
+.pf-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+
+  @include respond-below($bp-md) {
+    gap: 16px;
+  }
+}

@@ -132,7 +132,6 @@ export const STATUS_ACCENT: Record<string, string> = {
   blocked: "#64748b",
 };
 
-/** Colours offered when naming a new group. */
 export const GROUP_COLORS = [
   "#ef4444",
   "#f97316",

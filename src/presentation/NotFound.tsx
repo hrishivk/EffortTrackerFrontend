@@ -1,17 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../store/configureStore";
-
-const DASHBOARD_MAP: Record<string, string> = {
-  SP: "/sp/dashboard",
-  AM: "/am/dashboard",
-  USER: "/user/dashboard",
-  DEVLOPER: "/user/dashboard",
-};
+import { dashboardPathFor } from "../shared/utils/roles";
 
 const NotFound = () => {
   const navigate = useNavigate();
   const role = useAppSelector((state) => state.user.user.role);
-  const dashboardPath = DASHBOARD_MAP[role] || "/";
+  const dashboardPath = dashboardPathFor(role);
   const isLoggedIn = Boolean(role);
 
   return (

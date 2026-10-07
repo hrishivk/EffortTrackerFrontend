@@ -5,21 +5,11 @@ import {
   type DueState,
 } from "../../../shared/utils/taskStatus";
 
-/**
- * The deadline marker: a blinking red badge shaped like the status badge beside
- * it, in one of two escalations.
- *
- * `today` is a warning; `overdue` is a deeper red and says so in words, because
- * a missed deadline is the one a person has to act on first.
- */
 
 interface DueBadgeProps {
-  /** The task's `due_date` — a plain `YYYY-MM-DD`, or a full timestamp. */
   dueDate: string;
   state: Exclude<DueState, null>;
-  /** Smaller type for compact Board cards. */
   dense?: boolean;
-  /** Extra positioning, e.g. pushing the badge right inside a card footer. */
   style?: React.CSSProperties;
 }
 
@@ -40,7 +30,6 @@ export default function DueBadge({
 
   const overdue = state === "overdue";
   const late = overdue ? daysOverdue(dueDate) : 0;
-  // A bare calendar day has no meaningful clock time to show.
   const clock = isPlainDate(dueDate)
     ? ""
     : ` at ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;

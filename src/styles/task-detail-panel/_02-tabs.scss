@@ -1,0 +1,268 @@
+// ─── Tabs ────────────────────────────────────────────────────────
+// Same strip as the List / Board / Gantt toggle: a single pill that slides
+// between the tabs, rather than a background that fades in and out on two.
+.tdp__tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background-color: var(--bg-hover);
+  overflow-x: auto;
+}
+
+.tdp__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+
+  // White against the pill, which is the gradient behind it.
+  &--on {
+    color: #fff;
+  }
+}
+
+.tdp__tab-pill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.35);
+}
+
+// ─── Panels ──────────────────────────────────────────────────────
+.tdp__panel {
+  padding: 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 13px;
+  background-color: var(--bg-card);
+  min-width: 0;
+}
+
+.tdp__panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tdp__panel-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tdp__note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+// ─── Work cards ──────────────────────────────────────────────────
+.tdp__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tdp__card {
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 11px;
+  background-color: var(--bg-surface);
+  transition: border-color 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.3);
+  }
+
+  // The task itself, leading its own list of pieces.
+  &--main {
+    border-color: rgba(124, 58, 237, 0.3);
+    background: linear-gradient(160deg, rgba(124, 58, 237, 0.06), transparent 60%);
+  }
+}
+
+.tdp__card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tdp__mark,
+.tdp__twisty {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.tdp__twisty {
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+  }
+
+  // A leaf has nothing to expand, but still needs the column.
+  &--gap {
+    cursor: default;
+    pointer-events: none;
+  }
+}
+
+.tdp__card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.tdp__card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.tdp__card-title {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tdp__main-tag {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background-color: rgba(124, 58, 237, 0.14);
+  color: #7c3aed;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tdp__card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.tdp__card-right {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+// The dates and the clock, on the line under the title — indented to sit under
+// the name, past the twisty and the status mark.
+.tdp__card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 0 64px;
+  font-size: 10.5px;
+  color: var(--text-faint);
+
+  > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+}
+
+.tdp__card-clock {
+  margin-left: auto;
+}
+
+.tdp__card-thread {
+  margin: 10px 0 2px 64px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-light);
+}
+
+// The branch: subtasks hanging off the task they belong to, with a trunk down
+// the left and an elbow into each card.
+.tdp__card-kids {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 0 11px;
+  padding-left: 20px;
+
+  // Each child is wrapped for its entrance animation, so the lines hang off the
+  // wrapper rather than the card itself.
+  > * {
+    position: relative;
+    min-width: 0;
+
+    // The trunk, running from the card above down past this child.
+    &::before {
+      content: "";
+      position: absolute;
+      top: -10px;
+      bottom: -6px;
+      left: -20px;
+      width: 2px;
+      background-color: var(--border-light);
+    }
+
+    // The last one stops at its own elbow, so the line does not dangle past the
+    // end of the branch.
+    &:last-child::before {
+      bottom: auto;
+      height: 32px;
+    }
+
+    // The elbow into the card, level with its title.
+    &::after {
+      content: "";
+      position: absolute;
+      top: 22px;
+      left: -20px;
+      width: 14px;
+      height: 2px;
+      background-color: var(--border-light);
+    }
+  }
+}

@@ -62,7 +62,6 @@ export default function CreateGroupModal({
       }}
     >
       <div style={{ padding: 22 }}>
-        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -102,7 +101,6 @@ export default function CreateGroupModal({
           </button>
         </div>
 
-        {/* Group name */}
         <p
           style={{
             margin: "0 0 7px",
@@ -154,7 +152,6 @@ export default function CreateGroupModal({
           </p>
         )}
 
-        {/* Colour */}
         <p
           style={{
             margin: "18px 0 9px",
@@ -240,7 +237,6 @@ export default function CreateGroupModal({
           </span>
         </div>
 
-        {/* Actions */}
         <div
           style={{
             display: "flex",

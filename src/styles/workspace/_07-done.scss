@@ -1,0 +1,266 @@
+// ─── Done ───────────────────────────────────────────────────────
+.cws__finished {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.cws__finished-title {
+  margin: 12px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cws__finished-caption {
+  margin: 8px auto 0;
+  max-width: 46ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-faint);
+}
+
+.cws__finished-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+// ─── Workspaces list page ───────────────────────────────────────
+// The workspaces used to be rows in the sidebar, which left no room to say
+// anything about them. Cards on a page do.
+// The centred states every workspace page shares: loading, not found, nothing
+// here yet. Named `wsl__` from the workspaces list that first used them, and
+// kept when it was deleted because these three are what the detail, room and
+// member-tasks pages all render.
+.wsl__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 320px;
+  padding: 30px;
+  border: 1px dashed var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+  text-align: center;
+}
+
+.wsl__empty-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsl__empty-caption {
+  margin: 0;
+  max-width: 380px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+// ─── Entering a room, and its tasks ─────────────────────────────
+// Replaces the review card's plain footer: the whole strip is the link in.
+.cws__rv-card-enter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 15px;
+  border-top: 1px solid var(--border-light);
+  background-color: var(--bg-surface);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s, background-color 0.15s;
+
+  &:hover {
+    background-color: rgba(124, 58, 237, 0.08);
+    color: #7c3aed;
+  }
+}
+
+
+// ─── Workspace detail page ──────────────────────────────────────
+.wsd {
+  padding: 18px 22px 28px;
+
+  @media (max-width: 640px) {
+    padding: 14px;
+  }
+}
+
+.wsd__head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 16px;
+}
+
+.wsd__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__caption {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+// ─── Hero ───────────────────────────────────────────────────────
+/*
+ * One band across the top, in groups ruled off from each other: identity,
+ * counts, status, actions. It wraps rather than scrolls, so a narrow window
+ * stacks the groups instead of cutting the actions menu off the end.
+ */
+.wsd__hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 20px 24px;
+  border-radius: 18px;
+  background: linear-gradient(115deg, #6d28d9 0%, #7c3aed 48%, #a855f7 100%);
+  box-shadow: inset -90px 0 130px rgba(255, 255, 255, 0.07);
+}
+
+.wsd__hero-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 58px;
+  height: 58px;
+  border: 1.5px solid rgba(255, 255, 255, 0.34);
+  border-radius: 18px;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.wsd__hero-ident {
+  flex: 1 1 240px;
+  min-width: 190px;
+}
+
+.wsd__hero-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+// Solid white on the violet band, with the status in the dot rather than in
+// the fill — a coloured pill would fight the gradient behind it.
+.wsd__hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: #fff;
+  color: var(--text-primary);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
+}
+
+.wsd__hero-chip-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-faint);
+}
+
+.wsd__hero-chip--active .wsd__hero-chip-dot {
+  background-color: #16a34a;
+}
+
+.wsd__hero-chip--planning .wsd__hero-chip-dot {
+  background-color: #d97706;
+}
+
+.wsd__hero-chip--on_hold .wsd__hero-chip-dot {
+  background-color: #64748b;
+}
+
+.wsd__hero-chip--completed .wsd__hero-chip-dot {
+  background-color: #0d9488;
+}
+
+// ─── The lock screen on a private workspace ─────────────────────
+.wsd__lock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-height: 380px;
+  justify-content: center;
+  padding: 40px 26px;
+  border: 1px dashed rgba(124, 58, 237, 0.3);
+  border-radius: 16px;
+  background-color: rgba(124, 58, 237, 0.04);
+  text-align: center;
+}
+
+.wsd__lock-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
+
+.wsd__lock-title {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__lock-caption {
+  margin: 0;
+  max-width: 380px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+.wsd__lock-form {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 8px 0 4px;
+
+  .cws__input {
+    width: 200px;
+    // The code is short, uppercase and read back character by character.
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+}

@@ -1,19 +1,5 @@
 import { parseServerTime } from "./serverTime";
 
-/**
- * Whether a task's clock is currently running.
- *
- * A task is running only if it is in progress, has a start, and has no stop that
- * postdates that start. Keying off `status === "in_progress"` alone is what
- * produced totals like "19h 27m": a task whose session had been closed kept
- * counting from its old start forever.
- *
- * The `end_time < start_time` case is a resumed task — the old stop is still on
- * the record but is now older than the new start, so it closes nothing.
- *
- * `start_time` can also be null on a task carried over from a previous day,
- * which would otherwise make the elapsed arithmetic NaN.
- */
 export const isTaskRunning = (task: {
   status?: string | null;
   start_time?: string | null;
@@ -29,7 +15,6 @@ export const isTaskRunning = (task: {
   return Number.isNaN(end) ? true : end < start;
 };
 
-/** Does this task have anything worth showing in a timer slot? */
 export const hasTrackedTime = (task: {
   status?: string | null;
   start_time?: string | null;
@@ -37,10 +22,6 @@ export const hasTrackedTime = (task: {
   total_seconds?: number;
 }): boolean => (task.total_seconds ?? 0) > 0 || isTaskRunning(task);
 
-/**
- * Seconds on the clock: the API's accumulated total plus the running segment.
- * `now` is passed in so a ticking component controls its own re-render cadence.
- */
 export const trackedSeconds = (
   task: {
     status?: string | null;
@@ -56,7 +37,6 @@ export const trackedSeconds = (
   return total + Math.max(0, elapsed);
 };
 
-/** The shape this reports on. `subtasks` is accepted but no longer read. */
 interface TimedTask {
   status?: string | null;
   start_time?: string | null;
@@ -65,23 +45,6 @@ interface TimedTask {
   subtasks?: TimedTask[];
 }
 
-/**
- * A task's clock — **its own**, whether or not it has subtasks.
- *
- * This used to derive a parent's times from its children: it started when the
- * first subtask started, ran continuously until the last one finished, and
- * reported that span as the parent's total. So a parent had no clock of its own
- * and starting any child silently started the parent's.
- *
- * That is now wrong on two counts. A shared task's children belong to different
- * people, so "the span since somebody started something" is not a number the
- * task owner ever asked for; and the parent has a Start and a Complete of its
- * own, which have to record the parent's own timestamps. Each row on the detail
- * panel now reports only what it actually did.
- *
- * Kept as a function rather than inlined at the call sites so there is still
- * one place that answers "what clock does this row show".
- */
 export const taskTiming = (
   task: TimedTask
 ): {

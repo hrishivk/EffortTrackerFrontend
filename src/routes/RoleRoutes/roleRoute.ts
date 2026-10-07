@@ -15,8 +15,6 @@ const WorkspaceDetail=React.lazy(()=>import('../../modules/workspace/components/
 const WorkspaceList=React.lazy(()=>import('../../modules/workspace/components/WorkspaceList'))
 const RoomDetail=React.lazy(()=>import('../../modules/workspace/components/RoomDetail'))
 const RoomMemberTasks=React.lazy(()=>import('../../modules/workspace/components/RoomMemberTasks'))
-// Preview only — see the note in the component. Remove with the route below
-// once the loader is settled.
 const RxSpinnerPreview=React.lazy(()=>import('../../presentation/RxSpinnerPreview'))
 const routes = [
   {
@@ -44,9 +42,6 @@ const routes = [
     roles: ['AM'],
   },
   {
-    // Managers reach workspaces through a list rather than the sidebar tree:
-    // they have every workspace, or every one they raised, which is a table.
-    // Members keep the tree, so this page is not theirs.
     path: '/:role/workspaces',
     name: 'Workspaces',
     element: WorkspaceList,
@@ -59,8 +54,6 @@ const routes = [
     roles: ['SP', 'AM'],
   },
   {
-    // Reads are open to any authenticated user, so a room member can open the
-    // workspace they were assigned to. Creating one is still SP/AM only.
     path: '/:role/workspace',
     name: 'Workspace',
     element: WorkspaceDetail,
@@ -79,17 +72,12 @@ const routes = [
     roles: ['SP', 'AM', 'USER', 'DEVLOPER'],
   },
   {
-    // A page to look at the loading spinner on. Not linked from anywhere —
-    // open it by typing the URL. Delete once the loader is settled.
     path: '/:role/rxspinner',
     name: 'RX Spinner',
     element: RxSpinnerPreview,
     roles: ['SP', 'AM', 'USER', 'DEVLOPER'],
   },
   {
-    // Open to the team as well: a developer needs to see what the projects
-    // they are on actually are. What they can *do* there is decided inside the
-    // page and by the API, not by keeping them off it.
     path: '/:role/domain-project',
     name: 'Department & Projects',
     element: DomainProject,

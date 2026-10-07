@@ -1,0 +1,312 @@
+// ─── Room: members on a ring ────────────────────────────────────
+// The room's people orbit the total. Node positions come from the component,
+// which computes them from the member count, so any number spaces evenly.
+
+.rmo__band {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: linear-gradient(115deg, #6d28d9 0%, #7c3aed 50%, #a855f7 100%);
+}
+
+.rmo__band-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
+  border-radius: 13px;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.rmo__band-name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 19px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.rmo__band-sub {
+  margin: 3px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.rmo__band-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  padding-left: 24px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.rmo__band-n {
+  margin-top: 4px;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.rmo__band-label {
+  margin-top: 1px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+// ─── Section head ───────────────────────────────────────────────
+.rmo__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 24px 0 4px;
+}
+
+.rmo__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rmo__caption {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+// ─── The ring ───────────────────────────────────────────────────
+.rmo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 226px;
+  gap: 18px;
+  align-items: start;
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+  // The faint dot field behind the whole thing.
+  background-image: radial-gradient(
+    circle,
+    rgba(124, 58, 237, 0.14) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// One circle under the next, when a room needs more than one.
+.rmo__stages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rmo__stage {
+  position: relative;
+  /*
+   * Must stay square. Node positions are percentages of this box, so any
+   * width/height difference turns the ring into an ellipse and lifts the
+   * avatars off it. `min-height` and `max-height` both did exactly that —
+   * they beat `aspect-ratio` and gave a 620x520 box — so the size is set on
+   * one axis only and the ratio does the rest.
+   */
+  width: min(100%, 660px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+
+// An ellipse, not a circle — width and height come from the node geometry in
+// RoomDetail so the two always agree.
+.rmo__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border: 1.5px dashed rgba(124, 58, 237, 0.32);
+  border-radius: 50%;
+}
+
+// Two soft glows behind the core.
+.rmo__halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+
+  &--outer {
+    width: 30%;
+    aspect-ratio: 1;
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+
+  &--inner {
+    width: 22%;
+    aspect-ratio: 1;
+    background-color: rgba(124, 58, 237, 0.13);
+  }
+}
+
+.rmo__core {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  // 25% leaves the inner column clear of the core at every member count.
+  width: 25%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(124, 58, 237, 0.32);
+}
+
+.rmo__core-n {
+  margin-top: 2px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+// A range rather than a count, on the circles after the first.
+.rmo__core-n--range {
+  font-size: 21px;
+}
+
+.rmo__core-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+// A marker on the ring between one member and the next.
+.rmo__dot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background-color: #7c3aed;
+}
+
+// ─── A member on the ring ───────────────────────────────────────
+.rmo__node {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  // The computed point is the avatar's centre, whichever side the card is on.
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: transform 0.15s;
+
+  // Lifts on hover without leaving the ring — the translate has to be kept.
+  &:hover {
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+
+  &:hover .rmo__label {
+    border-color: rgba(124, 58, 237, 0.4);
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.16);
+  }
+
+  // A member other than yourself: shown in full, but it goes nowhere, so it
+  // drops the pointer and the hover lift that promise a click.
+  &--static {
+    cursor: default;
+
+    &:hover {
+      transform: translate(-50%, -50%);
+    }
+
+    // Back to the resting values, not to nothing.
+    &:hover .rmo__label {
+      border-color: var(--border-light);
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
+    }
+  }
+
+  // Facing right: avatar first, card trailing.
+  &--right .rmo__label {
+    margin-left: -14px;
+    padding-left: 22px;
+  }
+
+  // Facing left: the card leads, so the order flips.
+  &--left {
+    flex-direction: row-reverse;
+
+    .rmo__label {
+      margin-right: -14px;
+      padding-right: 22px;
+    }
+  }
+}
+
+.rmo__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border: 3px solid var(--bg-card);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+}
+
+// Removes a member. Sits on the avatar, inside the link to their tasks, so it
+// only appears on hover and stops the navigation it is nested in.
+.rmo__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--bg-card);
+  border-radius: 50%;
+  background-color: #dc2626;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: pointer;
+}
+
+.rmo__node:hover .rmo__remove,
+.rmo__remove:focus-visible {
+  opacity: 1;
+}

@@ -1,0 +1,178 @@
+// ─── Rooms section ──────────────────────────────────────────────
+.wsd__room {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  // Keeps a card readable when a partial last row would otherwise stretch it.
+  max-width: 420px;
+  /*
+   * Centred in its branch. The branch's connector stub is drawn at its
+   * mid-point, so a card narrower than its branch — which only happens on a
+   * partial last row — has to be centred too, or the line comes down beside
+   * the card instead of into it.
+   */
+  margin-inline: auto;
+  padding: 16px 16px 0;
+  border: 1px solid var(--border-light);
+  border-radius: 15px;
+  background-color: var(--bg-card);
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.32);
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+  }
+}
+
+.wsd__room-name {
+  margin: 14px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wsd__room-stats {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 14px 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.wsd__room-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-faint);
+
+  strong {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  span {
+    font-size: 10.5px;
+    color: var(--text-faint);
+  }
+}
+
+.wsd__room-label {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.wsd__room-members {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wsd__room-member {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.wsd__room-member-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wsd__room-member-role {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.wsd__room-more {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.wsd__room-enter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 16px -16px 0;
+  padding: 13px;
+  border-top: 1px solid var(--border-light);
+  color: #7c3aed;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 0 0 15px 15px;
+
+  &:hover {
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+}
+
+// ─── Room structure ─────────────────────────────────────────────
+// An org chart from the workspace down to its rooms. The connectors are
+// borders, not SVG: the horizontal bus is the top edge of each branch, so the
+// segments meet with no gap however wide the branches end up.
+.wsd__struct {
+  margin: 22px 0 14px;
+  padding: 20px 22px 26px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+}
+
+.wsd__struct-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+// The round + that opens the add-room dialog.
+.wsd__add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.34);
+  transition: transform 0.18s, box-shadow 0.2s;
+
+  &:hover:not(:disabled) {
+    transform: scale(1.06);
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.44);
+  }
+
+  &:disabled {
+    background: var(--bg-hover);
+    color: var(--text-faint);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+}

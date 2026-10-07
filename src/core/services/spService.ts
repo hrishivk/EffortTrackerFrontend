@@ -139,7 +139,6 @@ export const spserviceMethood = {
       "Content-Type": "application/json",
     },
   })},
-  /** Plain JSON GET with query params — the reports routes use it. */
   getJson: (url: string, params?: Record<string, unknown>) => {
     return apiservice.get(url, {
       params,

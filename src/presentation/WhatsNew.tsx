@@ -15,19 +15,10 @@ import {
   FiZap,
 } from "react-icons/fi";
 
-/**
- * What changed in RX KREW 2.0, for people who used the first version.
- *
- * Announced by `WhatsNewBanner` across the top of the page the first time
- * someone signs in after the release, and opened from there or from the
- * "What's new 2.0" pill in the header. `hasSeenWhatsNew` and
- * `markWhatsNewSeen` keep the banner to once per browser.
- */
 
 export const APP_VERSION = "2.0";
 const SEEN_KEY = "krew:whats-new-seen";
 
-/** Storage can be missing or refuse in a private window; the release note is not worth an error. */
 export const hasSeenWhatsNew = (): boolean => {
   try {
     return window.localStorage.getItem(SEEN_KEY) === APP_VERSION;
@@ -40,7 +31,6 @@ export const markWhatsNewSeen = () => {
   try {
     window.localStorage.setItem(SEEN_KEY, APP_VERSION);
   } catch {
-    /* nothing to remember it in — it will simply show again */
   }
 };
 
@@ -50,7 +40,6 @@ interface Feature {
   icon: React.ReactNode;
   title: string;
   points: string[];
-  /** Who has it. Left out means everyone. */
   roles?: Role[];
 }
 
@@ -130,7 +119,6 @@ const FEATURES: Feature[] = [
   },
 ];
 
-/** What this person actually has — the SP/AM-only areas are left out for everyone else. */
 const featuresFor = (role?: string | null) => {
   const who = String(role ?? "").toUpperCase() as Role;
   return FEATURES.filter((f) => !f.roles || f.roles.includes(who));
@@ -142,11 +130,6 @@ interface WhatsNewBannerProps {
   onDismiss: () => void;
 }
 
-/**
- * The first-login announcement: a strip across the top of the page rather
- * than a window in the way. It names the new areas so the gist lands without
- * a click, and the button opens the full note.
- */
 export function WhatsNewBanner({ role, onOpen, onDismiss }: WhatsNewBannerProps) {
   const features = featuresFor(role);
   return (
@@ -208,7 +191,6 @@ export default function WhatsNew({ open, onClose, role }: WhatsNewProps) {
       onClose={onClose}
       maxWidth="md"
       fullWidth
-      // Opens with a fade, closes at once — dismissing it should not linger.
       transitionDuration={{ enter: 225, exit: 0 }}
       slotProps={{
         paper: {
@@ -224,7 +206,6 @@ export default function WhatsNew({ open, onClose, role }: WhatsNewProps) {
     >
       <div className="wn">
         <header className="wn__hero">
-          {/* Light, not content: two drifting glows and a dot grid behind the words. */}
           <span className="wn__orb wn__orb--a" aria-hidden />
           <span className="wn__orb wn__orb--b" aria-hidden />
           <span className="wn__dots" aria-hidden />

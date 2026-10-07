@@ -1,15 +1,6 @@
 import { useEffect, useState } from "react";
 import { isTaskRunning, trackedSeconds } from "../../../shared/utils/taskTime";
 
-/**
- * Tracked time on a task, shared by the List table's Total Time column and the
- * Board cards so a running task ticks identically in both views.
- *
- * The number is always `total_seconds` — the accumulated total the API keeps —
- * plus the currently running segment, if there is one. Ticking from `start_time`
- * alone is what produced totals like "19h 27m": a task whose session had been
- * closed kept counting from its old start.
- */
 
 const splitDuration = (totalSeconds: number) => ({
   days: Math.floor(totalSeconds / 86400),
@@ -49,9 +40,7 @@ interface TaskTimerProps {
   status?: string | null;
   startTime?: string | null;
   endTime?: string | null;
-  /** Accumulated tracked seconds from the API, excluding any running segment. */
   totalSeconds?: number;
-  /** Smaller type and padding, for Board cards. */
   dense?: boolean;
 }
 
@@ -71,7 +60,6 @@ export default function TaskTimer({
   const running = isTaskRunning(task);
   const [now, setNow] = useState(() => Date.now());
 
-  // Only tick while something is actually running.
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -82,7 +70,6 @@ export default function TaskTimer({
 
   if (seconds <= 0) return running ? <span /> : emDash(dense);
 
-  // Blue while running, purple once it is a settled total.
   return running ? (
     <span style={badgeStyle("#2563eb", "#dbeafe", dense)}>
       {formatDuration(seconds, true)} &#9201;

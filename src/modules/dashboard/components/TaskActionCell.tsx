@@ -2,19 +2,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 
-/**
- * Where a task is, and the one thing you can do to it next.
- *
- * Everything is done from here — the List view has no detail modal — so this is
- * used for a task's own row and for each of its subtasks.
- *
- *   Yet to Start → [▶ Start]
- *   In Progress  → [● Running ✓]   the tick finishes it
- *   Completed    → [✓ Completed]
- *
- * Every task and subtask starts and finishes on its own. Nothing here waits on
- * a sibling, and finishing a task does not wait on its children.
- */
 
 const chipBase = (dense: boolean) => ({
   display: "inline-flex",
@@ -28,7 +15,6 @@ const chipBase = (dense: boolean) => ({
 
 interface TaskActionCellProps {
   status?: string | null;
-  /** False when the viewer is not the assignee, which makes this read-only. */
   owns: boolean;
   busy?: boolean;
   dense?: boolean;
@@ -47,7 +33,6 @@ export default function TaskActionCell({
   const st = (status || "").toLowerCase().replace(/[\s-]+/g, "_");
   const base = chipBase(dense);
 
-  // Clicks must not reach the row or card underneath.
   const act = (run: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
     run();
@@ -85,8 +70,6 @@ export default function TaskActionCell({
       <span
         style={{
           ...base,
-          // Without the tick the chip is text, so it does not need the padding
-          // that made room for a button.
           padding: owns
             ? dense
               ? "2px 3px 2px 8px"

@@ -9,14 +9,6 @@ import type {
 } from "../../../core/actions/reportAction";
 import { fmtDayLong, fmtDuration } from "./reportMetrics";
 
-/**
- * The report as an .xlsx, built in the browser.
- *
- * The API has no export route yet (§5 is not built), and every figure is
- * already on the page, so the workbook is written here. If a server-side
- * `?format=xlsx` lands later this file goes and the button points at the blob
- * instead — the sheets below are the shape to match.
- */
 
 export interface ExportMeta {
   member: string;
@@ -40,14 +32,12 @@ const styleHeader = (sheet: ExcelJS.Worksheet) => {
   });
 };
 
-/** `yyyy-mm-dd` as a local date, or an em dash where the task has no such date. */
 const day = (iso?: string | null) => {
   if (!iso) return "—";
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
   return y ? new Date(y, m - 1, d).toLocaleDateString() : iso;
 };
 
-/** A timestamp as date and time, the way the List View shows it. */
 const when = (iso?: string | null) => {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -65,7 +55,6 @@ export async function exportReportXlsx(
   const wb = new ExcelJS.Workbook();
   wb.created = new Date();
 
-  // ── Summary ──
   const s = wb.addWorksheet("Summary");
   s.columns = [{ width: 24 }, { width: 30 }];
   s.addRow(["Task Report"]).font = { bold: true, size: 14 };
@@ -93,7 +82,6 @@ export async function exportReportXlsx(
     s.addRow([k, v]).getCell(1).font = { bold: true };
   }
 
-  // ── Daily ──
   const d = wb.addWorksheet("Daily");
   d.columns = [
     { header: "Date", key: "date", width: 18 },
@@ -113,7 +101,6 @@ export async function exportReportXlsx(
     });
   }
 
-  // ── Members — only on a team report. ──
   if (members.length) {
     const m = wb.addWorksheet("Members");
     m.columns = [
@@ -139,7 +126,6 @@ export async function exportReportXlsx(
     }
   }
 
-  // ── Tasks — the rows behind the figures, when the API sent them. ──
   if (tasks.length) {
     const t = wb.addWorksheet("Tasks");
     t.columns = [
@@ -157,26 +143,14 @@ export async function exportReportXlsx(
         description: r.description,
         project: r.project || "—",
         status: r.status || "—",
-        // `start_time` when the API sends it, falling back to the planned
-        // date — which is NULL on every row today, so this reads as a dash
-        // rather than a wrong value.
         start: r.start_time ? when(r.start_time) : day(r.start_date),
         end: when(r.end_time),
         done: day(r.completed_at),
         due: day(r.due_date),
       });
     }
-    // The description column carries sentences; without this every row is one
-    // line and the text runs under the column beside it.
     t.getColumn("description").alignment = { wrapText: true, vertical: "top" };
 
-    /*
-     * Say so on the sheet when the API capped the rows.
-     *
-     * A spreadsheet gives no clue that it stops short, and someone totalling a
-     * column has no way to tell a complete export from a partial one. Better a
-     * line they can see than a number they cannot trust.
-     */
     if (tasksTruncated) {
       const note = t.addRow([
         `Showing the first ${tasks.length} tasks — there were more in this period than the export returns.`,

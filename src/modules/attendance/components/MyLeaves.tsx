@@ -50,7 +50,6 @@ export default function MyLeaves() {
       const res = await fetchMyLeaves({ status: statusFilter || undefined });
       setLeaves(res.data || []);
     } catch {
-      /* API not ready */
     } finally {
       setLoading(false);
     }
@@ -93,7 +92,6 @@ export default function MyLeaves() {
         className="rounded-2xl overflow-hidden"
         style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-card)", boxShadow: "var(--shadow-card)" }}
       >
-        {/* Header */}
         <div
           className="grid items-center px-6 py-3"
           style={{ gridTemplateColumns: "1.2fr 1fr 1fr 0.8fr 1.2fr", borderBottom: "1px solid var(--border-light)" }}

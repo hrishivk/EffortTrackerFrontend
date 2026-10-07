@@ -11,19 +11,7 @@ import {
 import { useSnackbar } from "../../../contexts/SnackbarContext";
 import type { TaskGroup } from "../../dashboard/types";
 
-/**
- * The board's columns, as a list you can edit.
- *
- * `/task-groups` has had create, rename, recolour and delete since the board
- * shipped, with no screen behind any of it — a lane could only ever be added
- * from the board itself. This is that screen.
- *
- * Reordering is by the `position` the API already takes: the arrows swap two
- * neighbours and PATCH both, rather than dragging, which would be a lot of
- * machinery for a list this short.
- */
 
-/** The swatches a lane can take. Enough to tell lanes apart, few enough to pick from. */
 const COLORS = [
   "#7c3aed",
   "#2563eb",
@@ -45,7 +33,6 @@ export default function BoardLanes() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  // The lane being renamed, and the draft of its name.
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
@@ -60,8 +47,6 @@ export default function BoardLanes() {
     try {
       const res = await fetchTaskGroups();
       const rows: TaskGroup[] = res?.data || [];
-      // The API does not promise an order, and `position` is what the board
-      // draws by, so sort on it here rather than trusting the array.
       setLanes([...rows].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)));
     } catch {
       showSnackbar({ message: "Could not load the board lanes", severity: "error" });
@@ -122,13 +107,6 @@ export default function BoardLanes() {
   const onRecolour = (lane: TaskGroup, color: string) =>
     guard(() => updateTaskGroup(lane.id, { color }), "Could not change the colour");
 
-  /**
-   * Swap a lane with its neighbour.
-   *
-   * Both rows move, so both are PATCHed — sending only the one that was
-   * clicked leaves two lanes claiming the same position and the board picks
-   * between them arbitrarily.
-   */
   const move = (index: number, by: -1 | 1) => {
     const other = index + by;
     if (other < 0 || other >= lanes.length) return;
@@ -216,8 +194,6 @@ export default function BoardLanes() {
                   <span className="set-lane__name">{lane.name}</span>
                 )}
 
-                {/* The palette only appears while the row is being edited —
-                    nine swatches on every row would drown the names. */}
                 {isEditing && (
                   <span className="set-lane__colors">
                     {COLORS.map((c) => (

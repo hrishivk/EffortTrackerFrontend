@@ -9,7 +9,6 @@ import { STATUS_ACCENT, PRIORITY_STYLE } from "./boardConstants";
 import TaskTimer from "./TaskTimer";
 import type { SubtaskBlocker, TaskUser } from "../../user/types";
 
-/** The slice of a child task this list needs. */
 export interface SubtaskRow {
   id?: string;
   description?: string;
@@ -19,11 +18,9 @@ export interface SubtaskRow {
   start_time?: string | null;
   end_time?: string | null;
   total_seconds?: number;
-  /** Whose piece this is — a shared task splits its children across a room. */
   assigned_to?: string | number | null;
   assignedUser?: TaskUser | null;
   dailyLog?: { assignedUser?: TaskUser } | null;
-  /** Computed by the API: this one cannot be started yet, and what it waits on. */
   is_blocked?: boolean;
   blocked_by?: SubtaskBlocker | null;
 }
@@ -40,7 +37,6 @@ const initialsOf = (name: string) =>
 const normalize = (v?: string | null) =>
   (v || "").toLowerCase().replace(/[\s-]+/g, "_");
 
-/** Icon and colour for a child task's state. */
 const mark = (status?: string | null) => {
   const s = normalize(status);
   if (s === "completed" || s === "done")
@@ -55,10 +51,6 @@ const clockOf = (v?: string | null) => {
   return d ? d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : null;
 };
 
-/**
- * The window a subtask actually ran in, as a compact label. Null before it has
- * started, since there is nothing to report yet.
- */
 const runWindow = (sub: SubtaskRow) => {
   const from = clockOf(sub.start_time);
   if (!from) return null;
@@ -70,11 +62,8 @@ const runWindow = (sub: SubtaskRow) => {
 
 interface SubtaskListProps {
   subtasks: SubtaskRow[];
-  /** Tighter rows, for a Board card rather than an expanded table row. */
   dense?: boolean;
-  /** Opens the child task. Given its id, since the caller holds the full record. */
   onSelect?: (subtaskId: string) => void;
-  /** The control shown at the end of each row — start, running, completed. */
   renderAction?: (subtask: SubtaskRow) => React.ReactNode;
 }
 
@@ -119,16 +108,6 @@ export default function SubtaskList({
             onClick={open}
             title={open ? `Open "${sub.description}"` : sub.description}
             style={{
-              /*
-               * Two lines, not one.
-               *
-               * A board card is about 250px wide and this row carries a name, an
-               * assignee, a priority, a run window, a deadline and a clock. As a
-               * single flex line every one of those held its width and the name —
-               * the only thing that could shrink — was squeezed to nothing while
-               * the clock still overflowed the card. So the name gets a line of
-               * its own and the rest wrap underneath it.
-               */
               display: "flex",
               flexDirection: "column",
               gap: dense ? 3 : 5,
@@ -150,7 +129,6 @@ export default function SubtaskList({
               e.currentTarget.style.borderColor = "var(--border-light)";
             }}
           >
-            {/* Line one: what it is, whose it is, and the one thing to do. */}
             <div
               style={{
                 display: "flex",
@@ -177,8 +155,6 @@ export default function SubtaskList({
                 {sub.description}
               </span>
 
-              {/* Who holds it. On a shared task this is the point of the row:
-                  three children, three people, one card. */}
               {who && (
                 <span
                   title={who.fullName}
@@ -205,11 +181,6 @@ export default function SubtaskList({
               )}
             </div>
 
-            {/*
-             * Line two: everything else, wrapping. `flexWrap` is what actually
-             * guarantees this cannot overflow the card — a narrow card simply
-             * gets a second line rather than a clipped clock.
-             */}
             <div
               style={{
                 display: "flex",
@@ -233,7 +204,6 @@ export default function SubtaskList({
                 </span>
               )}
 
-              {/* When it actually ran, if it has. */}
               {ran && (
                 <span
                   title={ran.title}
@@ -263,8 +233,6 @@ export default function SubtaskList({
                 </span>
               )}
 
-              {/* Ticks while this subtask is running — its own clock, not the
-                  task's. */}
               <TaskTimer
                 dense
                 status={sub.status}

@@ -148,7 +148,6 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ visible, onClose }) => {
               </div>
 
               <div className="mt-6 px-10 mr-8">
-                {/* Scrollable container */}
                 <div className="max-h-80 overflow-y-auto pr-2">
                   <ul className="space-y-3">
                     {project.map((project, index) => (

@@ -51,7 +51,6 @@ export const TaskStatusDistribution = ({
       </h2>
 
       <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
-        {/* Doughnut Chart */}
         <div className="h-48 w-48 sm:h-72 sm:w-72 flex-shrink-0">
           <Doughnut
             data={doughnutData}
@@ -65,7 +64,6 @@ export const TaskStatusDistribution = ({
           />
         </div>
 
-        {/* Status Legend */}
         <div className="flex flex-col gap-4 w-full max-w-xs">
           <LegendItem color="#E9D5FF" label="Yet to Start" value={48} total={120} />
           <LegendItem color="#C084FC" label="In Progress" value={30} total={120} />

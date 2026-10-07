@@ -125,7 +125,6 @@ const TeamAvatars = ({ members }: { members: { name: string; id?: string | numbe
   );
 };
 
-/** The ⋮ menu in Actions. Edit Project lives here; Manage Members stays inline. */
 const RowActions = ({
   onEdit,
   onChangeStatus,
@@ -237,10 +236,6 @@ const statusStyles: Record<string, { bg: string; text: string; label: string }> 
 const normalizeStatus = (s: string) =>
   s.toLowerCase().replace(/\s+/g, "_");
 
-/**
- * `canManage` false drops the Actions column altogether rather than leaving a
- * row of buttons that answer with a 403, and makes the status badge read-only.
- */
 export const getProjectColumns = (
   onManageMembers?: (rowId: number) => void,
   onStatusChange?: (rowId: number, currentStatus: string) => void,
@@ -273,7 +268,6 @@ export const getProjectColumns = (
             style={{ fontSize: 11, color: "#9ca3af", display: "flex", alignItems: "center", gap: 6 }}
           >
             {normalizeStatus(row.status) === "completed" ? "Completed" : "Due"}: {row.dueDate}
-            {/* Amber, like a task's slip badge: a pushed deadline is not a neutral fact. */}
             {(row.extensionCount ?? 0) > 0 && (
               <span
                 className="ep-slip"

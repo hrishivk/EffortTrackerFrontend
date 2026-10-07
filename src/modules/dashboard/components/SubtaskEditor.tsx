@@ -16,22 +16,6 @@ import { PRIORITIES, PRIORITY_COLORS, miniSelectSx } from "./boardConstants";
 import MentionPicker from "../../../shared/components/User/MentionPicker";
 import type { SubtaskAssignee, SubtaskDraft } from "./CreateTaskModal";
 
-/**
- * Building a task's subtasks.
- *
- * Every row used to show all of its fields at once — a name, an assignee, a
- * priority and two dates, stacked three deep inside a narrow column. Five
- * subtasks filled the form with thirty controls, and the one thing a reader
- * actually wants from the list, *the order of the work and who has each piece*,
- * was the hardest thing to see.
- *
- * So a row is one line: its number, its name, who holds it, its priority and
- * its deadline. The rest opens on demand, one row at a time. The list can be
- * dragged into order, which matters more than it used to — with "Run in order"
- * on, the order **is** the plan.
- *
- * Used by both create forms, which had grown near-identical copies of this.
- */
 
 const menuProps = {
   PaperProps: {
@@ -55,7 +39,6 @@ const initialsOf = (name: string) =>
     .toUpperCase()
     .slice(0, 2);
 
-/** "Sep 15", or nothing when the date is unset. */
 const shortDate = (value: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
   const [y, m, d] = value.split("-").map(Number);
@@ -68,15 +51,11 @@ const shortDate = (value: string) => {
 interface SubtaskEditorProps {
   subtasks: SubtaskDraft[];
   onChange: (next: SubtaskDraft[]) => void;
-  /** Run strictly in listed order. Hidden until there are two to order. */
   sequential: boolean;
   onSequentialChange: (next: boolean) => void;
-  /** The room's roster. Empty outside a room, which hides the assignee field. */
   roomMembers?: SubtaskAssignee[];
-  /** Dates a new row inherits — the parent's window. */
   defaultStartDate?: string;
   defaultDueDate?: string;
-  /** Narrower layout, for the list view's 380px create panel. */
   compact?: boolean;
 }
 
@@ -91,9 +70,7 @@ export default function SubtaskEditor({
   compact = false,
 }: SubtaskEditorProps) {
   const [draft, setDraft] = useState("");
-  /** The one row showing its full editor. One at a time, by design. */
   const [openRow, setOpenRow] = useState<number | null>(null);
-  /** The row being dragged, and the gap it is currently hovering over. */
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -105,8 +82,6 @@ export default function SubtaskEditor({
       ...subtasks,
       {
         name,
-        // Unassigned falls to the task's own owner. Guessing here would quietly
-        // hand somebody else's work to the wrong person.
         assignee: "",
         priority: "MEDIUM",
         startDate: defaultStartDate,
@@ -122,12 +97,9 @@ export default function SubtaskEditor({
 
   const remove = (index: number) => {
     onChange(subtasks.filter((_, i) => i !== index));
-    // The open row is tracked by index, so removing above it would leave the
-    // wrong row expanded. Simplest correct answer: close it.
     setOpenRow(null);
   };
 
-  /** Move a row, keeping the rest in their relative order. */
   const reorder = (from: number, to: number) => {
     if (from === to) return;
     const next = [...subtasks];
@@ -151,11 +123,6 @@ export default function SubtaskEditor({
           {subtasks.length > 0 && <span className="ste__count">{subtasks.length}</span>}
         </h4>
 
-        {/*
-         * The relay switch, up here beside the count rather than buried under
-         * the list — it changes what every row below means, so it reads as a
-         * property of the whole list.
-         */}
         {subtasks.length > 1 && (
           <label className="ste__seq" title="Each subtask stays locked until the one above it is completed">
             <input
@@ -205,7 +172,6 @@ export default function SubtaskEditor({
                   endDrag();
                 }}
               >
-                {/* One line: number, name, who, priority, deadline. */}
                 <div className="ste__summary">
                   <span
                     className="ste__grip"
@@ -213,7 +179,6 @@ export default function SubtaskEditor({
                     title="Drag to reorder"
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = "move";
-                      // Firefox will not start a drag without a payload.
                       e.dataTransfer.setData("text/plain", String(i));
                       setDragFrom(i);
                     }}
@@ -231,8 +196,6 @@ export default function SubtaskEditor({
                     onChange={(e) => edit(i, { name: e.target.value })}
                   />
 
-                  {/* The summary chips double as the "what is set" answer, so
-                      the editor only has to be opened to change something. */}
                   {member && (
                     <span className="ste__who" title={member.name}>
                       {initialsOf(member.name)}
@@ -275,15 +238,9 @@ export default function SubtaskEditor({
                   </button>
                 </div>
 
-                {/* Everything else, only for the row being worked on. */}
                 {open && (
                   <div className="ste__detail">
                     {roomMembers.length > 0 && (
-                      /*
-                       * A div, not a label: the picker's menu is made of
-                       * buttons, and clicking one inside a label would be a
-                       * click on the label as well.
-                       */
                       <div className="ste__field">
                         <span className="ste__label">Assignee</span>
                         <MentionPicker

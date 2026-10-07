@@ -44,11 +44,9 @@ const UserDashboard = () => {
   const id = user?.id;
   const [searchParams, setSearchParams] = useSearchParams();
   const viewUserId = searchParams.get("viewUser") || "";
-  /** Sent along by whoever linked here, so the header has a name on first paint. */
   const viewUserName = searchParams.get("viewUserName") || "";
   const viewProject = searchParams.get("viewProject") || "";
   const viewTab = searchParams.get("tab") || "";
-  /** A task to open on arrival — how a notification reaches its task. */
   const focusTaskId = searchParams.get("task") || "";
   const [activeTab, setActiveTab] = useState<"overview" | "myTasks" | "profile">(
     viewUserId || viewProject || viewTab === "myTasks" ? "myTasks" : viewTab === "profile" ? "profile" : "overview"
@@ -67,14 +65,6 @@ const UserDashboard = () => {
     { key: "profile" as const, label: "Profile" },
   ];
 
-  /*
-   * A team member's tasks live in their room inside the workspace now, so the
-   * dashboard no longer carries a My Tasks tab for them — reaching the work
-   * through the workspace is the point of putting it there.
-   *
-   * SP keeps the tab only while looking at someone specific, which is what it
-   * was already doing; AM keeps it outright.
-   */
   const showTasksTab =
     role === "SP"
       ? Boolean(spHasViewParam)
@@ -84,12 +74,6 @@ const UserDashboard = () => {
     ? allTabs
     : allTabs.filter((tab) => tab.key !== "myTasks");
 
-  /*
-   * A tab that is not on the bar cannot be the active one. The URL can still
-   * ask for it — `?tab=myTasks`, a bookmark, an older link from elsewhere in
-   * the app — so it falls back to Overview rather than rendering a view with
-   * nothing highlighted above it.
-   */
   const currentTab =
     activeTab === "myTasks" && !showTasksTab ? "overview" : activeTab;
 
@@ -204,158 +188,9 @@ const UserDashboard = () => {
               </p>
             </div>
 
-            {/* Filters */}
-            {/* <div className="rounded-2xl p-3 sm:p-4 md:p-5" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-card)", boxShadow: "var(--shadow-card)" }}>
-              <div className="d-flex gap-3">
-                <FormControl fullWidth size="small" sx={commonFormControlSx}>
-                  <InputLabel>Project</InputLabel>
-                  <Select label="Project" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} MenuProps={commonMenuProps}>
-                    <MenuItem value="">All Projects</MenuItem>
-                    {project.map((item, index) => (
-                      <MenuItem key={index} value={item.name}>
-                        {item.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
 
-                {(role === "SP" || role === "AM") && (
-                  <FormControl fullWidth size="small" sx={commonFormControlSx}>
-                    <InputLabel>User</InputLabel>
-                    <Select label="User" value={userFilter} onChange={(e) => setUserFilter(e.target.value)} MenuProps={commonMenuProps}>
-                      <MenuItem value="">All Users</MenuItem>
-                      {users.map((item, index) => (
-                        <MenuItem key={index} value={item.fullName}>
-                          {item.fullName}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
 
-                <FormControl fullWidth size="small" sx={commonFormControlSx}>
-                  <Select
-                    value={dateData}
-                    onChange={(e) => setDateData(e.target.value)}
-                    MenuProps={commonMenuProps}
-                  >
-                    <MenuItem value="All Dates">All Dates</MenuItem>
-                    <MenuItem value="thisWeek">This Week</MenuItem>
-                    <MenuItem value="thisMonth">This Month</MenuItem>
-                    <MenuItem value="thisYear">This Year</MenuItem>
-                  </Select>
-                </FormControl>
 
-                <FormControl fullWidth size="small" sx={commonFormControlSx}>
-                  <Select
-                    value={dateData}
-                    onChange={(e) => setDateData(e.target.value)}
-                    MenuProps={commonMenuProps}
-                  >
-                    <MenuItem value="Task Status">Task Status</MenuItem>
-                  </Select>
-                </FormControl>
-              </div>
-            </div> */}
-
-            {/* {(role === "SP" || role === "AM") && (
-            <div>
-              <h2
-                className="fw-bold text-gray-800 mb-4"
-                style={{ fontSize: "1.25rem" }}
-              >
-                Team Overview
-              </h2>
-              <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:gap-5 sm:overflow-visible sm:pb-0 scrollbar-hide">
-                <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-                  <StatCard
-                    title="Total Tasks"
-                    value={totalTasks}
-                    subText="Across all projects"
-                    icon="📋"
-                    iconBg="bg-indigo-50"
-                    iconColor="text-indigo-600"
-                  />
-                </div>
-                <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-                  <StatCard
-                    title="Yet To Start"
-                    value={yetToStart}
-                    subText=" assignment"
-                    icon="⏳"
-                    iconBg="bg-orange-50"
-                    iconColor="text-orange-600"
-                  />
-                </div>
-                <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-                  <StatCard
-                    title="In Progress"
-                    value={inProgress}
-                    subText="Currently active"
-                    icon="🔄"
-                    iconBg="bg-blue-50"
-                    iconColor="text-blue-600"
-                  />
-                </div>
-                <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-                  <StatCard
-                    title="Completed"
-                    value={completed}
-                    subText="Successfully done"
-                    icon="✅"
-                    iconBg="bg-green-50"
-                    iconColor="text-green-600"
-                  />
-                </div>
-                <div className="min-w-[200px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-                  <StatCard
-                    title="Total Hours"
-                    value={totalHours}
-                    subText="Estimated effort"
-                    icon="⏱️"
-                    iconBg="bg-pink-50"
-                    iconColor="text-pink-600"
-                  />
-                </div>
-              </div>
-            </div>
-            )} */}
-
-            {/* {(role === "USER" || role === "DEVLOPER") && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <WeeklyProgressChart />
-                <MyActiveTasks onViewAll={() => setActiveTab("myTasks")} />
-              </div>
-            )} */}
-
-            {/* {(role === "SP" || role === "AM") && (
-              <>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  {role === "SP" && (
-                    <TaskStatusDistribution
-                      completed={completed}
-                      inProgress={inProgress}
-                      yetToStart={yetToStart}
-                      totalTasks={totalTasks}
-                    />
-                  )}
-                  {role === "AM" && <TeamCapacityByDepartment />}
-                  <RecentActivityFeed />
-                </div>
-
-                <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-                  <div className="flex-[3] min-w-0">
-                    {role === "SP" && <TaskCompletionTrend />}
-                    {role === "AM" && <UpcomingTeamEvents />}
-                  </div>
-                  <div className="flex-[2] min-w-0">
-                    <UpcomingDeadlines />
-                  </div>
-                </div>
-              </>
-            )} */}
-            {/* {role === "SP" && <SpTeamPerformance page={page} setPage={setPage} />}
-            {role === "AM" && <AmTeamPerformance page={page} setPage={setPage} />} */}
           </>
         )}
       </div>

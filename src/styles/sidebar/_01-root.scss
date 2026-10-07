@@ -1,0 +1,378 @@
+:root {
+  --sb-accent: #7c3aed;
+  --sb-accent-soft: rgba(124, 58, 237, 0.1);
+  --sb-gap: 12px;
+}
+
+
+.sb-panel {
+  position: fixed;
+  top: var(--sb-gap);
+  left: var(--sb-gap);
+  height: calc(100vh - (var(--sb-gap) * 2));
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background-color: var(--bg-card);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.07);
+  overflow: visible;
+  transition: width 0.3s;
+}
+
+
+.sb-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 9px;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:hover:not(.sb-item--active) {
+    background-color: var(--bg-hover);
+
+    .sb-item__icon,
+    .sb-item__label {
+      color: var(--text-primary);
+    }
+  }
+
+  &__icon {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-faint);
+    transition: color 0.15s;
+  }
+
+  &__label {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    transition: color 0.15s;
+  }
+
+ 
+  &--active {
+    .sb-item__icon,
+    .sb-item__label {
+      color: var(--sb-accent);
+    }
+
+    .sb-item__label {
+      font-weight: 600;
+    }
+  }
+
+
+  &--active:not(&--active-rail)::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -12px;
+    z-index: 2;
+    width: 3px;
+    height: 18px;
+    transform: translateY(-50%);
+    border-radius: 0 3px 3px 0;
+    background-color: var(--sb-accent);
+  }
+
+
+  &--active-rail {
+    .sb-item__icon {
+      color: #fff;
+    }
+  }
+}
+
+
+.sb-caption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0 10px;
+  margin-bottom: 6px;
+  border: none;
+  background: none;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    color: var(--text-muted);
+  }
+
+  &__chevron {
+    display: inline-flex;
+    margin-left: auto;
+    transition: transform 0.2s;
+  }
+
+  &--closed &__chevron {
+    transform: rotate(-90deg);
+  }
+}
+
+
+.sb-handle {
+  position: absolute;
+  top: 50%;
+  right: -11px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  transform: translateY(-50%);
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  background-color: var(--bg-card);
+  color: var(--sb-accent);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+  transition: background-color 0.15s, transform 0.15s;
+
+  &:hover {
+    background-color: var(--sb-accent-soft);
+  }
+}
+
+// ─── Scroll area ────────────────────────────────────────────────
+.sb-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.6);
+  }
+}
+
+// ─── Account card, pinned above the collapse row ────────────────
+.sb-user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border: 1px solid var(--border-light);
+  border-radius: 11px;
+  background-color: var(--bg-surface);
+  text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s;
+
+  &:hover {
+    border-color: rgba(124, 58, 237, 0.35);
+    background-color: var(--sb-accent-soft);
+  }
+
+  &__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ad21db, #7c3aed);
+  }
+
+  &__name {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__role {
+    margin: 0;
+    font-size: 10.5px;
+    color: var(--text-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+ 
+  &--rail {
+    justify-content: center;
+    padding: 6px 0;
+    border: none;
+    background: none;
+  }
+}
+    
+.app-header {
+  background-color: rgba(246, 247, 251, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .app-header {
+  background-color: rgba(15, 15, 17, 0.72);
+}
+
+.sb-tree {
+  padding: 0 6px;
+}
+
+.sb-tree__node {
+  margin-bottom: 2px;
+}
+
+.sb-tree__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 6px;
+  border-radius: 9px;
+  // The whole row expands the branch, so it has to look pressable.
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--bg-hover);
+  }
+
+  &--open {
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+}
+
+.sb-tree__caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.sb-tree__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sb-tree__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--sb-accent);
+  }
+}
+
+// A workspace that cannot be opened: still listed, but not a link.
+.sb-tree__name--shut {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--text-faint);
+  cursor: default;
+
+  &:hover {
+    color: var(--text-muted);
+  }
+}
+
+.sb-tree__row--open .sb-tree__name {
+  color: var(--sb-accent);
+}
+
+// Sits beside the status pill on a private workspace.
+.sb-tree__lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background-color: rgba(124, 58, 237, 0.12);
+  color: var(--sb-accent);
+}
+
+.sb-tree__pill {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background-color: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 8.5px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &--active {
+    background-color: rgba(34, 197, 94, 0.14);
+    color: #15803d;
+  }
+
+  &--planning {
+    background-color: rgba(245, 158, 11, 0.14);
+    color: #b45309;
+  }
+
+  &--on_hold {
+    background-color: rgba(100, 116, 139, 0.16);
+    color: #475569;
+  }
+
+  &--completed {
+    background-color: rgba(13, 148, 136, 0.14);
+    color: #0f766e;
+  }
+}

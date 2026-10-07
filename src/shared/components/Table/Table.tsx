@@ -17,12 +17,6 @@ import { FiChevronDown } from "react-icons/fi";
 import type { TableListProps } from "./types";
 import { usePagination } from "../../hooks/usePagination";
 
-/**
- * How an expanded row opens and shuts.
- *
- * The same easing the panels elsewhere use, and slow enough to be read as the
- * row growing rather than a second row appearing under it.
- */
 const EXPAND_EASE = [0.22, 1, 0.3, 1] as const;
 
 function TableList<T>({
@@ -152,11 +146,6 @@ function TableList<T>({
                               exit={{ opacity: 0 }}
                               transition={{ duration: 0.16 }}
                             >
-                              {/*
-                                * The cell gives up its padding so the row can
-                                * close to nothing; the same spacing is put back
-                                * inside, where it collapses with the content.
-                                */}
                               <td
                                 colSpan={columns.length + (expandable ? 1 : 0)}
                                 style={{ padding: 0 }}

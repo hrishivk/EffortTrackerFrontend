@@ -21,7 +21,6 @@ export default function RxSpinner({
       aria-label={label ?? "Loading"}
     >
       <span className="rxs__dial" style={{ width: size, height: size }}>
-        {/* Two halos leaving at staggered times, so the pulse never stops. */}
         <span className="rxs__halo" style={{ borderColor: color }} />
         <span className="rxs__halo rxs__halo--late" style={{ borderColor: color }} />
 
@@ -38,7 +37,6 @@ export default function RxSpinner({
 
         <span className="rxs__markWrap">
           <img className="rxs__mark" src={logoMark} alt="" draggable={false} />
-          {/* The sheen that travels across the mark, clipped to it. */}
           <span className="rxs__sheen" aria-hidden />
         </span>
       </span>
