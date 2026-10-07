@@ -1,3 +1,4 @@
+import type { WorkspaceRoom } from "../../../user/types";
 import type { AssignablePerson, Candidate, Ring, RoomMember } from "../../types";
 
 export const ORBIT_RX = 19;

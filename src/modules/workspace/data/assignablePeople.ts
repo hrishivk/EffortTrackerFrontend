@@ -1,6 +1,8 @@
 import { fetchUsers } from "../../../core/actions/spAction";
 import type { AssignablePerson, UserRow } from "../types";
 
+export type { AssignablePerson };
+
 
 const NON_MEMBER_ROLES = ["AM"];
 
