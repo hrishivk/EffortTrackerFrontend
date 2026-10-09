@@ -231,7 +231,10 @@ export default function MyTasksView({
         viewUserId={viewUserId}
         viewedPersonName={viewedPersonName}
         isCompact={isCompact}
-        showCreateButton={viewMode !== "gantt" && !create.showCreateForm}
+        // Team members and developers get their tasks assigned; they only create inside a room.
+        showCreateButton={
+          viewMode !== "gantt" && !create.showCreateForm && (!isUserOrDev || Boolean(roomId))
+        }
         onCreate={() =>
           viewMode === "board" ? create.setCreateTaskOpen(true) : create.openCreateForm()
         }

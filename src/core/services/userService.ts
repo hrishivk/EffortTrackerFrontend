@@ -278,4 +278,9 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
       headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
     });
   },
+  postJson: (url: string, data: unknown) => {
+    return apiservice.post(url, data, {
+      headers: { "Content-Type": "application/json" },
+    });
+  },
 };

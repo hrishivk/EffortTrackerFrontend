@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Dialog from "@mui/material/Dialog";
 import { motion } from "framer-motion";
 import logo from "../assets/img/logo2.png.png";
@@ -8,42 +9,76 @@ import {
   FiCalendar,
   FiClock,
   FiColumns,
+  FiFileText,
   FiLayers,
   FiCheckCircle,
+  FiList,
+  FiSend,
   FiUsers,
   FiX,
   FiZap,
 } from "react-icons/fi";
 
 
-export const APP_VERSION = "2.0";
+export const APP_VERSION = "2.1";
 const SEEN_KEY = "krew:whats-new-seen";
 
-export const hasSeenWhatsNew = (): boolean => {
+// The banner follows the release SP last announced, so "seen" is kept per
+// announcement rather than per build.
+export const hasSeenAnnouncement = (id: string): boolean => {
   try {
-    return window.localStorage.getItem(SEEN_KEY) === APP_VERSION;
+    return window.localStorage.getItem(SEEN_KEY) === id;
   } catch {
     return true;
   }
 };
 
-export const markWhatsNewSeen = () => {
+export const markAnnouncementSeen = (id: string) => {
   try {
-    window.localStorage.setItem(SEEN_KEY, APP_VERSION);
+    window.localStorage.setItem(SEEN_KEY, id);
   } catch {
   }
 };
 
 type Role = "SP" | "AM" | "USER" | "DEVLOPER";
 
+interface FeatureMedia {
+  type: "image" | "video";
+  /** Served from /public, e.g. "/whats-new/my-tasks.mp4". */
+  src: string;
+  alt?: string;
+}
+
 interface Feature {
   icon: React.ReactNode;
   title: string;
   points: string[];
   roles?: Role[];
+  media?: FeatureMedia;
 }
 
 const FEATURES: Feature[] = [
+  {
+    icon: <FiList size={17} />,
+    title: "My Tasks for team members and developers",
+    points: [
+      "A My Tasks tab on your dashboard",
+      "Shows only the tasks assigned to you, 10 per page",
+      "Inside a room, only that room's tasks",
+    ],
+    roles: ["USER", "DEVLOPER"],
+    media: { type: "video", src: "/whats-new/my-tasks.mp4", alt: "The My Tasks tab" },
+  },
+  {
+    icon: <FiFileText size={17} />,
+    title: "Excel download and upload",
+    points: [
+      "Download a ready-made Excel template for your tasks",
+      "Fill it in and upload it to create every task in one go",
+      "Problems in the file are shown row by row before anything is saved",
+    ],
+    media: { type: "image", src: "/whats-new/excel-import.png", alt: "Importing tasks from Excel" },
+  },
   {
     icon: <FiColumns size={17} />,
     title: "Three ways to see your tasks",
@@ -124,32 +159,68 @@ const featuresFor = (role?: string | null) => {
   return FEATURES.filter((f) => !f.roles || f.roles.includes(who));
 };
 
+// A missing file just hides itself, so a feature can name its media before
+// the file has been added to /public.
+function FeatureMediaView({ media }: { media: FeatureMedia }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return media.type === "video" ? (
+    <video
+      className="wn__media"
+      src={media.src}
+      aria-label={media.alt}
+      controls
+      muted
+      playsInline
+      preload="metadata"
+      onError={() => setFailed(true)}
+    />
+  ) : (
+    <img
+      className="wn__media"
+      src={media.src}
+      alt={media.alt ?? ""}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 interface WhatsNewBannerProps {
   role?: string | null;
+  version?: string;
+  title?: string;
   onOpen: () => void;
   onDismiss: () => void;
 }
 
-export function WhatsNewBanner({ role, onOpen, onDismiss }: WhatsNewBannerProps) {
+export function WhatsNewBanner({
+  role,
+  version = APP_VERSION,
+  title,
+  onOpen,
+  onDismiss,
+}: WhatsNewBannerProps) {
   const features = featuresFor(role);
+  const heading = title || `RX KREW ${version} is here`;
   return (
     <motion.div
       className="wnb"
       role="region"
-      aria-label={`RX KREW ${APP_VERSION} is here`}
+      aria-label={heading}
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
     >
       <span className="wnb__orb" aria-hidden />
       <span className="wnb__ver" aria-hidden>
-        {APP_VERSION}
+        {version}
       </span>
 
       <div className="wnb__body">
         <p className="wnb__title">
           <FiZap size={14} />
-          RX KREW {APP_VERSION} is here
+          {heading}
         </p>
         <p className="wnb__sub">
           {features.length} new areas, built around how your team works.
@@ -180,10 +251,44 @@ interface WhatsNewProps {
   open: boolean;
   onClose: () => void;
   role?: string | null;
+  /** SP only: send this release to every user as a notification and banner. */
+  onAnnounce?: () => void;
+  announcing?: boolean;
+  /** When this version was last sent; SP may send it again after the cooldown. */
+  lastSentAt?: string;
 }
 
-export default function WhatsNew({ open, onClose, role }: WhatsNewProps) {
+/** How long SP waits before the same release can be sent again. */
+export const ANNOUNCE_COOLDOWN_MS = 5 * 60 * 1000;
+
+const formatWait = (ms: number) => {
+  const total = Math.ceil(ms / 1000);
+  const m = Math.floor(total / 60);
+  const sec = String(total % 60).padStart(2, "0");
+  return `${m}:${sec}`;
+};
+
+export default function WhatsNew({
+  open,
+  onClose,
+  role,
+  onAnnounce,
+  announcing = false,
+  lastSentAt,
+}: WhatsNewProps) {
   const features = featuresFor(role);
+
+  // Ticks only while SP has the page open and a send is cooling down.
+  const [now, setNow] = useState(() => Date.now());
+  const sentAt = lastSentAt ? new Date(lastSentAt).getTime() : NaN;
+  const waitMs = Number.isNaN(sentAt) ? 0 : Math.max(0, sentAt + ANNOUNCE_COOLDOWN_MS - now);
+  const coolingDown = waitMs > 0;
+  useEffect(() => {
+    if (!open || !onAnnounce || Number.isNaN(sentAt)) return;
+    setNow(Date.now());
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [open, onAnnounce, sentAt]);
 
   return (
     <Dialog
@@ -275,6 +380,7 @@ export default function WhatsNew({ open, onClose, role }: WhatsNewProps) {
                     <li key={p}>{p}</li>
                   ))}
                 </ul>
+                {f.media && <FeatureMediaView media={f.media} />}
               </div>
             </motion.section>
           ))}
@@ -282,6 +388,28 @@ export default function WhatsNew({ open, onClose, role }: WhatsNewProps) {
 
         <footer className="wn__foot">
           <span>You can open this again from &ldquo;What&rsquo;s new&rdquo; at the top of the page.</span>
+          {onAnnounce && (
+            <button
+              type="button"
+              className="wn__announce"
+              onClick={onAnnounce}
+              disabled={announcing || coolingDown}
+              title={
+                coolingDown
+                  ? `Sent to everyone. You can send it again in ${formatWait(waitMs)}`
+                  : "Notify every user and show them this page"
+              }
+            >
+              <FiSend size={13} />
+              {announcing
+                ? "Sending…"
+                : coolingDown
+                  ? `Send again in ${formatWait(waitMs)}`
+                  : lastSentAt
+                    ? "Notify everyone again"
+                    : "Notify everyone"}
+            </button>
+          )}
         </footer>
       </div>
     </Dialog>

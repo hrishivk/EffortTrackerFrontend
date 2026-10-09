@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { FiMenu, FiSun, FiMoon, FiChevronDown, FiStar } from "react-icons/fi";
 import { useDispatch } from "react-redux";
@@ -9,9 +9,17 @@ import { AnimatePresence } from "framer-motion";
 import WhatsNew, {
   APP_VERSION,
   WhatsNewBanner,
-  hasSeenWhatsNew,
-  markWhatsNewSeen,
+  hasSeenAnnouncement,
+  markAnnouncementSeen,
 } from "./WhatsNew";
+import {
+  fetchLatestAnnouncement,
+  publishAnnouncement,
+  type Announcement,
+} from "../core/actions/announcementAction";
+import { OPEN_WHATS_NEW } from "../shared/utils/appEvents";
+import { useSnackbar } from "../contexts/SnackbarContext";
+import { apiMessage } from "../shared/utils/apiMessage";
 import { useAppSelector, type AppDispatch } from "../store/configureStore";
 import { reset } from "../store/authSlice";
 import { authLogout } from "../core/actions/action";
@@ -37,15 +45,71 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readCollapsed);
   const { user } = useAppSelector((state) => state.user);
 
+  const { showSnackbar } = useSnackbar();
+  const isSP = user?.role === "SP";
+
+  // The banner only appears once SP has sent a release out, and stays until
+  // this browser has opened or dismissed that announcement.
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
-  const [whatsNewSeen, setWhatsNewSeen] = useState(hasSeenWhatsNew);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const [whatsNewSeen, setWhatsNewSeen] = useState(true);
+  const [announcing, setAnnouncing] = useState(false);
+
+  const loadAnnouncement = useCallback(async () => {
+    try {
+      const latest = await fetchLatestAnnouncement();
+      setAnnouncement(latest);
+      setWhatsNewSeen(!latest || hasSeenAnnouncement(latest.id));
+    } catch {
+      setAnnouncement(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    loadAnnouncement();
+    // People who are already signed in when SP sends it pick it up on their
+    // next visit to the tab.
+    window.addEventListener("focus", loadAnnouncement);
+    return () => window.removeEventListener("focus", loadAnnouncement);
+  }, [user?.id, loadAnnouncement]);
+
   const retireBanner = () => {
-    markWhatsNewSeen();
+    if (announcement) markAnnouncementSeen(announcement.id);
     setWhatsNewSeen(true);
   };
   const openWhatsNew = () => {
     setWhatsNewOpen(true);
     retireBanner();
+  };
+
+  // A release notification in the bell opens this page.
+  useEffect(() => {
+    const open = () => setWhatsNewOpen(true);
+    window.addEventListener(OPEN_WHATS_NEW, open);
+    return () => window.removeEventListener(OPEN_WHATS_NEW, open);
+  }, []);
+
+  const handleAnnounce = async () => {
+    setAnnouncing(true);
+    try {
+      await publishAnnouncement({
+        version: APP_VERSION,
+        title: `RX KREW ${APP_VERSION} is here`,
+      });
+      showSnackbar({ message: "Everyone has been notified", severity: "success" });
+      await loadAnnouncement();
+    } catch (error) {
+      showSnackbar({
+        message: apiMessage(error, "Could not send the announcement"),
+        severity: "error",
+      });
+      // A 429 means someone sent it more recently than this page knows about
+      // (another SP, or a skewed clock): pick up that send so the countdown matches.
+      await loadAnnouncement();
+    } finally {
+      setAnnouncing(false);
+    }
   };
   const { theme, toggleTheme } = useTheme();
   const dispatch = useDispatch<AppDispatch>();
@@ -182,7 +246,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </div>
       </header>
 
-      <WhatsNew open={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} role={user?.role} />
+      <WhatsNew
+        open={whatsNewOpen}
+        onClose={() => setWhatsNewOpen(false)}
+        role={user?.role}
+        onAnnounce={isSP ? handleAnnounce : undefined}
+        announcing={announcing}
+        lastSentAt={announcement?.version === APP_VERSION ? announcement.created_at : undefined}
+      />
 
       <main
         className={`min-h-screen pt-[64px] transition-all duration-300 ${mainInset}`}
@@ -193,6 +264,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             <WhatsNewBanner
               key="whats-new"
               role={user.role}
+              version={announcement?.version}
+              title={announcement?.title}
               onOpen={openWhatsNew}
               onDismiss={retireBanner}
             />

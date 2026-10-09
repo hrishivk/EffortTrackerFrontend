@@ -14,11 +14,12 @@ import {
   FiMessageSquare,
   FiAtSign,
   FiAward,
+  FiStar,
 } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../store/configureStore";
-import { OPEN_NOTIFICATIONS } from "../shared/utils/appEvents";
+import { OPEN_NOTIFICATIONS, openWhatsNew } from "../shared/utils/appEvents";
 import {
   fetchNotifications,
   fetchUnreadCount,
@@ -52,6 +53,8 @@ const typeConfig: Record<string, { icon: React.ReactNode; color: string; bg: str
   task_comment_mention:   { icon: <FiAtSign size={12} />,        color: "#d97706", bg: "#fef3c7" },
 
   workspace_completed:    { icon: <FiAward size={12} />,          color: "#0d9488", bg: "#ccfbf1" },
+
+  release_announcement:   { icon: <FiStar size={12} />,           color: "#ad21db", bg: "#fae8ff" },
 };
 
 const defaultConfig = { icon: <FiBell size={12} />, color: "#7c3aed", bg: "#f5f3ff" };
@@ -161,6 +164,12 @@ export default function NotificationPanel() {
       navigate(
         `/${rolePath}/dashboard?tab=myTasks&task=${encodeURIComponent(n.reference_id)}`
       );
+      setOpen(false);
+      return;
+    }
+
+    if (n.type === "release_announcement") {
+      openWhatsNew();
       setOpen(false);
       return;
     }
