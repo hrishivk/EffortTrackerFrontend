@@ -63,11 +63,21 @@ const FEATURES: Feature[] = [
     title: "My Tasks for team members and developers",
     points: [
       "A My Tasks tab on your dashboard",
-      "Shows only the tasks assigned to you, 10 per page",
-      "Inside a room, only that room's tasks",
+      "Shows only the tasks assigned to you, a page at a time",
+      "Tasks load only when you open the tab",
     ],
     roles: ["USER", "DEVLOPER"],
-    media: { type: "video", src: "/whats-new/my-tasks.mp4", alt: "The My Tasks tab" },
+    media: { type: "video", src: "/whats-new/my-tasks.webm", alt: "Opening My Tasks and paging through it" },
+  },
+  {
+    icon: <FiUsers size={17} />,
+    title: "Tasks inside a room",
+    points: [
+      "Open a workspace, pick a room and click yourself",
+      "Only the tasks created in that room are shown",
+      "Create a task there and it belongs to the room",
+    ],
+    media: { type: "video", src: "/whats-new/room-tasks.webm", alt: "Creating and viewing tasks inside a room" },
   },
   {
     icon: <FiFileText size={17} />,
@@ -77,7 +87,7 @@ const FEATURES: Feature[] = [
       "Fill it in and upload it to create every task in one go",
       "Problems in the file are shown row by row before anything is saved",
     ],
-    media: { type: "image", src: "/whats-new/excel-import.png", alt: "Importing tasks from Excel" },
+    media: { type: "video", src: "/whats-new/excel-import.webm", alt: "Downloading the template and importing tasks" },
   },
   {
     icon: <FiColumns size={17} />,
@@ -165,12 +175,15 @@ function FeatureMediaView({ media }: { media: FeatureMedia }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
   return media.type === "video" ? (
+    // Muted, looping walkthrough; the controls give fullscreen and replay.
     <video
-      className="wn__media"
+      className="wn__media wn__media--video"
       src={media.src}
       aria-label={media.alt}
-      controls
+      autoPlay
+      loop
       muted
+      controls
       playsInline
       preload="metadata"
       onError={() => setFailed(true)}
@@ -367,7 +380,7 @@ export default function WhatsNew({
           {features.map((f, i) => (
             <motion.section
               key={f.title}
-              className="wn__item"
+              className={`wn__item${f.media?.type === "video" ? " wn__item--wide" : ""}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 + i * 0.04, duration: 0.25, ease: "easeOut" }}

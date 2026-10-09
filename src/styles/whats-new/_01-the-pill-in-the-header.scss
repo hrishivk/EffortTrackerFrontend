@@ -65,8 +65,11 @@
   max-height: calc(100vh - 64px);
 }
 
+// The header and footer keep their size; only the list between them scrolls.
+// Without flex-shrink: 0 a short window squashes the header and clips it.
 .wn__hero {
   position: relative;
+  flex-shrink: 0;
   isolation: isolate;
   overflow: hidden;
   padding: 34px 36px 30px;
@@ -77,6 +80,12 @@
 
   @media (max-width: 600px) {
     padding: 26px 20px 22px;
+  }
+
+  // Laptop-height windows: a tighter header leaves room for the list.
+  @media (max-height: 820px) {
+    padding-top: 24px;
+    padding-bottom: 22px;
   }
 }
 
@@ -225,6 +234,10 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 18px;
+
+  @media (max-height: 820px) {
+    margin-top: 12px;
+  }
 }
 
 .wn__chip {
@@ -267,6 +280,10 @@
   @media (max-width: 600px) {
     display: none;
   }
+
+  @media (max-height: 820px) {
+    font-size: 88px;
+  }
 }
 
 @keyframes wn-shine {
@@ -282,6 +299,8 @@
 }
 
 .wn__grid {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px 22px;
@@ -348,6 +367,7 @@
 }
 
 .wn__foot {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -376,6 +396,14 @@
   object-fit: cover;
 }
 
+// Recordings are 16:9 screen captures: show the whole frame, never crop it.
+.wn__media--video {
+  max-height: none;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background-color: #0f0a1f;
+}
+
 .wn__announce {
   display: inline-flex;
   flex-shrink: 0;
@@ -393,5 +421,52 @@
   &:disabled {
     opacity: 0.6;
     cursor: default;
+  }
+}
+
+// Very short windows (e.g. 1240 x 578): drop the header to its essentials so
+// the feature list keeps most of the height.
+@media (max-height: 650px) {
+  .wn__hero {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .wn__title {
+    margin-top: 8px;
+    font-size: 24px;
+  }
+
+  .wn__sub {
+    margin-top: 6px;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+
+  .wn__chips {
+    display: none;
+  }
+
+  .wn__big {
+    font-size: 64px;
+  }
+
+  .wn__grid {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .wn__foot {
+    padding-top: 10px;
+    padding-bottom: 12px;
+  }
+}
+
+// A walkthrough video gets the full width so its captions stay readable.
+.wn__item--wide {
+  grid-column: 1 / -1;
+
+  .wn__media--video {
+    max-width: 720px;
   }
 }
