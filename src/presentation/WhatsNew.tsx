@@ -13,6 +13,7 @@ import {
   FiLayers,
   FiCheckCircle,
   FiList,
+  FiPlay,
   FiSend,
   FiUsers,
   FiX,
@@ -97,6 +98,7 @@ const FEATURES: Feature[] = [
       "Board lanes you can create, rename and colour",
       "Drag a card between lanes to change its status",
     ],
+    media: { type: "video", src: "/whats-new/task-views.webm", alt: "Switching between List, Board and Gantt views" },
   },
   {
     icon: <FiLayers size={17} />,
@@ -106,6 +108,7 @@ const FEATURES: Feature[] = [
       "Run in order — the next one unlocks when the last is done",
       "Add, edit and delete subtasks from the task panel",
     ],
+    media: { type: "video", src: "/whats-new/subtasks.webm", alt: "Breaking a task into subtasks" },
   },
   {
     icon: <FiClock size={17} />,
@@ -115,6 +118,7 @@ const FEATURES: Feature[] = [
       "See how many times a task has slipped, and why",
       "Filter for tasks whose deadline has been extended",
     ],
+    media: { type: "video", src: "/whats-new/deadlines.webm", alt: "Extending a deadline with a reason" },
   },
   {
     icon: <FiActivity size={17} />,
@@ -124,6 +128,7 @@ const FEATURES: Feature[] = [
       "Comment on any task or subtask",
       "A full activity trail on every task",
     ],
+    media: { type: "video", src: "/whats-new/timer-comments.webm", alt: "Starting a task, commenting and completing it" },
   },
   {
     icon: <FiUsers size={17} />,
@@ -142,6 +147,7 @@ const FEATURES: Feature[] = [
       "A timeline of everything done to a project",
     ],
     roles: ["SP", "AM"],
+    media: { type: "video", src: "/whats-new/projects.webm", alt: "Editing a project and viewing its timeline" },
   },
   {
     icon: <FiBarChart2 size={17} />,
@@ -173,22 +179,8 @@ const featuresFor = (role?: string | null) => {
 // the file has been added to /public.
 function FeatureMediaView({ media }: { media: FeatureMedia }) {
   const [failed, setFailed] = useState(false);
-  if (failed) return null;
-  return media.type === "video" ? (
-    // Muted, looping walkthrough; the controls give fullscreen and replay.
-    <video
-      className="wn__media wn__media--video"
-      src={media.src}
-      aria-label={media.alt}
-      autoPlay
-      loop
-      muted
-      controls
-      playsInline
-      preload="metadata"
-      onError={() => setFailed(true)}
-    />
-  ) : (
+  if (failed || media.type !== "image") return null;
+  return (
     <img
       className="wn__media"
       src={media.src}
@@ -196,6 +188,55 @@ function FeatureMediaView({ media }: { media: FeatureMedia }) {
       loading="lazy"
       onError={() => setFailed(true)}
     />
+  );
+}
+
+// A small play icon beside a feature's heading. Nothing loads until it is
+// clicked; then the walkthrough plays full screen.
+function FeatureVideoButton({ media, title }: { media: FeatureMedia; title: string }) {
+  const [playing, setPlaying] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className="wn__playbtn"
+        onClick={() => setPlaying(true)}
+        title="Watch how it works"
+        aria-label={`Watch how it works: ${title}`}
+      >
+        <FiPlay size={11} />
+      </button>
+
+      <Dialog
+        open={playing}
+        onClose={() => setPlaying(false)}
+        fullScreen
+        slotProps={{
+          paper: { sx: { backgroundColor: "#000", backgroundImage: "none" } },
+        }}
+      >
+        <div className="wn__player">
+          <button
+            type="button"
+            className="wn__x"
+            onClick={() => setPlaying(false)}
+            aria-label="Close video"
+          >
+            <FiX size={16} />
+          </button>
+          {playing && (
+            <video
+              className="wn__player-video"
+              src={media.src}
+              aria-label={media.alt ?? title}
+              autoPlay
+              controls
+              playsInline
+            />
+          )}
+        </div>
+      </Dialog>
+    </>
   );
 }
 
@@ -380,14 +421,19 @@ export default function WhatsNew({
           {features.map((f, i) => (
             <motion.section
               key={f.title}
-              className={`wn__item${f.media?.type === "video" ? " wn__item--wide" : ""}`}
+              className="wn__item"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 + i * 0.04, duration: 0.25, ease: "easeOut" }}
             >
               <span className="wn__icon">{f.icon}</span>
               <div className="wn__text">
-                <h3>{f.title}</h3>
+                <h3>
+                  {f.title}
+                  {f.media?.type === "video" && (
+                    <FeatureVideoButton media={f.media} title={f.title} />
+                  )}
+                </h3>
                 <ul>
                   {f.points.map((p) => (
                     <li key={p}>{p}</li>
