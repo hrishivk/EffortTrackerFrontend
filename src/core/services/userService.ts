@@ -9,7 +9,14 @@ export type TaskListFilters = {
   project?: string;
   status?: string | string[];
   min_extensions?: number;
+  room_id?: string;
 };
+
+// The list is asked for a calendar day, but sent as an ISO (UTC) timestamp. Local
+// midnight (what the date picker yields) lands on the previous UTC day east of
+// Greenwich, e.g. 2 Sep 00:00 IST -> 1 Sep 18:30Z. Local noon keeps the same day.
+const dayParam = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12).toISOString();
 
 const apiservice = axios.create({
   baseURL: API_URL.userService,
@@ -41,11 +48,12 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
   const status = toStatusParam(filters?.status);
   return apiservice.get(url, {
     params: {
-      ...(date ? { date: date.toISOString() } : {}),
+      ...(date ? { date: dayParam(date) } : {}),
       ...(filters?.assigned_to ? { assigned_to: filters.assigned_to } : {}),
       ...(filters?.project ? { project: filters.project } : {}),
       ...(status ? { status } : {}),
       ...(filters?.min_extensions ? { min_extensions: filters.min_extensions } : {}),
+      ...(filters?.room_id ? { room_id: filters.room_id } : {}),
       ...(pagination?.page ? { page: pagination.page } : {}),
       ...(pagination?.limit ? { limit: pagination.limit } : {}),
       _t: Date.now(),

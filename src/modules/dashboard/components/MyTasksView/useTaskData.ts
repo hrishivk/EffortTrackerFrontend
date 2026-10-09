@@ -69,10 +69,13 @@ export function useTaskData({
   const [boardLoading, setBoardLoading] = useState(false);
   const [boardHasMore, setBoardHasMore] = useState(false);
 
+  const scopedPersonId =
+    viewUserId || (role === "USER" || role === "DEVLOPER" ? String(userId) : "");
+
   const scopeToViewedUser = useCallback(
     (rows: taskList[]) =>
-      viewUserId ? rows.filter((t) => isOnTask(t, String(viewUserId))) : rows,
-    [viewUserId]
+      scopedPersonId ? rows.filter((t) => isOnTask(t, scopedPersonId)) : rows,
+    [scopedPersonId]
   );
 
   const listRequest = useRef(0);

@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+     import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
 import type { BulkTaskItem } from "../../../../user/types";
@@ -212,9 +213,46 @@ const cellText = (value: ExcelJS.CellValue): string => {
   return String(value).trim();
 };
 
+/**
+ * Drops cell notes/comments from an .xlsx before ExcelJS reads it. Files re-saved by
+ * other tools (Google Sheets, scripts, etc.) store them at paths ExcelJS can't
+ * resolve, which crashes it with "Cannot read properties of undefined (reading
+ * 'comments')". Notes aren't needed to read tasks, so it's safe to remove them.
+ */
+async function stripComments(data: ArrayBuffer): Promise<ArrayBuffer> {
+  const zip = await JSZip.loadAsync(data);
+  const relFiles = zip.file(/^xl\/worksheets\/_rels\/[^/]+\.rels$/);
+  let changed = false;
+
+  for (const rel of relFiles) {
+    const xml = await rel.async("string");
+    const cleaned = xml.replace(
+      /<Relationship\b[^>]*Type="[^"]*\/(?:comments|vmlDrawing)"[^>]*\/>/g,
+      ""
+    );
+    if (cleaned === xml) continue;
+    changed = true;
+    zip.file(rel.name, cleaned);
+
+    // The sheet points at the removed VML drawing; drop that reference too.
+    const sheetPath = rel.name.replace("/_rels/", "/").replace(/\.rels$/, "");
+    const sheet = zip.file(sheetPath);
+    if (sheet) {
+      const sheetXml = await sheet.async("string");
+      zip.file(sheetPath, sheetXml.replace(/<legacyDrawing\b[^>]*\/>/g, ""));
+    }
+  }
+
+  return changed ? zip.generateAsync({ type: "arraybuffer" }) : data;
+}
+
 export async function parseTaskFile(file: File, projects: ProjectOption[]): Promise<ImportRow[]> {
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(await file.arrayBuffer());
+  try {
+    await wb.xlsx.load(await stripComments(await file.arrayBuffer()));
+  } catch {
+    throw new Error("Could not read this Excel file. Open it in Excel, save it as .xlsx, and upload again.");
+  }
   const ws = wb.getWorksheet("Tasks") ?? wb.worksheets[0];
   if (!ws) throw new Error("The file has no sheets.");
 

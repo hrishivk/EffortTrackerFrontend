@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -13,16 +13,10 @@ import { useSearchParams } from "react-router-dom";
 
 import { useAppSelector } from "../../../store/configureStore";
 import type { RoleTitles } from "../types";
-import {
-  fetchAllExistProjects,
-  fetchAllUsers,
-} from "../../../core/actions/spAction";
 import { authLogout } from "../../../core/actions/action";
 import { useDispatch } from "react-redux";
 import { reset } from "../../../store/authSlice";
 import type { AppDispatch } from "../../../store/configureStore";
-import type { project } from "../../../shared/types/Project";
-import type { formUserData } from "../../../shared/types/User";
 import MyTasksView from "./MyTasksView";
 import ProfileView from "../../../presentation/ProfilePanel";
 
@@ -36,8 +30,6 @@ ChartJS.register(
 );
 
 const UserDashboard = () => {
-  const [, setProject] = useState<project[]>([]);
-  const [, setUsers] = useState<formUserData[]>([]);
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useAppSelector((state) => state.user);
   const role = user.role;
@@ -58,42 +50,15 @@ const UserDashboard = () => {
       setActiveTab("profile");
     }
   }, [viewUserId, viewProject, viewTab]);
-  const spHasViewParam = role === "SP" && (viewUserId || viewProject);
   const allTabs = [
     { key: "overview" as const, label: "Overview" },
     { key: "myTasks" as const, label: role === "SP" ? "Tasks" : "My Tasks" },
     { key: "profile" as const, label: "Profile" },
   ];
 
-  const showTasksTab =
-    role === "SP"
-      ? Boolean(spHasViewParam)
-      : role !== "USER" && role !== "DEVLOPER";
-
-  const tabs = showTasksTab
-    ? allTabs
-    : allTabs.filter((tab) => tab.key !== "myTasks");
-
-  const currentTab =
-    activeTab === "myTasks" && !showTasksTab ? "overview" : activeTab;
-
-  const listData = useCallback(async () => {
-    try {
-      const projectResponse = await fetchAllExistProjects();
-      setProject(projectResponse.data);
-
-      if (role === "SP" || role === "AM") {
-        const response = await fetchAllUsers();
-        if (response?.data) setUsers(response.data);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  }, [role, id]);
-
-  useEffect(() => {
-    listData();
-  }, [listData]);
+  // Every role gets the tasks tab; MyTasksView (and its task fetch) only mounts once it is opened.
+  const tabs = allTabs;
+  const currentTab = activeTab;
 
   const roleTitles: RoleTitles = {
     USER: "User Dashboard",

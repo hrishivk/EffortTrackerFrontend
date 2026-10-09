@@ -20,6 +20,7 @@ export function useTaskFilters({
   viewProject,
   viewTab,
   lockedProject,
+  roomId,
   setViewMode,
   setPage,
 }: {
@@ -29,9 +30,11 @@ export function useTaskFilters({
   viewProject?: string;
   viewTab?: string;
   lockedProject?: string;
+  roomId?: string;
   setViewMode: (mode: ViewMode) => void;
   setPage: (page: number) => void;
 }) {
+  const isSelfScoped = (role === "USER" || role === "DEVLOPER") && !viewUserId;
   const [projectFilter, setProjectFilter] = useState(viewProject || "");
   const [assigneeFilter, setAssigneeFilter] = useState(
     viewUserId || (role === "AM" ? String(userId) : "")
@@ -53,12 +56,16 @@ export function useTaskFilters({
 
   const activeFilters = useCallback((): TaskListFilters => {
     const filters: TaskListFilters = {};
-    if (assigneeFilter) filters.assigned_to = assigneeFilter;
+    // Team members and developers only ever see the tasks assigned to them.
+    if (isSelfScoped) filters.assigned_to = String(userId);
+    else if (assigneeFilter) filters.assigned_to = assigneeFilter;
     if (projectFilter) filters.project = projectFilter;
     if (statusFilter) filters.status = statusFilter;
     if (slipFilter) filters.min_extensions = Number(slipFilter);
+    // Opened from a room: only the tasks created in that room.
+    if (roomId) filters.room_id = roomId;
     return filters;
-  }, [assigneeFilter, projectFilter, statusFilter, slipFilter]);
+  }, [roomId, isSelfScoped, userId, assigneeFilter, projectFilter, statusFilter, slipFilter]);
 
   const filterValues: FilterValues = {
     ...(lockedProject ? {} : { project: projectFilter }),

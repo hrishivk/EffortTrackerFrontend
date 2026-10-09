@@ -89,6 +89,7 @@ export default function MyTasksView({
     viewProject,
     viewTab,
     lockedProject,
+    roomId,
     setViewMode,
     setPage,
   });
