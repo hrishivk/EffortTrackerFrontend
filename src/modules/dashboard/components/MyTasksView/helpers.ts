@@ -147,6 +147,7 @@ export const blankForm = (
   dueDate: "",
   sequential: false,
   subtasks: [],
+  groupId: "",
 });
 
 export const toSubtaskPayload = (subtasks: SubtaskDraft[]) =>

@@ -154,9 +154,16 @@ export interface TaskBoardViewProps<T extends BoardTask> {
     task: T,
     target: { groupId?: string; statusKey?: string; label: string }
   ) => Promise<void>;
-  onGroupCreate?: (data: { name: string; color: string }) => Promise<void>;
+  onGroupCreate?: (data: NewGroupData) => Promise<void>;
   onGroupRename?: (groupId: string, name: string) => Promise<void>;
   onGroupDelete?: (groupId: string) => Promise<void>;
+  /** The board has no groups yet — ask how the user wants to set it up. */
+  needsSetup?: boolean;
+  onUseDefaultFlow?: () => Promise<void>;
+  /** Every group of the board, hidden ones too: names, and tasks parked in hidden groups. */
+  allGroups?: TaskGroup[];
+  /** Which set the board shows; absent when there is nothing to switch to. */
+  laneSwitch?: BoardLaneSwitch;
   dragBlockedReason?: (task: T) => string | null;
 }
 
@@ -168,6 +175,28 @@ export interface TaskGroup {
   color: string;
   position?: number;
   status?: string;
+  /** Hidden from this user's board; the group and its tasks are kept. */
+  hidden?: boolean;
+  /** A built-in lane drawn on every board (Yet to Start, In Progress, Completed, Production). */
+  shared?: boolean;
+  /** The status a task takes when moved into this group; unset = it keeps its own. */
+  marksStatus?: MarkableStatus;
+}
+
+export interface BoardLaneSwitch {
+  mode: "default" | "groups";
+  myGroupCount: number;
+  defaultLaneCount: number;
+  onShowMyGroups: () => Promise<void>;
+  onShowDefaultLanes: () => Promise<void>;
+}
+
+export type MarkableStatus = "in_progress" | "completed";
+
+export interface NewGroupData {
+  name: string;
+  color: string;
+  marks_status?: MarkableStatus | null;
 }
 
 export interface BoardLane {
@@ -177,4 +206,5 @@ export interface BoardLane {
   accent?: string;
   statusKey?: string;
   position?: number;
+  marksStatus?: MarkableStatus;
 }

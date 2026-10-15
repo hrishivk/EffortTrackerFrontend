@@ -46,6 +46,8 @@ export interface CreateTaskFormData {
   tags: string[];
   sequential: boolean;
   subtasks: SubtaskDraft[];
+  /** Set when "Follow a group" is ticked: the group the task starts in. */
+  groupId: string;
 }
 
 export interface SubtaskAssignee {
@@ -64,6 +66,7 @@ const emptyForm = (): CreateTaskFormData => ({
   tags: [],
   sequential: false,
   subtasks: [],
+  groupId: "",
 });
 
 interface CreateTaskModalProps {
@@ -73,6 +76,8 @@ interface CreateTaskModalProps {
   projects: { id: string; name: string }[];
   assignableUsers: formUserData[];
   startLane?: { id: string; name: string; color: string };
+  /** The user's own groups a new task can start in instead of the start lane. */
+  followGroups?: { id: string; name: string; color: string }[];
   fixedProject?: string;
   defaultAssignee?: { id: string; name: string };
   isUserOrDev: boolean;
@@ -89,6 +94,7 @@ export default function CreateTaskModal({
   projects,
   assignableUsers,
   startLane,
+  followGroups = [],
   fixedProject,
   defaultAssignee,
   isUserOrDev,
@@ -135,6 +141,9 @@ export default function CreateTaskModal({
       return acc;
     }, {});
   }, [form.taskName, form.project, form.startDate, dueDate]);
+
+  const following = !!form.groupId;
+  const followedGroup = followGroups.find((g) => g.id === form.groupId);
 
   const nameMissing = touched && !!problems.taskName;
   const projectMissing = touched && !!problems.project;
@@ -240,17 +249,57 @@ export default function CreateTaskModal({
           <div className="ctm__row ctm__row--3">
             <div>
               <label className="ctm__label">Status</label>
-              <FormControl fullWidth size="small" sx={fixedSelectSx}>
+              <FormControl fullWidth size="small" sx={following ? selectSx : fixedSelectSx}>
                 <Select
-                  disabled
-                  value="start"
+                  disabled={!following}
+                  value={following ? form.groupId : "start"}
+                  onChange={(e) => set("groupId", String(e.target.value))}
                   MenuProps={menuProps}
-                  startAdornment={adornment(RadioButtonCheckedIcon, STATUS_ACCENT.yet_to_start)}
+                  startAdornment={adornment(
+                    RadioButtonCheckedIcon,
+                    following ? followedGroup?.color : STATUS_ACCENT.yet_to_start
+                  )}
                 >
-                  <MenuItem value="start">{startLane?.name || "Yet to Start"}</MenuItem>
+                  {following ? (
+                    followGroups.map((g) => (
+                      <MenuItem key={g.id} value={g.id}>
+                        {g.name}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem value="start">{startLane?.name || "Yet to Start"}</MenuItem>
+                  )}
                 </Select>
               </FormControl>
-              <p className="ctm__hint">New tasks always start here.</p>
+              {followGroups.length > 0 && (
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    marginTop: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-secondary)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={following}
+                    onChange={(e) =>
+                      set("groupId", e.target.checked ? followGroups[0].id : "")
+                    }
+                    style={{ accentColor: "#7c3aed", cursor: "pointer" }}
+                  />
+                  Follow a group
+                </label>
+              )}
+              <p className="ctm__hint">
+                {following
+                  ? "The task starts in this group instead of Yet to Start."
+                  : "New tasks always start here."}
+              </p>
             </div>
             <div>
               <label className="ctm__label">Priority</label>

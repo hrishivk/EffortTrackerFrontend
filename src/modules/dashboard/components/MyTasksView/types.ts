@@ -50,4 +50,6 @@ export type CreateForm = {
   dueDate: string;
   sequential: boolean;
   subtasks: SubtaskDraft[];
+  /** Set when "Follow a group" is ticked: the group the task starts in. */
+  groupId: string;
 };

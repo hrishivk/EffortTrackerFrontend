@@ -4,6 +4,8 @@ import type { useWorkspaceFlow } from "../components/flow/useWorkspaceFlow";
 export interface PickProject {
   id: string;
   name: string;
+  /** Already covered by a workspace, so it cannot be picked again. */
+  used?: boolean;
 }
 
 export interface DraftRoom {

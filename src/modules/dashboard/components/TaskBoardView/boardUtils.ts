@@ -68,12 +68,18 @@ export const buildLanes = (groups: TaskGroup[]): BoardLane[] => {
       accent: (statusKey && STATUS_ACCENT[statusKey]) || g.color,
       statusKey,
       position: g.position ?? 0,
+      marksStatus: g.marksStatus,
     };
   });
 
+  // Status lanes first, in flow order; then the user's own groups, also in
+  // flow order — plain groups, then "Mark In Progress", then "Mark Completed"
+  // last — and by creation order (position) within each.
+  const MARK_RANK: Record<string, number> = { in_progress: 1, completed: 2 };
   const rank = (l: BoardLane) => {
     const i = l.statusKey ? STATUS_LANE_ORDER.indexOf(l.statusKey) : -1;
-    return i === -1 ? STATUS_LANE_ORDER.length : i;
+    if (i !== -1) return i;
+    return STATUS_LANE_ORDER.length + (l.marksStatus ? MARK_RANK[l.marksStatus] ?? 0 : 0);
   };
   return lanes.sort(
     (a, b) => rank(a) - rank(b) || (a.position ?? 0) - (b.position ?? 0)
@@ -98,7 +104,9 @@ const urgency = (task: BoardTask) => {
 export const bucketTasks = <T extends BoardTask>(
   tasks: T[],
   lanes: BoardLane[],
-  placed: Record<string, string>
+  placed: Record<string, string>,
+  // Every group of the board, hidden ones too.
+  knownGroupIds?: Set<string>
 ) => {
   const laneKeys = new Set(lanes.map((l) => l.key));
 
@@ -113,7 +121,13 @@ export const bucketTasks = <T extends BoardTask>(
     if (task.group_id) {
       const key = groupLaneKey(task.group_id);
       if (laneKeys.has(key)) return key;
+      // Parked in a group hidden on this board: hidden with it, not shown in
+      // a status lane of the other set.
+      if (knownGroupIds?.has(String(task.group_id))) return key;
     }
+    // Not in one of the board's groups: it follows the default flow, so it
+    // shows in its status lane — or, while that lane is hidden, not at all
+    // (counted in hiddenCount) rather than in one of the user's own groups.
     const column = resolveColumn(task);
     return laneByStatus.get(column) ?? column;
   };

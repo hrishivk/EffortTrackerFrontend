@@ -13,8 +13,7 @@ const DATE_LIST_DAYS_AHEAD = 365;
 
 type ColumnKey = "taskName" | "assignee" | "project" | "priority" | "startDate" | "dueDate";
 
-// Order here is the template's column order; parsing matches by header text,
-// so a sheet with reordered columns still imports.
+
 const COLUMNS: { key: ColumnKey; header: string; width: number; note: string }[] = [
   { key: "taskName", header: "Task Name", width: 40, note: "Required." },
   { key: "assignee", header: "Assigned To", width: 22, note: "Filled automatically. Every task in this file goes to this person." },

@@ -20,6 +20,9 @@ import { draftId } from "../../data/workspaceHelpers";
 import { apiMessage } from "../../../../shared/utils/apiMessage";
 import { toggleId } from "../common/PickList";
 
+// Same page size as the Departments & Projects list.
+const PROJECTS_PER_PAGE = 10;
+
 export function useWorkspaceFlow() {
   const navigate = useNavigate();
   const { showSnackbar } = useSnackbar();
@@ -38,6 +41,8 @@ export function useWorkspaceFlow() {
   const [people, setPeople] = useState<AssignablePerson[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [usedProjectCount, setUsedProjectCount] = useState(0);
+  const [projectPage, setProjectPage] = useState(1);
+  const [projectPages, setProjectPages] = useState(1);
   const [loadingPeople, setLoadingPeople] = useState(true);
 
   const canPickManagers = user?.role === "AM";
@@ -52,6 +57,8 @@ export function useWorkspaceFlow() {
   const [wsVisibility, setWsVisibility] = useState("private");
 
   const [projectId, setProjectId] = useState<string | null>(null);
+  // Kept apart from `projects` so the pick survives paging to another page.
+  const [project, setProject] = useState<PickProject | null>(null);
   const [rooms, setRooms] = useState<DraftRoom[]>([]);
   const [roomFor, setRoomFor] = useState<string | null>(null);
   const [roomName, setRoomName] = useState("");
@@ -63,7 +70,6 @@ export function useWorkspaceFlow() {
   const [poolOpen, setPoolOpen] = useState(false);
   const [addFor, setAddFor] = useState<{ roomId: string; el: HTMLElement } | null>(null);
 
-  const project = projects.find((p) => p.id === projectId) ?? null;
   const chosenProjects = project ? [project] : [];
   const userOf = (id: string) => people.find((u) => u.id === id);
 
@@ -102,8 +108,10 @@ export function useWorkspaceFlow() {
   ];
 
   const pickProject = (id: string) => {
-    if (id === projectId) return;
+    const picked = projects.find((p) => p.id === id);
+    if (id === projectId || !picked || picked.used) return;
     setProjectId(id);
+    setProject(picked);
     setRooms([]);
     setRoomFor(null);
     setRoomName("");
@@ -142,11 +150,11 @@ export function useWorkspaceFlow() {
       )
     );
 
-  const loadProjects = useCallback(async () => {
+  const loadProjects = useCallback(async (page = 1) => {
     setLoadingProjects(true);
     try {
       const [res, existing] = await Promise.all([
-        fetchAllExistProjects(),
+        fetchAllExistProjects(undefined, { page, limit: PROJECTS_PER_PAGE }),
         fetchWorkspaces().catch(() => []),
       ]);
       const used = new Set(
@@ -155,10 +163,17 @@ export function useWorkspaceFlow() {
           .filter(Boolean)
           .map(String)
       );
-      const rows = (res?.data ?? []) as PickProject[];
-      const free = rows.filter((r) => !used.has(String(r.id)));
-      setUsedProjectCount(rows.length - free.length);
-      setProjects(free.map((r) => ({ id: String(r.id), name: r.name })));
+      const data = res?.data;
+      const rows = (Array.isArray(data) ? data : data?.projects ?? []) as PickProject[];
+      const list = rows.map((r) => ({
+        id: String(r.id),
+        name: r.name,
+        used: used.has(String(r.id)),
+      }));
+      setUsedProjectCount(list.filter((p) => p.used).length);
+      setProjects(list);
+      setProjectPage(res?.currentPage ?? page);
+      setProjectPages(res?.totalPages ?? 1);
     } catch (error) {
       showSnackbar({
         message: apiMessage(error, "Could not load projects"),
@@ -269,6 +284,7 @@ export function useWorkspaceFlow() {
     setWsCode("");
     setWsVisibility("private");
     setProjectId(null);
+    setProject(null);
     setRooms([]);
     setRoomFor(null);
     setRoomName("");
@@ -281,6 +297,7 @@ export function useWorkspaceFlow() {
     creator, leave, roleBase,
     step, setStep, done, saving,
     projects, people, loadingProjects, usedProjectCount, loadingPeople,
+    projectPage, projectPages, loadProjects,
     canPickManagers, amOptions, loadingAms, managerIds, toggleManager,
     wsName, setWsName, wsNote, setWsNote, wsStatus, setWsStatus,
     wsCode, setWsCode, wsVisibility, setWsVisibility,

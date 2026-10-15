@@ -15,7 +15,7 @@ import { assigneeIdOf } from "../../../shared/utils/subtasks";
 import TaskDetailPanel from "./TaskDetailPanel";
 import Dialoge from "../../../presentation/Dialog";
 import CreateTaskModal from "./CreateTaskModal";
-import { findGroupForStatus } from "./boardConstants";
+import { entryGroup, groupNameToStatus, isOwnGroup } from "./boardConstants";
 import TaskDetailModal from "./TaskDetailModal";
 import SpinLoader from "../../../presentation/SpinLoader";
 import { toDateInput } from "../../../shared/utils/taskStatus";
@@ -117,15 +117,27 @@ export default function MyTasksView({
   });
 
   const boardOwnerId = isManagerView && filters.assigneeFilter ? filters.assigneeFilter : undefined;
-  const { boardGroups, handleGroupCreate, handleGroupRename, handleGroupDelete } =
-    useBoardGroups(boardOwnerId, viewMode, loadBoardTasks);
+  const {
+    boardGroups,
+    needsBoardSetup,
+    handleGroupCreate,
+    handleGroupRename,
+    handleGroupDelete,
+    handleUseDefaultFlow,
+    allGroups,
+    ownGroups,
+    boardMode,
+    defaultLaneCount,
+    handleShowMyGroups,
+    handleShowDefaultLanes,
+  } = useBoardGroups(boardOwnerId, viewMode, loadBoardTasks, roomId);
 
   const { ownsAllTasks, mayDeleteTask, mayDeleteRow, mayEditRow, dragBlockedReason } =
     taskPermissions(userId, role, pool);
 
   const actions = useTaskActions({
     tasks,
-    boardGroups,
+    boardGroups: allGroups,
     reloadTasks,
     loadBoardTasks,
     applyWrite,
@@ -205,6 +217,11 @@ export default function MyTasksView({
     });
   };
 
+  // List rows name a task's own group even while the board hides it.
+  const customGroups = new Map(
+    allGroups.filter((g) => !(g.status || groupNameToStatus(g.name))).map((g) => [g.id, g])
+  );
+
   const taskColumns = buildTaskColumns({
     isManagerView,
     users,
@@ -216,6 +233,7 @@ export default function MyTasksView({
     openPanel,
     onDeleteRow: actions.setPendingRowDelete,
     onQuickStatus: (row, next) => void actions.handleQuickStatus(row, next),
+    customGroups,
   });
 
   const changeDate = (next: Date | ((d: Date) => Date)) => {
@@ -306,6 +324,7 @@ export default function MyTasksView({
               currentUserName={user?.fullName}
               onGoToProjects={() => navigate(`/${(role || "").toLowerCase()}/domain-project`)}
               roomMembers={roomMembers}
+              followGroups={allGroups.filter(isOwnGroup)}
             />
           )}
         </AnimatePresence>
@@ -335,6 +354,16 @@ export default function MyTasksView({
                 onGroupCreate={handleGroupCreate}
                 onGroupRename={handleGroupRename}
                 onGroupDelete={handleGroupDelete}
+                needsSetup={needsBoardSetup}
+                onUseDefaultFlow={handleUseDefaultFlow}
+                allGroups={allGroups}
+                laneSwitch={{
+                  mode: boardMode,
+                  myGroupCount: ownGroups.length,
+                  defaultLaneCount,
+                  onShowMyGroups: handleShowMyGroups,
+                  onShowDefaultLanes: handleShowDefaultLanes,
+                }}
               />
               {boardHasMore && !boardLoading && (
                 <p className="text-center mt-3 mb-0" style={{ fontSize: 12, color: "var(--text-faint)" }}>
@@ -367,7 +396,7 @@ export default function MyTasksView({
           liveSelected ? assigneeIdOf(liveSelected) === String(userId) : false
         }
         projectColorMap={projectColorMap}
-        groups={boardGroups}
+        groups={allGroups}
         showSnackbar={showSnackbar}
       />
 
@@ -399,7 +428,8 @@ export default function MyTasksView({
         projects={formProjects}
         assignableUsers={assignableUsers}
         defaultStartDate={toDateInput(selectedDate)}
-        startLane={findGroupForStatus(boardGroups, "yet_to_start")}
+        startLane={entryGroup(boardGroups)}
+        followGroups={allGroups.filter(isOwnGroup)}
         fixedProject={lockedProject}
         defaultAssignee={
           viewUserId

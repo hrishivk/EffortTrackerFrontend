@@ -6,7 +6,7 @@ import { toDateInput } from "../../../../shared/utils/taskStatus";
 import { createTaskValidationSchema } from "../../../../utils/validation/Validation";
 import type { CreateTaskPayload } from "../../../user/types";
 import type { TaskGroup } from "../../types";
-import { findGroupForStatus } from "../boardConstants";
+import { entryGroup } from "../boardConstants";
 import type { CreateTaskFormData } from "../CreateTaskModal";
 import { blankForm, lastSubtaskDue, toSubtaskPayload } from "./helpers";
 import type { CreateForm, UserId, ViewMode } from "./types";
@@ -117,7 +117,7 @@ export function useCreateTaskForm({
             start_date: form.startDate || undefined,
             due_date: panelDue || undefined,
             status: "yet_to_start",
-            group_id: findGroupForStatus(boardGroups, "yet_to_start")?.id,
+            group_id: form.groupId || entryGroup(boardGroups)?.id,
             room_id: roomId,
             sequential: form.subtasks.length > 1 ? form.sequential : undefined,
             subtasks: form.subtasks.length ? toSubtaskPayload(form.subtasks) : undefined,
@@ -153,7 +153,7 @@ export function useCreateTaskForm({
 
   const handleModalCreate = async (data: CreateTaskFormData) => {
     setSubmitting(true);
-    const startLane = findGroupForStatus(boardGroups, "yet_to_start");
+    const startLane = entryGroup(boardGroups);
     try {
       const owner =
         isUserOrDev || !data.assignees.length ? String(userId) : data.assignees[0];
@@ -166,7 +166,7 @@ export function useCreateTaskForm({
         created_by: userId,
         priority: data.priority,
         status: "yet_to_start",
-        group_id: startLane?.id,
+        group_id: data.groupId || startLane?.id,
         room_id: roomId,
         start_date: data.startDate || undefined,
         due_date: data.dueDate || undefined,

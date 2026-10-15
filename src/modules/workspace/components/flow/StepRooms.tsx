@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { CPagination, CPaginationItem } from "@coreui/react";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import CheckIcon from "@mui/icons-material/Check";
@@ -10,6 +11,7 @@ import MeetingRoomOutlinedIcon from "@mui/icons-material/MeetingRoomOutlined";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 
+import SpinLoader from "../../../../presentation/SpinLoader";
 import { MAX } from "./constants";
 import { SectionHead } from "./FlowParts";
 import type { WorkspaceFlowState } from "./useWorkspaceFlow";
@@ -17,9 +19,13 @@ import type { WorkspaceFlowState } from "./useWorkspaceFlow";
 export default function StepRooms({ f }: { f: WorkspaceFlowState }) {
   const {
     projects, projectId, pickProject, loadingProjects, usedProjectCount, roleBase,
+    projectPage, projectPages, loadProjects,
     project, rooms, roomFor, setRoomFor, roomName, setRoomName, addRoom, removeRoom,
     menu, setMenu, clearRooms,
   } = f;
+
+  const noFreeProjects =
+    !loadingProjects && projectPages <= 1 && projects.every((p) => p.used);
 
   const openRoomInput = (id: string) => {
     setRoomFor(id);
@@ -28,6 +34,8 @@ export default function StepRooms({ f }: { f: WorkspaceFlowState }) {
 
   return (
     <>
+      <SpinLoader isLoading={loadingProjects} />
+
       <SectionHead
         title="Projects & Rooms"
         caption="Pick the project this workspace covers, then create its rooms."
@@ -40,24 +48,64 @@ export default function StepRooms({ f }: { f: WorkspaceFlowState }) {
             <button
               key={p.id}
               type="button"
-              className={`cws__card${on ? " cws__card--on" : ""}`}
+              className={`cws__card${on ? " cws__card--on" : ""}${p.used ? " cws__card--used" : ""}`}
+              disabled={p.used}
+              title={p.used ? "This project already has a workspace" : undefined}
               onClick={() => pickProject(p.id)}
             >
               <span className="cws__tile cws__tile--sm cws__tile--project">
                 <FolderOutlinedIcon sx={{ fontSize: 17 }} />
               </span>
               <span className="cws__card-name">{p.name}</span>
-              <span className="cws__card-mark">
-                {on ? <CheckIcon sx={{ fontSize: 15 }} /> : <AddCircleIcon sx={{ fontSize: 16 }} />}
-              </span>
+              {p.used ? (
+                <span className="cws__card-tag">Has workspace</span>
+              ) : (
+                <span className="cws__card-mark">
+                  {on ? <CheckIcon sx={{ fontSize: 15 }} /> : <AddCircleIcon sx={{ fontSize: 16 }} />}
+                </span>
+              )}
             </button>
           );
         })}
 
-        {loadingProjects && <p className="cws__empty">Loading projects…</p>}
+        {loadingProjects && projects.length === 0 && (
+          <p className="cws__empty">Loading projects…</p>
+        )}
       </div>
 
-      {!loadingProjects && projects.length === 0 && (
+      {projectPages > 1 && (
+        <div className="advanced-pagination cws__pager">
+          <div className="pagination-left">
+            Showing page {projectPage} of {projectPages}
+          </div>
+          <CPagination size="sm">
+            <CPaginationItem
+              disabled={projectPage === 1 || loadingProjects}
+              onClick={() => void loadProjects(projectPage - 1)}
+            >
+              Prev
+            </CPaginationItem>
+            {[...Array(projectPages)].map((_, i) => (
+              <CPaginationItem
+                key={i}
+                active={projectPage === i + 1}
+                disabled={loadingProjects}
+                onClick={() => void loadProjects(i + 1)}
+              >
+                {i + 1}
+              </CPaginationItem>
+            ))}
+            <CPaginationItem
+              disabled={projectPage === projectPages || loadingProjects}
+              onClick={() => void loadProjects(projectPage + 1)}
+            >
+              Next
+            </CPaginationItem>
+          </CPagination>
+        </div>
+      )}
+
+      {noFreeProjects && (
         <div className="cws__setup">
           <span className="cws__setup-icon">
             <FolderOutlinedIcon sx={{ fontSize: 24 }} />

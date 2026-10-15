@@ -126,6 +126,30 @@
   color: var(--text-faint);
 }
 
+.cws__card--used {
+  cursor: not-allowed;
+  opacity: 0.55;
+
+  &:hover {
+    border-color: var(--border-light);
+  }
+}
+
+.cws__card-tag {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: var(--bg-hover);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.cws__pager {
+  margin: -6px 0 18px;
+}
+
 .cws__card--on {
   .cws__card-name {
     color: #7c3aed;

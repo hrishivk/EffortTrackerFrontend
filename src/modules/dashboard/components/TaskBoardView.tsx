@@ -10,6 +10,7 @@ import type {
 } from "../types";
 import { PROJECT_COLORS } from "./ganttConstants";
 import CreateGroupModal from "./CreateGroupModal";
+import BoardSetupModal from "./BoardSetupModal";
 import Dialoge from "../../../presentation/Dialog";
 import BoardEmptyState from "./BoardEmptyState";
 import {
@@ -63,6 +64,10 @@ export default function TaskBoardView<T extends BoardTask>({
   onGroupCreate,
   onGroupRename,
   onGroupDelete,
+  needsSetup,
+  onUseDefaultFlow,
+  allGroups,
+  laneSwitch,
 }: TaskBoardViewProps<T>) {
   const [drag, setDrag] = useState<{ task: T; from: string } | null>(null);
   const [hoverColumn, setHoverColumn] = useState<string | null>(null);
@@ -70,6 +75,8 @@ export default function TaskBoardView<T extends BoardTask>({
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+  const [setupDismissed, setSetupDismissed] = useState(false);
+  // Opened from "Create my own groups": that already answered the flow question.
   const rowRef = useRef<HTMLDivElement>(null);
   const laneScrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const revealLast = useRef(false);
@@ -89,7 +96,12 @@ export default function TaskBoardView<T extends BoardTask>({
 
   if (loading) return <SpinLoader isLoading />;
 
-  const { buckets, hiddenCount } = bucketTasks(tasks, lanes, placed);
+  const { buckets, hiddenCount } = bucketTasks(
+    tasks,
+    lanes,
+    placed,
+    new Set((allGroups ?? groups).map((g) => g.id))
+  );
 
   const minWidth = isCompact ? BOARD_COLUMN_MIN_WIDTH_COMPACT : BOARD_COLUMN_MIN_WIDTH;
   const density: BoardDensity =
@@ -98,8 +110,16 @@ export default function TaskBoardView<T extends BoardTask>({
   const laneByKey = new Map(lanes.map((l) => [l.key, l]));
   const dragKind = drag ? laneKind(laneByKey.get(drag.from)) : null;
 
-  const denial = (lane: BoardLane): string | null =>
-    dragKind ? dropDenialReason(dragKind, laneKind(lane)) : null;
+  // A group that marks a status ("mark Completed") is entered like that
+  // status: In Progress -> a completing group is fine, Yet to Start is not.
+  const denial = (lane: BoardLane): string | null => {
+    if (!dragKind) return null;
+    const to = laneKind(lane);
+    if (to === "group" && lane.marksStatus && dragKind !== "group") {
+      return dropDenialReason(dragKind, lane.marksStatus);
+    }
+    return dropDenialReason(dragKind, to);
+  };
 
   const canDrop = (lane: BoardLane) =>
     drag !== null && drag.from !== lane.key && !!onTaskMove && !denial(lane);
@@ -141,7 +161,12 @@ export default function TaskBoardView<T extends BoardTask>({
     <div>
       <BoardToolbar
         taskCount={tasks.length}
-        onNewGroup={onGroupCreate ? () => setCreateOpen(true) : undefined}
+        laneSwitch={laneSwitch}
+        onNewGroup={
+          onGroupCreate
+            ? () => setCreateOpen(true)
+            : undefined
+        }
       />
 
       <div
@@ -297,17 +322,29 @@ export default function TaskBoardView<T extends BoardTask>({
       <CreateGroupModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        takenNames={new Set(groups.map((g) => g.name.trim().toLowerCase()))}
+        takenNames={new Set((allGroups ?? groups).map((g) => g.name.trim().toLowerCase()))}
         onCreate={async (data) => {
           revealLast.current = true;
           await onGroupCreate?.(data);
         }}
       />
 
+      <BoardSetupModal
+        open={!!needsSetup && !setupDismissed && !createOpen && !!onUseDefaultFlow}
+        onClose={() => setSetupDismissed(true)}
+        onUseDefault={async () => {
+          await onUseDefaultFlow?.();
+        }}
+        onCreateOwn={() => setCreateOpen(true)}
+      />
+
       {hiddenCount > 0 && (
         <p style={{ margin: "10px 0 0", fontSize: 11.5, color: "var(--text-faint)" }}>
-          {hiddenCount} {hiddenCount === 1 ? "task is" : "tasks are"} in a group that is not on the
-          board. Re-add it to see {hiddenCount === 1 ? "that task" : "them"}.
+          {hiddenCount} {hiddenCount === 1 ? "task is" : "tasks are"} in lanes hidden on this
+          board.{" "}
+          {laneSwitch?.mode === "groups"
+            ? "Show default lanes to see them."
+            : "Show my groups to see them."}
         </p>
       )}
 

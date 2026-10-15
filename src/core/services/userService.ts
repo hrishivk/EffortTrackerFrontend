@@ -10,6 +10,7 @@ export type TaskListFilters = {
   status?: string | string[];
   min_extensions?: number;
   room_id?: string;
+  group_id?: string;
 };
 
 // The list is asked for a calendar day, but sent as an ISO (UTC) timestamp. Local
@@ -54,6 +55,7 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
       ...(status ? { status } : {}),
       ...(filters?.min_extensions ? { min_extensions: filters.min_extensions } : {}),
       ...(filters?.room_id ? { room_id: filters.room_id } : {}),
+      ...(filters?.group_id ? { group_id: filters.group_id } : {}),
       ...(pagination?.page ? { page: pagination.page } : {}),
       ...(pagination?.limit ? { limit: pagination.limit } : {}),
       _t: Date.now(),
@@ -123,15 +125,25 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
     });
   },
 
-  listTaskGroups: (url: string, assignedTo?: string) => {
+  listTaskGroups: (url: string, assignedTo?: string, roomId?: string) => {
     return apiservice.get(url, {
-      params: { ...(assignedTo ? { assigned_to: assignedTo } : {}), _t: Date.now() },
+      params: {
+        ...(assignedTo ? { assigned_to: assignedTo } : {}),
+        ...(roomId ? { room_id: roomId } : {}),
+        _t: Date.now(),
+      },
       headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
     });
   },
   createTaskGroup: (
     url: string,
-    data: { name: string; color: string; assigned_to?: string }
+    data: {
+      name: string;
+      color: string;
+      marks_status?: string | null;
+      assigned_to?: string;
+      room_id?: string;
+    }
   ) => {
     return apiservice.post(url, data, {
       headers: { "Content-Type": "application/json" },
@@ -139,7 +151,15 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
   },
   updateTaskGroup: (
     url: string,
-    data: { name?: string; color?: string; position?: number }
+    data: {
+      name?: string;
+      color?: string;
+      position?: number;
+      hidden?: boolean;
+      // Which board the lane is hidden on: hiding is per user and per room.
+      assigned_to?: string;
+      room_id?: string;
+    }
   ) => {
     return apiservice.patch(url, data, {
       headers: { "Content-Type": "application/json" },

@@ -7,7 +7,7 @@ import type { taskList } from "../../user/types";
 import { updateTaskLane } from "../../../core/actions/action";
 import { assigneeOf } from "../../../shared/utils/subtasks";
 import type { TaskGroup } from "../types";
-import { findGroupForStatus } from "./boardConstants";
+import { laneForNextStatus } from "./boardConstants";
 import ExtensionLog from "./ExtensionLog";
 import TaskInfoGrid from "./TaskDetailModal/TaskInfoGrid";
 import {
@@ -77,10 +77,9 @@ export default function TaskDetailModal({
     if (!nextStatus || !task.id) return;
     setUpdating(true);
     try {
-      const target = findGroupForStatus(groups, nextStatus);
       await updateTaskLane(
         String(task.id),
-        target ? { groupId: target.id } : { status: nextStatus, groupId: null }
+        laneForNextStatus(groups, nextStatus, task.group_id)
       );
       showSnackbar({
         message: nextStatus === "in_progress"

@@ -84,20 +84,64 @@ export const findGroupForStatus = <T extends { name: string; status?: string }>(
   groups.find((g) => (g.status || groupNameToStatus(g.name)) === status);
 
 
+/**
+ * The lane a new task lands in when "Follow a group" is not ticked: the Yet to
+ * Start lane, if it is on the board. Never one of the user's own groups — a
+ * task only follows a group when it was created into one on purpose.
+ */
+export const entryGroup = <T extends { name: string; status?: string }>(
+  groups: T[]
+): T | undefined => findGroupForStatus(groups, "yet_to_start");
+
+// A group of the user's own, as opposed to a status lane or a shared default
+// lane (Production). A task in one of these "follows a group".
+export const isOwnGroup = (g: { name: string; status?: string; shared?: boolean }) =>
+  !g.shared && !(g.status || groupNameToStatus(g.name));
+
+
+/**
+ * Where Start / Complete sends a task. Two separate flows:
+ *
+ * - A task that follows a group (it sits in one of the user's own groups)
+ *   moves to the own group set to mark `next` — a group marking In Progress
+ *   takes started tasks, one marking Completed finished ones. With no such
+ *   group it stays where it is and only its status changes.
+ * - Any other task follows the default flow: the status lane for `next`, or,
+ *   while that lane is hidden, just the status (it shows again with the lane).
+ *   It is never moved into one of the user's own groups.
+ */
+export const laneForNextStatus = <
+  T extends { id: string; name: string; status?: string; shared?: boolean; marksStatus?: string }
+>(
+  groups: T[],
+  next: string,
+  currentGroupId?: string | null
+): { status?: string; groupId?: string | null } => {
+  const current = currentGroupId
+    ? groups.find((g) => g.id === String(currentGroupId))
+    : undefined;
+  if (current && isOwnGroup(current)) {
+    const mark = groups.find((g) => isOwnGroup(g) && g.marksStatus === next);
+    return mark ? { groupId: mark.id } : { status: next };
+  }
+  const lane = findGroupForStatus(groups, next);
+  return lane ? { groupId: lane.id } : { status: next, groupId: null };
+};
+
+
 export const STATUS_LANE_ORDER = ["yet_to_start", "in_progress", "completed", "blocked"];
 
+// Only a name that spells a real status is a status lane — the same rule as the
+// backend's statusForGroup. A custom group called "done" or "todo" is a group:
+// it keeps its place on the board and does not change a task's status (that is
+// what "When a task is moved here" / marks_status is for).
 export const groupNameToStatus = (name: string): string | undefined => {
   const s = (name || "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z]+/g, "_")
     .replace(/^_+|_+$/g, "");
-  if (s === "to_do" || s === "todo" || s === "yet_to_start" || s === "not_started")
-    return "yet_to_start";
-  if (s === "in_progress" || s === "inprogress" || s === "doing") return "in_progress";
-  if (s === "completed" || s === "complete" || s === "done") return "completed";
-  if (s === "blocked") return "blocked";
-  return undefined;
+  return STATUS_LANE_ORDER.includes(s) ? s : undefined;
 };
 
 

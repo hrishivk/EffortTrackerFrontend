@@ -17,7 +17,7 @@ import type {
   taskList,
 } from "../../../user/types";
 import type { TaskGroup } from "../../types";
-import { findGroupForStatus } from "../boardConstants";
+import { laneForNextStatus } from "../boardConstants";
 import {
   deletedMessage,
   isConflict,
@@ -56,10 +56,8 @@ export function useTaskActions({
       return rest;
     });
 
-  const laneFor = (next: NextStatus) => {
-    const lane = findGroupForStatus(boardGroups, next);
-    return lane ? { groupId: lane.id } : { status: next, groupId: null };
-  };
+  const laneFor = (next: NextStatus, groupId?: string | null) =>
+    laneForNextStatus(boardGroups, next, groupId);
 
   const reportStatusError = async (error: unknown, fallback: string) => {
     showSnackbar({
@@ -70,10 +68,11 @@ export function useTaskActions({
   };
 
   const handleQuickStatus = async (row: GroupedTask, next: NextStatus) => {
-    const ids = row.tasks.map((t) => String(t.id));
     setBusy(row.key, true);
     try {
-      await Promise.all(ids.map((id) => updateTaskLane(id, laneFor(next))));
+      await Promise.all(
+        row.tasks.map((t) => updateTaskLane(String(t.id), laneFor(next, t.group_id)))
+      );
       showSnackbar({
         message: next === "in_progress" ? "Task started" : "Task completed",
         severity: "success",
@@ -89,12 +88,14 @@ export function useTaskActions({
   const handleSubtaskStatus = async (subtaskId: string | undefined, next: NextStatus) => {
     if (!subtaskId) return;
     const key = String(subtaskId);
-    const parentStatusBefore = tasks.find((t) =>
+    const parent = tasks.find((t) =>
       (t.subtasks ?? []).some((sub) => String(sub.id) === key)
-    )?.status;
+    );
+    const parentStatusBefore = parent?.status;
     setBusy(key, true);
     try {
-      const res = await updateTaskLane(key, laneFor(next));
+      // A subtask follows the same flow as its main task.
+      const res = await updateTaskLane(key, laneFor(next, parent?.group_id));
       applyWrite(res);
 
       const rolled: taskList | null = res?.data?.parent ?? null;

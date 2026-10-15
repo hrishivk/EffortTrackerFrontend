@@ -8,6 +8,7 @@ import DueBadge from "../DueBadge";
 import { PRIORITY_DOT } from "./constants";
 import { avatarColorFor, getInitials, getStatusBadge } from "./helpers";
 import type { GroupedTask, ProjectColor } from "./types";
+import type { TaskGroup } from "../../types";
 
 const emptyCell = (
   <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>--</span>
@@ -304,6 +305,33 @@ export function PriorityCell({ priority }: { priority: string }) {
   return (
     <span style={{ color: priorityColorOf(priority), fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>
       {priority}
+    </span>
+  );
+}
+
+
+export function GroupChip({ group }: { group: TaskGroup }) {
+  return (
+    <span
+      title={`Group: ${group.name}`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        maxWidth: 140,
+        padding: "2px 8px",
+        borderRadius: 999,
+        border: "1px solid var(--border-light)",
+        fontSize: 10.5,
+        fontWeight: 600,
+        color: "var(--text-secondary)",
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span
+        style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, backgroundColor: group.color }}
+      />
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{group.name.trim()}</span>
     </span>
   );
 }

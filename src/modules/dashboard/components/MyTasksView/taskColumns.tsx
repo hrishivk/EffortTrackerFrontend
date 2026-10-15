@@ -1,5 +1,6 @@
 import type { Column } from "../../../../shared/components/Table/types";
 import type { formUserData } from "../../../../shared/types/User";
+import type { TaskGroup } from "../../types";
 import { taskTiming } from "../../../../shared/utils/taskTime";
 import SubtaskProgress from "../SubtaskProgress";
 import TaskActionCell from "../TaskActionCell";
@@ -9,6 +10,7 @@ import { normalizeStatus, projectNameOf } from "./helpers";
 import {
   AssigneesCell,
   DueDateCell,
+  GroupChip,
   PriorityCell,
   ProjectCell,
   StatusCell,
@@ -28,6 +30,8 @@ type ColumnContext = {
   openPanel: (row: GroupedTask, tab?: PanelTab) => void;
   onDeleteRow: (row: GroupedTask) => void;
   onQuickStatus: (row: GroupedTask, next: "in_progress" | "completed") => void;
+  /** Custom (non-status) board groups by id, so a row can name the group it sits in. */
+  customGroups: Map<string, TaskGroup>;
 };
 
 const isDone = (status?: string) => {
@@ -122,7 +126,16 @@ export function buildTaskColumns(ctx: ColumnContext): Column<GroupedTask>[] {
     {
       key: "progress",
       header: "Status",
-      render: (row) => <StatusCell row={row} />,
+      render: (row) => {
+        const group = row.group_id ? ctx.customGroups.get(String(row.group_id)) : undefined;
+        if (!group) return <StatusCell row={row} />;
+        return (
+          <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+            <GroupChip group={group} />
+            <StatusCell row={row} />
+          </span>
+        );
+      },
     },
     {
       key: "action",

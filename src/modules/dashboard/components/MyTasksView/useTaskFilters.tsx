@@ -60,7 +60,9 @@ export function useTaskFilters({
     if (isSelfScoped) filters.assigned_to = String(userId);
     else if (assigneeFilter) filters.assigned_to = assigneeFilter;
     if (projectFilter) filters.project = projectFilter;
-    if (statusFilter) filters.status = statusFilter;
+    if (statusFilter.startsWith(GROUP_FILTER_PREFIX)) {
+      filters.group_id = statusFilter.slice(GROUP_FILTER_PREFIX.length);
+    } else if (statusFilter) filters.status = statusFilter;
     if (slipFilter) filters.min_extensions = Number(slipFilter);
     // Opened from a room: only the tasks created in that room.
     if (roomId) filters.room_id = roomId;
@@ -85,6 +87,9 @@ export function useTaskFilters({
   return { projectFilter, assigneeFilter, activeFilters, filterValues, applyFilters };
 }
 
+// A custom group is not a status, so the filter asks for it by id.
+const GROUP_FILTER_PREFIX = "group:";
+
 const statusOptionsFor = (boardGroups: TaskGroup[]) => {
   if (!boardGroups.length) return TASK_STATUS_FILTER_OPTIONS;
 
@@ -97,7 +102,7 @@ const statusOptionsFor = (boardGroups: TaskGroup[]) => {
   );
 
   const options = ranked.map((g) => ({
-    value: g.status || groupNameToStatus(g.name) || g.name,
+    value: g.status || groupNameToStatus(g.name) || `${GROUP_FILTER_PREFIX}${g.id}`,
     label: g.name.trim(),
   }));
 

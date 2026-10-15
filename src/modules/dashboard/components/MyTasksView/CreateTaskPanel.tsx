@@ -30,6 +30,8 @@ type Props = {
   currentUserName?: string;
   onGoToProjects: () => void;
   roomMembers: SubtaskAssignee[];
+  /** The user's own groups a new task can start in instead of Yet to Start. */
+  followGroups?: { id: string; name: string; color: string }[];
 };
 
 export default function CreateTaskPanel({
@@ -46,6 +48,7 @@ export default function CreateTaskPanel({
   currentUserName,
   onGoToProjects,
   roomMembers,
+  followGroups = [],
 }: Props) {
   const {
     form,
@@ -154,6 +157,50 @@ export default function CreateTaskPanel({
                 currentUserName={currentUserName}
                 onGoToProjects={onGoToProjects}
               />
+            )}
+
+            {followGroups.length > 0 && (
+              <div className="mb-4">
+                <CheckToggle
+                  checked={!!form.groupId}
+                  onToggle={() =>
+                    setForm((f) => ({ ...f, groupId: f.groupId ? "" : followGroups[0].id }))
+                  }
+                  label="Follow a group"
+                />
+                {form.groupId && (
+                  <>
+                    <FormControl fullWidth size="small" sx={{ ...selectSx, mt: 1 }}>
+                      <Select
+                        value={form.groupId}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, groupId: String(e.target.value) }))
+                        }
+                        MenuProps={menuProps}
+                      >
+                        {followGroups.map((g) => (
+                          <MenuItem key={g.id} value={g.id}>
+                            <span
+                              style={{
+                                display: "inline-block",
+                                width: 8,
+                                height: 8,
+                                marginRight: 8,
+                                borderRadius: "50%",
+                                backgroundColor: g.color,
+                              }}
+                            />
+                            {g.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <p style={{ margin: "5px 0 0", fontSize: 11, color: "var(--text-muted)" }}>
+                      The task starts in this group instead of Yet to Start.
+                    </p>
+                  </>
+                )}
+              </div>
             )}
 
             <div className="mb-4">

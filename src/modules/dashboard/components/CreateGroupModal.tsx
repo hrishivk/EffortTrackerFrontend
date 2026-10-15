@@ -3,13 +3,22 @@ import Dialog from "@mui/material/Dialog";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckIcon from "@mui/icons-material/Check";
 
-import { GROUP_COLORS, GROUP_NAME_MAX } from "./boardConstants";
+import { BOARD_COLUMNS, GROUP_COLORS, GROUP_NAME_MAX } from "./boardConstants";
+import type { MarkableStatus, NewGroupData } from "../types";
+
+const COMPLETED_ACCENT = BOARD_COLUMNS.find((c) => c.key === "completed")!.accent;
+
+const MARK_CHOICES: { value: MarkableStatus | null; label: string }[] = [
+  { value: null, label: "Keep its status" },
+  { value: "in_progress", label: "Mark In Progress" },
+  { value: "completed", label: "Mark Completed" },
+];
 
 interface CreateGroupModalProps {
   open: boolean;
   onClose: () => void;
   takenNames: Set<string>;
-  onCreate: (data: { name: string; color: string }) => Promise<void>;
+  onCreate: (data: NewGroupData) => Promise<void>;
 }
 
 export default function CreateGroupModal({
@@ -18,6 +27,10 @@ export default function CreateGroupModal({
   takenNames,
   onCreate,
 }: CreateGroupModalProps) {
+  const [marks, setMarks] = useState<MarkableStatus | null>(null);
+  // Picking the Completed green suggests "Mark Completed" until the user
+  // chooses for themselves.
+  const [marksTouched, setMarksTouched] = useState(false);
   const [name, setName] = useState("");
   const [accent, setAccent] = useState(GROUP_COLORS[5]);
   const [saving, setSaving] = useState(false);
@@ -25,6 +38,8 @@ export default function CreateGroupModal({
     if (open) {
       setName("");
       setAccent(GROUP_COLORS[5]);
+      setMarks(null);
+      setMarksTouched(false);
       setSaving(false);
     }
   }, [open]);
@@ -37,7 +52,7 @@ export default function CreateGroupModal({
     if (!valid) return;
     setSaving(true);
     try {
-      await onCreate({ name: label, color: accent });
+      await onCreate({ name: label, color: accent, marks_status: marks });
       onClose();
     } finally {
       setSaving(false);
@@ -170,7 +185,10 @@ export default function CreateGroupModal({
                 key={c}
                 type="button"
                 title={c}
-                onClick={() => setAccent(c)}
+                onClick={() => {
+                  setAccent(c);
+                  if (!marksTouched) setMarks(c === COMPLETED_ACCENT ? "completed" : null);
+                }}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -191,6 +209,50 @@ export default function CreateGroupModal({
           })}
         </div>
 
+
+        <p
+          style={{
+            margin: "18px 0 7px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--text-secondary)",
+          }}
+        >
+          When a task is moved here
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {MARK_CHOICES.map((m) => {
+            const active = marks === m.value;
+            return (
+              <button
+                key={m.label}
+                type="button"
+                onClick={() => {
+                  setMarks(m.value);
+                  setMarksTouched(true);
+                }}
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: 999,
+                  border: `1px solid ${active ? "#7c3aed" : "var(--border-light)"}`,
+                  backgroundColor: active ? "rgba(124, 58, 237, 0.08)" : "var(--bg-surface)",
+                  color: active ? "#7c3aed" : "var(--text-secondary)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+        {marks === "completed" && (
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--text-muted)" }}>
+            Tasks moved here are completed and no longer carry over to the next day.
+            A task has to be started first.
+          </p>
+        )}
 
         <p
           style={{

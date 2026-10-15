@@ -1,13 +1,44 @@
 import AddIcon from "@mui/icons-material/Add";
 import DashboardCustomizeOutlinedIcon from "@mui/icons-material/DashboardCustomizeOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import { useState } from "react";
+import type { BoardLaneSwitch } from "../../types";
+
+const laneButtonStyle = (busy: boolean) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "8px 13px",
+  borderRadius: 11,
+  border: "1px solid var(--border-light)",
+  backgroundColor: "var(--bg-card)",
+  color: "var(--text-secondary)",
+  fontSize: 12.5,
+  fontWeight: 600,
+  cursor: busy ? "wait" : "pointer",
+  opacity: busy ? 0.6 : 1,
+});
 
 export default function BoardToolbar({
   taskCount,
   onNewGroup,
+  laneSwitch,
 }: {
   taskCount: number;
   onNewGroup?: () => void;
+  laneSwitch?: BoardLaneSwitch;
 }) {
+  const [busy, setBusy] = useState(false);
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await action();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -41,6 +72,30 @@ export default function BoardToolbar({
       </span>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        {laneSwitch?.mode === "default" && laneSwitch.myGroupCount > 0 && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run(laneSwitch.onShowMyGroups)}
+            title="Hide the default lanes and show only your own groups"
+            style={laneButtonStyle(busy)}
+          >
+            <VisibilityOffOutlinedIcon sx={{ fontSize: 15 }} /> Show my groups (
+            {laneSwitch.myGroupCount})
+          </button>
+        )}
+        {laneSwitch?.mode === "groups" && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run(laneSwitch.onShowDefaultLanes)}
+            title="Hide your groups and show Yet to Start, In Progress, Completed and Production"
+            style={laneButtonStyle(busy)}
+          >
+            <VisibilityOutlinedIcon sx={{ fontSize: 15 }} /> Show default lanes (
+            {laneSwitch.defaultLaneCount})
+          </button>
+        )}
         {onNewGroup && (
           <button
             type="button"

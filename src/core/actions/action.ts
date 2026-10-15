@@ -197,8 +197,8 @@ export const removeTaskComment = async (taskId: string, commentId: string) => {
 };
 
 
-export const fetchTaskGroups = async (assignedTo?: string) => {
-  const response = await userServiceMethood.listTaskGroups("/task-groups", assignedTo);
+export const fetchTaskGroups = async (assignedTo?: string, roomId?: string) => {
+  const response = await userServiceMethood.listTaskGroups("/task-groups", assignedTo, roomId);
   return response.data;
 };
 
@@ -208,19 +208,29 @@ export const fetchAllTaskGroups = async (): Promise<{ id: string; name: string }
 };
 
 export const createTaskGroup = async (
-  data: { name: string; color: string },
-  assignedTo?: string
+  data: { name: string; color: string; marks_status?: string | null },
+  assignedTo?: string,
+  roomId?: string
 ) => {
   const response = await userServiceMethood.createTaskGroup("/task-groups", {
     ...data,
     ...(assignedTo ? { assigned_to: assignedTo } : {}),
+    ...(roomId ? { room_id: roomId } : {}),
   });
   return response.data;
 };
 
 export const updateTaskGroup = async (
   groupId: string,
-  data: { name?: string; color?: string; position?: number }
+  data: {
+    name?: string;
+    color?: string;
+    position?: number;
+    hidden?: boolean;
+    // Which board the lane is hidden on: hiding is per user and per room.
+    assigned_to?: string;
+    room_id?: string;
+  }
 ) => {
   const response = await userServiceMethood.updateTaskGroup(
     `/task-groups?id=${groupId}`,
