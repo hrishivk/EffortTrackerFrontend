@@ -15,7 +15,7 @@ import { assigneeIdOf } from "../../../shared/utils/subtasks";
 import TaskDetailPanel from "./TaskDetailPanel";
 import Dialoge from "../../../presentation/Dialog";
 import CreateTaskModal from "./CreateTaskModal";
-import { entryGroup, groupNameToStatus, isOwnGroup } from "./boardConstants";
+import { defaultFollowGroup, entryGroup, groupNameToStatus, isOwnGroup } from "./boardConstants";
 import TaskDetailModal from "./TaskDetailModal";
 import SpinLoader from "../../../presentation/SpinLoader";
 import { toDateInput } from "../../../shared/utils/taskStatus";
@@ -156,6 +156,7 @@ export default function MyTasksView({
     roomId,
     formProjects,
     boardGroups,
+    defaultGroupId: defaultFollowGroup(boardGroups)?.id,
     reloadTasks,
     loadBoardTasks,
   });
@@ -324,7 +325,6 @@ export default function MyTasksView({
               currentUserName={user?.fullName}
               onGoToProjects={() => navigate(`/${(role || "").toLowerCase()}/domain-project`)}
               roomMembers={roomMembers}
-              followGroups={allGroups.filter(isOwnGroup)}
             />
           )}
         </AnimatePresence>
@@ -429,7 +429,8 @@ export default function MyTasksView({
         assignableUsers={assignableUsers}
         defaultStartDate={toDateInput(selectedDate)}
         startLane={entryGroup(boardGroups)}
-        followGroups={allGroups.filter(isOwnGroup)}
+        followGroups={boardGroups.filter(isOwnGroup)}
+        defaultGroupId={defaultFollowGroup(boardGroups)?.id}
         fixedProject={lockedProject}
         defaultAssignee={
           viewUserId

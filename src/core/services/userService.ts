@@ -141,6 +141,7 @@ listTask: (url: string, date: Date | null, _id: string, _role: string, filters?:
       name: string;
       color: string;
       marks_status?: string | null;
+      with_default_lanes?: boolean;
       assigned_to?: string;
       room_id?: string;
     }

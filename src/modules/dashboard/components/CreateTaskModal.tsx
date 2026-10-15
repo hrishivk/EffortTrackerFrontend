@@ -46,7 +46,7 @@ export interface CreateTaskFormData {
   tags: string[];
   sequential: boolean;
   subtasks: SubtaskDraft[];
-  /** Set when "Follow a group" is ticked: the group the task starts in. */
+  /** The own group the task starts in; empty = Yet to Start. */
   groupId: string;
 }
 
@@ -55,6 +55,9 @@ export interface SubtaskAssignee {
   name: string;
   role?: string;
 }
+
+// The Status option for the Yet to Start lane (no group).
+const START = "start";
 
 const emptyForm = (): CreateTaskFormData => ({
   taskName: "",
@@ -78,6 +81,8 @@ interface CreateTaskModalProps {
   startLane?: { id: string; name: string; color: string };
   /** The user's own groups a new task can start in instead of the start lane. */
   followGroups?: { id: string; name: string; color: string }[];
+  /** The group the Status starts on when the modal opens. */
+  defaultGroupId?: string;
   fixedProject?: string;
   defaultAssignee?: { id: string; name: string };
   isUserOrDev: boolean;
@@ -95,6 +100,7 @@ export default function CreateTaskModal({
   assignableUsers,
   startLane,
   followGroups = [],
+  defaultGroupId = "",
   fixedProject,
   defaultAssignee,
   isUserOrDev,
@@ -116,9 +122,10 @@ export default function CreateTaskModal({
       project: fixedProject ?? "",
       startDate: defaultStartDate || toDateInput(new Date()),
       assignees: !isUserOrDev && defaultAssignee ? [defaultAssignee.id] : [],
+      groupId: defaultGroupId,
     });
     setTouched(false);
-  }, [open, fixedProject, defaultStartDate, defaultAssignee, isUserOrDev]);
+  }, [open, fixedProject, defaultStartDate, defaultAssignee, isUserOrDev, defaultGroupId]);
 
   const lastSubtaskDue = form.subtasks.reduce(
     (latest, sub) => (sub.dueDate > latest ? sub.dueDate : latest),
@@ -142,7 +149,8 @@ export default function CreateTaskModal({
     }, {});
   }, [form.taskName, form.project, form.startDate, dueDate]);
 
-  const following = !!form.groupId;
+  // With own groups on the board a new task starts in the first of them
+  // (defaultGroupId); otherwise in Yet to Start.
   const followedGroup = followGroups.find((g) => g.id === form.groupId);
 
   const nameMissing = touched && !!problems.taskName;
@@ -249,57 +257,22 @@ export default function CreateTaskModal({
           <div className="ctm__row ctm__row--3">
             <div>
               <label className="ctm__label">Status</label>
-              <FormControl fullWidth size="small" sx={following ? selectSx : fixedSelectSx}>
+              <FormControl fullWidth size="small" sx={fixedSelectSx}>
                 <Select
-                  disabled={!following}
-                  value={following ? form.groupId : "start"}
-                  onChange={(e) => set("groupId", String(e.target.value))}
+                  disabled
+                  value={START}
                   MenuProps={menuProps}
                   startAdornment={adornment(
                     RadioButtonCheckedIcon,
-                    following ? followedGroup?.color : STATUS_ACCENT.yet_to_start
+                    followedGroup?.color ?? STATUS_ACCENT.yet_to_start
                   )}
                 >
-                  {following ? (
-                    followGroups.map((g) => (
-                      <MenuItem key={g.id} value={g.id}>
-                        {g.name}
-                      </MenuItem>
-                    ))
-                  ) : (
-                    <MenuItem value="start">{startLane?.name || "Yet to Start"}</MenuItem>
-                  )}
+                  <MenuItem value={START}>
+                    {followedGroup?.name || startLane?.name || "Yet to Start"}
+                  </MenuItem>
                 </Select>
               </FormControl>
-              {followGroups.length > 0 && (
-                <label
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    marginTop: 6,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "var(--text-secondary)",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={following}
-                    onChange={(e) =>
-                      set("groupId", e.target.checked ? followGroups[0].id : "")
-                    }
-                    style={{ accentColor: "#7c3aed", cursor: "pointer" }}
-                  />
-                  Follow a group
-                </label>
-              )}
-              <p className="ctm__hint">
-                {following
-                  ? "The task starts in this group instead of Yet to Start."
-                  : "New tasks always start here."}
-              </p>
+              <p className="ctm__hint">New tasks always start here.</p>
             </div>
             <div>
               <label className="ctm__label">Priority</label>

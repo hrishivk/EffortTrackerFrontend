@@ -208,7 +208,12 @@ export const fetchAllTaskGroups = async (): Promise<{ id: string; name: string }
 };
 
 export const createTaskGroup = async (
-  data: { name: string; color: string; marks_status?: string | null },
+  data: {
+    name: string;
+    color: string;
+    marks_status?: string | null;
+    with_default_lanes?: boolean;
+  },
   assignedTo?: string,
   roomId?: string
 ) => {

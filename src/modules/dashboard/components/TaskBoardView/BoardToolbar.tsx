@@ -4,6 +4,7 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import { useState } from "react";
 import type { BoardLaneSwitch } from "../../types";
+import SpinLoader from "../../../../presentation/SpinLoader";
 
 const laneButtonStyle = (busy: boolean) => ({
   display: "inline-flex",
@@ -50,6 +51,9 @@ export default function BoardToolbar({
         marginBottom: 14,
       }}
     >
+      {/* Switching lanes hides/shows each lane and reloads the board; the
+          spinner appears only when that takes a moment (after 300ms). */}
+      <SpinLoader isLoading={busy} label="Updating lanes" />
       <span
         style={{
           display: "inline-flex",
@@ -89,7 +93,7 @@ export default function BoardToolbar({
             type="button"
             disabled={busy}
             onClick={() => void run(laneSwitch.onShowDefaultLanes)}
-            title="Hide your groups and show Yet to Start, In Progress, Completed and Production"
+            title="Hide your groups and show the default lanes and the groups added after them"
             style={laneButtonStyle(busy)}
           >
             <VisibilityOutlinedIcon sx={{ fontSize: 15 }} /> Show default lanes (

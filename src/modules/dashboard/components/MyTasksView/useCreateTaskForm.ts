@@ -21,6 +21,7 @@ export function useCreateTaskForm({
   roomId,
   formProjects,
   boardGroups,
+  defaultGroupId = "",
   reloadTasks,
   loadBoardTasks,
 }: {
@@ -33,6 +34,8 @@ export function useCreateTaskForm({
   roomId?: string;
   formProjects: any[];
   boardGroups: TaskGroup[];
+  /** The group the Status starts on when the panel opens. */
+  defaultGroupId?: string;
   reloadTasks: () => Promise<void>;
   loadBoardTasks: () => Promise<void>;
 }) {
@@ -58,6 +61,7 @@ export function useCreateTaskForm({
       startDate: f.startDate || toDateInput(selectedDate),
       ...(lockedProject ? { project: lockedProject } : {}),
       ...(viewUserId && !f.assignees.length ? { assignees: [viewUserId] } : {}),
+      groupId: f.groupId || defaultGroupId,
     }));
     setCreateStep(1);
     setWantSubtasks(false);

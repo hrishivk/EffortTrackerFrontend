@@ -4,7 +4,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import CheckIcon from "@mui/icons-material/Check";
 
 import { BOARD_COLUMNS, GROUP_COLORS, GROUP_NAME_MAX } from "./boardConstants";
-import type { MarkableStatus, NewGroupData } from "../types";
+import type { GroupLaneChoice, MarkableStatus, NewGroupData } from "../types";
+import SpinLoader from "../../../presentation/SpinLoader";
 
 const COMPLETED_ACCENT = BOARD_COLUMNS.find((c) => c.key === "completed")!.accent;
 
@@ -18,15 +19,32 @@ interface CreateGroupModalProps {
   open: boolean;
   onClose: () => void;
   takenNames: Set<string>;
-  onCreate: (data: NewGroupData) => Promise<void>;
+  onCreate: (data: NewGroupData, lanes?: GroupLaneChoice) => Promise<void>;
+  /** The board shows the 4 default lanes: ask where the user's groups go. */
+  askLanes?: boolean;
 }
+
+const LANE_CHOICES: { key: GroupLaneChoice; title: string; caption: string }[] = [
+  {
+    key: "only_mine",
+    title: "Use only my groups",
+    caption: "Hides the 4 lanes on your board only and shows your own groups. No task is changed.",
+  },
+  {
+    key: "after_default",
+    title: "Add after the 4 lanes",
+    caption: "Shows after Yet to Start, In Progress, Completed and Production. Not shown with \"Use only my groups\".",
+  },
+];
 
 export default function CreateGroupModal({
   open,
   onClose,
   takenNames,
   onCreate,
+  askLanes = false,
 }: CreateGroupModalProps) {
+  const [lanes, setLanes] = useState<GroupLaneChoice>("only_mine");
   const [marks, setMarks] = useState<MarkableStatus | null>(null);
   // Picking the Completed green suggests "Mark Completed" until the user
   // chooses for themselves.
@@ -39,6 +57,7 @@ export default function CreateGroupModal({
       setName("");
       setAccent(GROUP_COLORS[5]);
       setMarks(null);
+      setLanes("only_mine");
       setMarksTouched(false);
       setSaving(false);
     }
@@ -52,7 +71,10 @@ export default function CreateGroupModal({
     if (!valid) return;
     setSaving(true);
     try {
-      await onCreate({ name: label, color: accent, marks_status: marks });
+      await onCreate(
+        { name: label, color: accent, marks_status: marks },
+        askLanes ? lanes : undefined
+      );
       onClose();
     } finally {
       setSaving(false);
@@ -76,6 +98,9 @@ export default function CreateGroupModal({
         },
       }}
     >
+      {/* Creating saves the group, updates the lanes and reloads the board;
+          the spinner shows only when that takes a moment (after 300ms). */}
+      <SpinLoader isLoading={saving} label="Creating group" />
       <div style={{ padding: 22 }}>
         <div
           style={{
@@ -298,6 +323,79 @@ export default function CreateGroupModal({
             {label || "Group name"}
           </span>
         </div>
+
+        {askLanes && (
+          <>
+            <p
+              style={{
+                margin: "18px 0 7px",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--text-secondary)",
+              }}
+            >
+              Where should this group show?
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              {LANE_CHOICES.map((c) => {
+                const active = lanes === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setLanes(c.key)}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      padding: "10px 12px",
+                      borderRadius: 11,
+                      border: `1px solid ${active ? "#7c3aed" : "var(--border-light)"}`,
+                      backgroundColor: active ? "rgba(124, 58, 237, 0.06)" : "var(--bg-surface)",
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 16,
+                        height: 16,
+                        marginTop: 1,
+                        flexShrink: 0,
+                        borderRadius: "50%",
+                        border: `2px solid ${active ? "#7c3aed" : "var(--border-light)"}`,
+                      }}
+                    >
+                      {active && (
+                        <span
+                          style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#7c3aed" }}
+                        />
+                      )}
+                    </span>
+                    <span style={{ minWidth: 0 }}>
+                      <span
+                        style={{
+                          display: "block",
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        {c.title}
+                      </span>
+                      <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)" }}>
+                        {c.caption}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         <div
           style={{

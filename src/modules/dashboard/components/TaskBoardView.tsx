@@ -71,6 +71,16 @@ export default function TaskBoardView<T extends BoardTask>({
 }: TaskBoardViewProps<T>) {
   const [drag, setDrag] = useState<{ task: T; from: string } | null>(null);
   const [hoverColumn, setHoverColumn] = useState<string | null>(null);
+  // Renaming or removing a group: saved, then the board reloads.
+  const [groupBusy, setGroupBusy] = useState<string | null>(null);
+  const runGroupAction = async (label: string, action: () => Promise<void> | undefined) => {
+    setGroupBusy(label);
+    try {
+      await action();
+    } finally {
+      setGroupBusy(null);
+    }
+  };
   const [placed, setPlaced] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [createOpen, setCreateOpen] = useState(false);
@@ -132,7 +142,8 @@ export default function TaskBoardView<T extends BoardTask>({
   const renameLane = (lane: BoardLane, label: string) => {
     const next = label.trim();
     if (!next || !lane.groupId || next === lane.label) return;
-    void onGroupRename?.(lane.groupId, next);
+    const id = lane.groupId;
+    void runGroupAction("Renaming group", () => onGroupRename?.(id, next));
   };
 
   const handleDrop = async (lane: BoardLane) => {
@@ -308,6 +319,9 @@ export default function TaskBoardView<T extends BoardTask>({
         })}
       </div>
 
+      {/* Shown only when the rename/remove takes a moment (after 300ms). */}
+      <SpinLoader isLoading={groupBusy !== null} label={groupBusy ?? undefined} />
+
       <Dialoge
         open={removeTarget !== null}
         data="removeGroup"
@@ -315,7 +329,7 @@ export default function TaskBoardView<T extends BoardTask>({
         onConfirm={() => {
           const id = removeTarget;
           setRemoveTarget(null);
-          if (id) void onGroupDelete?.(id);
+          if (id) void runGroupAction("Removing group", () => onGroupDelete?.(id));
         }}
       />
 
@@ -323,9 +337,10 @@ export default function TaskBoardView<T extends BoardTask>({
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         takenNames={new Set((allGroups ?? groups).map((g) => g.name.trim().toLowerCase()))}
-        onCreate={async (data) => {
+        askLanes={laneSwitch?.mode === "default"}
+        onCreate={async (data, lanes) => {
           revealLast.current = true;
-          await onGroupCreate?.(data);
+          await onGroupCreate?.(data, lanes);
         }}
       />
 

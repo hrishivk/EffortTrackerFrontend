@@ -85,7 +85,7 @@ export const findGroupForStatus = <T extends { name: string; status?: string }>(
 
 
 /**
- * The lane a new task lands in when "Follow a group" is not ticked: the Yet to
+ * The lane a new task lands in when no group is picked in Create Task: the Yet to
  * Start lane, if it is on the board. Never one of the user's own groups — a
  * task only follows a group when it was created into one on purpose.
  */
@@ -97,6 +97,23 @@ export const entryGroup = <T extends { name: string; status?: string }>(
 // lane (Production). A task in one of these "follows a group".
 export const isOwnGroup = (g: { name: string; status?: string; shared?: boolean }) =>
   !g.shared && !(g.status || groupNameToStatus(g.name));
+
+/**
+ * The group the Create Task Status starts on: the
+ * first of the user's own groups on the board, in lane order (a plain group
+ * before one marking In Progress, before one marking Completed). None while
+ * no own group is on the board — the task then starts in Yet to Start.
+ */
+export const defaultFollowGroup = <
+  T extends { name: string; status?: string; shared?: boolean; marksStatus?: string; position?: number }
+>(
+  visibleGroups: T[]
+): T | undefined => {
+  const rank = (g: T) => (g.marksStatus === "completed" ? 2 : g.marksStatus === "in_progress" ? 1 : 0);
+  return visibleGroups
+    .filter(isOwnGroup)
+    .sort((a, b) => rank(a) - rank(b) || (a.position ?? 0) - (b.position ?? 0))[0];
+};
 
 
 /**
@@ -111,7 +128,14 @@ export const isOwnGroup = (g: { name: string; status?: string; shared?: boolean 
  *   It is never moved into one of the user's own groups.
  */
 export const laneForNextStatus = <
-  T extends { id: string; name: string; status?: string; shared?: boolean; marksStatus?: string }
+  T extends {
+    id: string;
+    name: string;
+    status?: string;
+    shared?: boolean;
+    marksStatus?: string;
+    withDefaultLanes?: boolean;
+  }
 >(
   groups: T[],
   next: string,
@@ -121,7 +145,13 @@ export const laneForNextStatus = <
     ? groups.find((g) => g.id === String(currentGroupId))
     : undefined;
   if (current && isOwnGroup(current)) {
-    const mark = groups.find((g) => isOwnGroup(g) && g.marksStatus === next);
+    // Stay in the same set: groups after the 4 lanes, or "only my groups".
+    const mark = groups.find(
+      (g) =>
+        isOwnGroup(g) &&
+        !!g.withDefaultLanes === !!current.withDefaultLanes &&
+        g.marksStatus === next
+    );
     return mark ? { groupId: mark.id } : { status: next };
   }
   const lane = findGroupForStatus(groups, next);

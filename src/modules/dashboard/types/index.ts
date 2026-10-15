@@ -154,7 +154,7 @@ export interface TaskBoardViewProps<T extends BoardTask> {
     task: T,
     target: { groupId?: string; statusKey?: string; label: string }
   ) => Promise<void>;
-  onGroupCreate?: (data: NewGroupData) => Promise<void>;
+  onGroupCreate?: (data: NewGroupData, lanes?: GroupLaneChoice) => Promise<void>;
   onGroupRename?: (groupId: string, name: string) => Promise<void>;
   onGroupDelete?: (groupId: string) => Promise<void>;
   /** The board has no groups yet — ask how the user wants to set it up. */
@@ -181,7 +181,13 @@ export interface TaskGroup {
   shared?: boolean;
   /** The status a task takes when moved into this group; unset = it keeps its own. */
   marksStatus?: MarkableStatus;
+  /** One of the user's groups shown after the 4 default lanes ("Add after the
+   * 4 lanes"), not with "Use only my groups". */
+  withDefaultLanes?: boolean;
 }
+
+/** Where a new group goes while the board shows the 4 default lanes. */
+export type GroupLaneChoice = "after_default" | "only_mine";
 
 export interface BoardLaneSwitch {
   mode: "default" | "groups";

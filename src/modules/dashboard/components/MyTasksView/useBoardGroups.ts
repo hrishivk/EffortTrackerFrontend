@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createTaskGroup,
   deleteTaskGroup,
@@ -7,7 +7,7 @@ import {
 } from "../../../../core/actions/action";
 import { useSnackbar } from "../../../../contexts/SnackbarContext";
 import { apiMessage } from "../../../../shared/utils/apiMessage";
-import type { NewGroupData, TaskGroup } from "../../types";
+import type { GroupLaneChoice, NewGroupData, TaskGroup } from "../../types";
 import { BOARD_COLUMNS, DEFAULT_LANE_KEYS, groupNameToStatus } from "../boardConstants";
 import type { ViewMode } from "./types";
 
@@ -23,11 +23,16 @@ export function useBoardGroups(
   const boardGroups = allGroups.filter((g) => !g.hidden);
   const hiddenGroups = allGroups.filter((g) => g.hidden);
   const [groupsLoaded, setGroupsLoaded] = useState(false);
+  // The last load failed: the board's groups are unknown, not empty — so the
+  // "set up your board" popup must not open (it would re-create the shared
+  // default lanes, which the backend rejects).
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const loadBoardGroups = useCallback(async () => {
     try {
       const res = await fetchTaskGroups(boardOwnerId, roomId);
       const rows = Array.isArray(res?.data) ? res.data : [];
+      setLoadFailed(false);
       setAllGroups(
         rows
           .map((g: Record<string, unknown>) => ({
@@ -42,6 +47,7 @@ export function useBoardGroups(
               g.marks_status === "in_progress" || g.marks_status === "completed"
                 ? g.marks_status
                 : undefined,
+            withDefaultLanes: g.with_default_lanes === true,
           }))
           .filter((g: TaskGroup) => g.id && g.name)
           .sort(
@@ -50,18 +56,32 @@ export function useBoardGroups(
       );
     } catch {
       setAllGroups([]);
+      setLoadFailed(true);
     } finally {
       setGroupsLoaded(true);
     }
   }, [boardOwnerId, roomId]);
 
   useEffect(() => {
+    if (loadFailed) {
+      showSnackbar({
+        message: "Could not load the board lanes. Refresh the page or try again later.",
+        severity: "error",
+      });
+    }
+  }, [loadFailed, showSnackbar]);
+
+  useEffect(() => {
     // List view needs the groups too: its rows and status filter name them.
     if (viewMode !== "gantt") loadBoardGroups();
   }, [viewMode, loadBoardGroups]);
 
+  // Adds only the default lanes this board does not have yet; the shared ones
+  // (Yet to Start, In Progress, Completed, Production) already exist for all.
   const createDefaultLanes = async () => {
+    const have = new Set(allGroups.map((g) => g.status || groupNameToStatus(g.name)));
     for (const key of DEFAULT_LANE_KEYS) {
+      if (have.has(key)) continue;
       const column = BOARD_COLUMNS.find((c) => c.key === key)!;
       await createTaskGroup({ name: column.label, color: column.accent }, boardOwnerId, roomId);
     }
@@ -72,13 +92,18 @@ export function useBoardGroups(
   const isStatusLane = (g: TaskGroup) =>
     !!g.shared || DEFAULT_LANE_KEYS.includes(g.status || groupNameToStatus(g.name) || "");
 
-  // The board shows ONE set at a time: the default lanes, or the user's own
-  // groups. Each side is hidden/shown per user and per room (task_group_hides).
-  const isOwn = (g: TaskGroup) => !isStatusLane(g);
+  // The board shows ONE set at a time, hidden/shown per user and per room
+  // (task_group_hides):
+  // - the default set: the 4 lanes plus the groups added after them
+  //   ("Add after the 4 lanes", with_default_lanes);
+  // - "my groups": the user's other groups ("Use only my groups").
+  const inDefaultSet = (g: TaskGroup) => isStatusLane(g) || !!g.withDefaultLanes;
+  const isOwn = (g: TaskGroup) => !inDefaultSet(g);
   const ownGroups = allGroups.filter(isOwn);
-  const defaultLanes = allGroups.filter(isStatusLane);
-  const shownDefaultLanes = boardGroups.filter(isStatusLane);
-  const hiddenDefaultLanes = hiddenGroups.filter(isStatusLane);
+  const statusLanes = allGroups.filter(isStatusLane);
+  const defaultLanes = allGroups.filter(inDefaultSet);
+  const shownDefaultLanes = boardGroups.filter(inDefaultSet);
+  const hiddenDefaultLanes = hiddenGroups.filter(inDefaultSet);
   const shownOwnGroups = boardGroups.filter(isOwn);
   const hiddenOwnGroups = hiddenGroups.filter(isOwn);
   const boardMode: "default" | "groups" =
@@ -100,23 +125,60 @@ export function useBoardGroups(
   };
 
   const showDefaultLanes = async () => {
-    if (defaultLanes.length === 0) await createDefaultLanes();
-    else await setHidden(hiddenDefaultLanes, false);
+    if (statusLanes.length === 0) await createDefaultLanes();
+    await setHidden(hiddenDefaultLanes, false);
     await setHidden(shownOwnGroups, true);
   };
 
+  // Which set the board opens on, when the saved hides do not settle it:
+  // - the user has groups of their own -> those groups; the 4 lanes only
+  //   after "Show default lanes" (which saves that choice);
+  // - no groups of their own -> the 4 default lanes.
+  // Two cases need fixing up:
+  // - both sets visible (nothing hidden yet on this board): hide the 4 lanes;
+  // - nothing visible (e.g. the last own group was removed): show the user's
+  //   groups, or the 4 lanes when there are none — otherwise the board falls
+  //   back to placeholder lanes without Production.
+  const settle: { ids: TaskGroup[]; hidden: boolean } | null =
+    !groupsLoaded || loadFailed
+      ? null
+      : shownDefaultLanes.length > 0 && shownOwnGroups.length > 0
+        ? { ids: shownDefaultLanes, hidden: true }
+        : boardGroups.length === 0 && hiddenGroups.length > 0
+          ? { ids: hiddenOwnGroups.length > 0 ? hiddenOwnGroups : hiddenDefaultLanes, hidden: false }
+          : null;
+  const settleKey = settle ? `${settle.hidden}:${settle.ids.map((g) => g.id).join(",")}` : "";
+  const settleTried = useRef("");
+  useEffect(() => {
+    if (!settle || settleTried.current === settleKey) return;
+    settleTried.current = settleKey;
+    void (async () => {
+      try {
+        await setHidden(settle.ids, settle.hidden);
+      } catch {
+        // Left as is; the toolbar's lane buttons still work.
+      } finally {
+        await loadBoardGroups();
+      }
+    })();
+    // settleKey stands for `settle`; setHidden only reads boardOwnerId/roomId.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settleKey, boardOwnerId, roomId, loadBoardGroups]);
+
   /**
-   * A new group joins the user's other groups. While the board shows the
-   * default lanes it is hidden with them (only one set is on the board at a
-   * time) until "Show my groups"; on a groups board it shows right away.
+   * A new group is created visible. While the board shows the default set,
+   * `lanes` says which set it joins: "after_default" puts it after the 4 lanes
+   * (it never shows with "Use only my groups"); "only_mine" makes it one of
+   * the user's own groups and switches the board to them. Left out (the board
+   * already shows the user's groups) it joins them. Nothing is deleted.
    */
-  const handleGroupCreate = async (data: NewGroupData) => {
-    const onDefaultLanes = shownDefaultLanes.length > 0;
-    let created: TaskGroup | undefined;
+  const handleGroupCreate = async (data: NewGroupData, lanes?: GroupLaneChoice) => {
     try {
-      const res = await createTaskGroup(data, boardOwnerId, roomId);
-      const id = res?.data?.id;
-      if (id) created = { id: String(id), name: data.name, color: data.color };
+      await createTaskGroup(
+        { ...data, with_default_lanes: lanes === "after_default" },
+        boardOwnerId,
+        roomId
+      );
     } catch (error: unknown) {
       showSnackbar({ message: apiMessage(error, "Failed to create group"), severity: "error" });
       throw error;
@@ -124,15 +186,8 @@ export function useBoardGroups(
     // The group exists from here on, so a failure below must not read as a
     // failed create (the modal would stay open on a now-duplicate name).
     try {
-      if (onDefaultLanes) {
-        if (created) await setHidden([created], true);
-        showSnackbar({
-          message: `Group "${data.name}" created. Use "Show my groups" to see it.`,
-          severity: "success",
-        });
-      } else {
-        showSnackbar({ message: `Group "${data.name}" created`, severity: "success" });
-      }
+      if (lanes === "only_mine") await showMyGroups();
+      showSnackbar({ message: `Group "${data.name}" created`, severity: "success" });
     } catch (error: unknown) {
       showSnackbar({
         message: `Group "${data.name}" created, but the board lanes could not be updated: ${apiMessage(error, "request failed")}`,
@@ -203,7 +258,7 @@ export function useBoardGroups(
     ownGroups,
     boardMode,
     defaultLaneCount: defaultLanes.length,
-    needsBoardSetup: groupsLoaded && allGroups.length === 0,
+    needsBoardSetup: groupsLoaded && !loadFailed && allGroups.length === 0,
     handleGroupCreate,
     handleGroupRename,
     handleGroupDelete,
