@@ -10,9 +10,9 @@ import {
   toBoardColumnKey,
 } from "../boardConstants";
 import { dueState } from "../../../../shared/utils/taskStatus";
+import { taskProjectName } from "../../../../shared/utils/projectName";
 
-export const projectName = (project: BoardTask["project"]) =>
-  typeof project === "object" && project !== null ? project.name : String(project || "");
+export const projectName = (project: BoardTask["project"]) => taskProjectName(project);
 
 export const formatCardDate = (value?: string | null, dense = false) => {
   if (!value) return null;

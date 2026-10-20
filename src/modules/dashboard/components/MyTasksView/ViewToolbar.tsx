@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
@@ -15,6 +16,10 @@ type Props = {
   onShiftDay: (delta: number) => void;
   onToday: () => void;
   onPickDate: (date: Date) => void;
+  /** Hides the List / Board / Gantt switch, for pages that only list. */
+  hideViewTabs?: boolean;
+  /** Extra controls on the right of the bar. */
+  actions?: ReactNode;
 };
 
 const stepButtonClass =
@@ -29,10 +34,13 @@ export default function ViewToolbar({
   onShiftDay,
   onToday,
   onPickDate,
+  hideViewTabs = false,
+  actions,
 }: Props) {
   return (
     <div className="rounded-2xl shadow-sm px-3 sm:px-5 py-3 mb-4 sm:mb-5 flex flex-row justify-between items-center gap-2 sm:gap-3" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-light)" }}>
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        {!hideViewTabs && (
         <div
           style={{
             display: "flex",
@@ -99,6 +107,7 @@ export default function ViewToolbar({
             );
           })}
         </div>
+        )}
 
         {viewMode !== "gantt" && (
           <div className="flex items-center gap-1 sm:gap-1.5">
@@ -144,6 +153,7 @@ export default function ViewToolbar({
         )}
       </div>
 
+      {actions}
     </div>
   );
 }

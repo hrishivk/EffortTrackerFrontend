@@ -92,7 +92,7 @@ export interface ProjectDetailsViewProps {
 export interface GroupedPdTask {
   key: string;
   description: string;
-  project: string | { id: string; name: string };
+  project: string | { id: string; name: string } | null;
   priority: string;
   status: string;
   start_time?: string | null;

@@ -35,7 +35,8 @@ export type taskList = {
   created_by?: string  | number | null;
   assigned_to?: string  | number | null ;
   assignedUser?: TaskUser | null;
-  project: string | { id: string; name: string };
+  /** null for a General task (no project, no room). */
+  project: string | { id: string; name: string } | null;
   description: string;
   priority: string;
   status?: string;
@@ -60,6 +61,8 @@ export type taskList = {
   completed_at?: string;
 
   room_id?: string | null;
+  /** The room a room task lives in, with its workspace (from /task-list). */
+  room?: { id: string; name: string; workspace?: { id: string; name: string } | null } | null;
   position?: number;
   sequential?: boolean;
   is_blocked?: boolean;
@@ -99,11 +102,15 @@ export type SubtaskInput = {
 };
 
 
-export type CreateTaskPayload = Omit<taskList, "subtasks"> & {
+// Leave project, project_id and room_id out for a General task.
+export type CreateTaskPayload = Omit<taskList, "subtasks" | "project"> & {
+  project?: taskList["project"];
   subtasks?: SubtaskInput[];
 };
 
 export type BulkTaskItem = CreateTaskPayload & {
+  /** The Excel import still needs a project on every row. */
+  project: NonNullable<taskList["project"]>;
   row: number;
   /** YYYY-MM-DD day the task belongs to (start date, else due date, else today). */
   task_date: string;

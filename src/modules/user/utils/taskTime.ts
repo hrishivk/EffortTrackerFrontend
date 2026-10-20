@@ -1,5 +1,6 @@
 import type { ZodError } from "zod";
 import { parseServerTime } from "../../../shared/utils/serverTime";
+import { taskProjectName } from "../../../shared/utils/projectName";
 
 export const isToday = (date: Date) => {
   const today = new Date();
@@ -38,5 +39,5 @@ export const collectZodErrors = (error: ZodError) => {
   return errorMessage;
 };
 
-export const projectName = (project: string | { id: string; name: string }) =>
-  typeof project === "string" ? project : project?.name ?? "";
+export const projectName = (project: string | { id: string; name: string } | null) =>
+  taskProjectName(project);

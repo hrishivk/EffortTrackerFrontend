@@ -3,6 +3,9 @@ import ViewKanbanOutlinedIcon from "@mui/icons-material/ViewKanbanOutlined";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import type { ProjectColor } from "./types";
 
+/** The colour of the "General" chip on tasks with no project. */
+export const GENERAL_PROJECT_COLOR: ProjectColor = { bg: "#f1f5f9", text: "#475569", dot: "#64748b" };
+
 export const PROJECT_COLORS: ProjectColor[] = [
   { bg: "#dbeafe", text: "#2563eb", dot: "#2563eb" },
   { bg: "#dcfce7", text: "#16a34a", dot: "#16a34a" },

@@ -1,14 +1,14 @@
 import type { taskList } from "../../../user/types";
 import type { GroupedTaskRow, TaskBarStatus, DayInfo, TaskGanttChartProps } from "../../types";
 import { monthNames, PROJECT_COLORS } from "../ganttConstants";
+import { taskProjectName } from "../../../../shared/utils/projectName";
 import {
   getTaskBarStatus, getTaskProgress, getAssigneeName, generateDayRange, dayIndex,
 } from "../ganttUtils";
 
 export type MonthHeader = { label: string; startIdx: number; span: number };
 
-const getProjectName = (task: taskList): string =>
-  typeof task.project === "object" && task.project !== null ? task.project.name : (task.project || "");
+const getProjectName = (task: taskList): string => taskProjectName(task.project);
 
 const getProjectId = (task: taskList) =>
   task.project_id || (typeof task.project === "object" && task.project !== null ? task.project.id : "");

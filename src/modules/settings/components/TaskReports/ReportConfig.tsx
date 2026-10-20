@@ -76,14 +76,18 @@ type OptionSelectProps = {
   onChange: (id: string) => void;
   options: { id: string; name: string }[];
   emptyLabel: string;
+  disabled?: boolean;
+  /** Runs when the menu opens, e.g. to fetch the options on first use. */
+  onOpen?: () => void;
 };
 
-const OptionSelect = ({ value, onChange, options, emptyLabel }: OptionSelectProps) => (
-  <FormControl fullWidth size="small" sx={inputSx}>
+export const OptionSelect = ({ value, onChange, options, emptyLabel, disabled, onOpen }: OptionSelectProps) => (
+  <FormControl fullWidth size="small" sx={inputSx} disabled={disabled}>
     <Select
       displayEmpty
       value={value}
       onChange={(e) => onChange(String(e.target.value))}
+      onOpen={onOpen}
       renderValue={(v) => (v && options.find((o) => o.id === v)?.name) || emptyLabel}
       sx={valueSx(true)}
     >

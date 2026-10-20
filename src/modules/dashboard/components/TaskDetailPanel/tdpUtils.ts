@@ -1,6 +1,7 @@
 import type { taskList } from "../../../user/types";
 import { toLocalDate } from "../../../../shared/utils/taskStatus";
 import { assigneeOf } from "../../../../shared/utils/subtasks";
+import { taskProjectName } from "../../../../shared/utils/projectName";
 import { STATUS_ACCENT } from "../boardConstants";
 
 export type TabKey = "details" | "subtasks" | "activity";
@@ -36,7 +37,7 @@ export const statusFace = (status?: string | null) => {
 };
 
 export const projectName = (project: taskList["project"] | undefined) =>
-  typeof project === "object" && project !== null ? project.name : String(project || "");
+  taskProjectName(project);
 
 export const initialsOf = (name: string) =>
   name

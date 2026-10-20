@@ -6,6 +6,7 @@ import {
   FiSettings,
   FiBarChart2,
   FiBriefcase,
+  FiInbox,
 } from "react-icons/fi";
 import type { NavItem, NavSection } from "./types";
 
@@ -28,10 +29,13 @@ export const ROLE_LABELS: Record<string, string> = {
 const icon = (El: ElementType) => <El size={15} />;
 
 /** SP and AM share the same menu; only the base path and the people page differ. */
-const adminSections = (base: string, people: NavItem): NavSection[] => [
+const adminSections = (base: string, people: NavItem, withGeneral = false): NavSection[] => [
   {
     title: "Main",
-    items: [{ to: `${base}/dashboard`, label: "Dashboard", icon: icon(FiGrid) }],
+    items: [
+      { to: `${base}/dashboard`, label: "Dashboard", icon: icon(FiGrid) },
+      ...(withGeneral ? [{ to: `${base}/general`, label: "General", icon: icon(FiInbox) }] : []),
+    ],
   },
   {
     title: "Manage",
@@ -74,7 +78,7 @@ export const getSections = (role?: string): NavSection[] => {
       to: "/am/TeamManagement",
       label: "Team Management",
       icon: icon(FiUsers),
-    });
+    }, true);
   }
 
   if (role === "USER" || role === "DEVLOPER") {
@@ -83,6 +87,7 @@ export const getSections = (role?: string): NavSection[] => {
         title: "Main",
         items: [
           { to: "/user/dashboard", label: "Dashboard", icon: icon(FiGrid) },
+          { to: "/user/general", label: "General", icon: icon(FiInbox) },
           { to: "/user/domain-project", label: "Departments & Projects", icon: icon(FiLayers) },
         ],
       },

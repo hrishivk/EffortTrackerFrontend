@@ -3,7 +3,8 @@ import type { taskList } from "../../../user/types";
 import type { SubtaskDraft } from "../CreateTaskModal";
 import { assigneeIdOf, assigneeOf } from "../../../../shared/utils/subtasks";
 import { apiMessage } from "../../../../shared/utils/apiMessage";
-import { avatarColors, PROJECT_COLORS } from "./constants";
+import { GENERAL_PROJECT, taskProjectName } from "../../../../shared/utils/projectName";
+import { avatarColors, GENERAL_PROJECT_COLOR, PROJECT_COLORS } from "./constants";
 import type { CreateForm, GroupedTask, ProjectColor } from "./types";
 
 export const getInitials = (name: string) =>
@@ -79,6 +80,8 @@ export const buildProjectColorMap = (projects: any[]) => {
   projects.forEach((p, i) => {
     map[p.name] = PROJECT_COLORS[i % PROJECT_COLORS.length];
   });
+  // General tasks (no project) share one neutral colour.
+  if (!map[GENERAL_PROJECT]) map[GENERAL_PROJECT] = GENERAL_PROJECT_COLOR;
   return map;
 };
 
@@ -113,7 +116,7 @@ export const createdByOf =(task: taskList): string =>
   String(task.created_by ?? task.dailyLog?.created_by ?? "");
 
 export const projectNameOf = (project: GroupedTask["project"] | undefined): string =>
-  typeof project === "object" && project !== null ? project.name : project || "";
+  taskProjectName(project);
 
 export const formatDateLabel = (date: Date) => {
   const today = new Date();

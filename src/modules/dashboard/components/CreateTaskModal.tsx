@@ -12,8 +12,10 @@ import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
 import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import RadioButtonCheckedIcon from "@mui/icons-material/RadioButtonChecked";
+import MeetingRoomOutlinedIcon from "@mui/icons-material/MeetingRoomOutlined";
 
 import { toDateInput } from "../../../shared/utils/taskStatus";
+import { GENERAL_PROJECT } from "../../../shared/utils/projectName";
 import { createTaskValidationSchema } from "../../../utils/validation/Validation";
 import type { formUserData } from "../../../shared/types/User";
 import { PRIORITIES, STATUS_ACCENT } from "./boardConstants";
@@ -72,6 +74,18 @@ const emptyForm = (): CreateTaskFormData => ({
   groupId: "",
 });
 
+/** A Room select beside Project, for callers that place the task by project. */
+export interface RoomPicker {
+  options: { id: string; name: string }[];
+  value: string;
+  onChange: (id: string) => void;
+  disabled?: boolean;
+  /** The placeholder while no room is picked. */
+  emptyLabel?: string;
+  /** False when the task may go without a room (a General task). Default true. */
+  required?: boolean;
+}
+
 interface CreateTaskModalProps {
   open: boolean;
   defaultStartDate?: string;
@@ -84,6 +98,13 @@ interface CreateTaskModalProps {
   /** The group the Status starts on when the modal opens. */
   defaultGroupId?: string;
   fixedProject?: string;
+  /** Project may be left empty: the task is then a General task (General page only). */
+  projectOptional?: boolean;
+  /** Told of every project pick, so the caller can look up where it goes. */
+  onProjectChange?: (project: string) => void;
+  /** Shown under Project, e.g. which room the task lands in. */
+  projectHint?: string;
+  roomPicker?: RoomPicker;
   defaultAssignee?: { id: string; name: string };
   isUserOrDev: boolean;
   currentUserName?: string;
@@ -102,6 +123,10 @@ export default function CreateTaskModal({
   followGroups = [],
   defaultGroupId = "",
   fixedProject,
+  projectOptional = false,
+  onProjectChange,
+  projectHint,
+  roomPicker,
   defaultAssignee,
   isUserOrDev,
   currentUserName,
@@ -137,7 +162,8 @@ export default function CreateTaskModal({
   const problems = useMemo(() => {
     const result = createTaskValidationSchema.safeParse({
       taskName: form.taskName,
-      project: form.project,
+      // No project is a valid choice where the task may be a General task.
+      project: projectOptional ? form.project || GENERAL_PROJECT : form.project,
       startDate: form.startDate,
       dueDate,
     });
@@ -147,7 +173,7 @@ export default function CreateTaskModal({
       if (key && !acc[key]) acc[key] = err.message;
       return acc;
     }, {});
-  }, [form.taskName, form.project, form.startDate, dueDate]);
+  }, [form.taskName, form.project, form.startDate, dueDate, projectOptional]);
 
   // With own groups on the board a new task starts in the first of them
   // (defaultGroupId); otherwise in Yet to Start.
@@ -157,11 +183,12 @@ export default function CreateTaskModal({
   const projectMissing = touched && !!problems.project;
   const dueMissing = touched && !!problems.dueDate;
   const startInvalid = touched && !!problems.startDate;
-
+  const roomRequired = !!roomPicker && roomPicker.required !== false;
+  const roomMissing = touched && roomRequired && !roomPicker?.value;
 
   const submit = async () => {
     setTouched(true);
-    if (Object.keys(problems).length > 0) return;
+    if (Object.keys(problems).length > 0 || (roomRequired && !roomPicker?.value)) return;
     await onSubmit({ ...form, dueDate });
   };
 
@@ -201,7 +228,9 @@ export default function CreateTaskModal({
         <div className="ctm__split">
           <div>
           <div className="ctm__row ctm__row--2">
-            <div>
+            {/* With a Room to pick, the name takes the whole line and Project
+                and Room share the next one. */}
+            <div style={roomPicker ? { gridColumn: "1 / -1" } : undefined}>
               <label className="ctm__label">
                 Task Name<span className="ctm__req">*</span>
               </label>
@@ -217,7 +246,7 @@ export default function CreateTaskModal({
             </div>
             <div>
               <label className="ctm__label">
-                Project<span className="ctm__req">*</span>
+                Project{!projectOptional && <span className="ctm__req">*</span>}
               </label>
               <FormControl
                 fullWidth
@@ -229,11 +258,21 @@ export default function CreateTaskModal({
                   displayEmpty
                   disabled={!!fixedProject}
                   value={form.project}
-                  onChange={(e) => set("project", e.target.value)}
+                  onChange={(e) => {
+                    set("project", e.target.value);
+                    onProjectChange?.(e.target.value);
+                  }}
                   startAdornment={adornment(FolderOutlinedIcon)}
                   MenuProps={menuProps}
-                  renderValue={(v) => (v ? String(v) : placeholder("Select a project"))}
+                  renderValue={(v) =>
+                    v
+                      ? String(v)
+                      : placeholder(projectOptional ? "No project (General)" : "Select a project")
+                  }
                 >
+                  {projectOptional && !fixedProject && (
+                    <MenuItem value="">No project (General task)</MenuItem>
+                  )}
                   {(fixedProject
                     ? projects.filter((p) => p.name === fixedProject)
                     : projects
@@ -248,10 +287,44 @@ export default function CreateTaskModal({
                     )}
                 </Select>
               </FormControl>
-              {fixedProject && (
+              {fixedProject && !projectHint && (
                 <p className="ctm__hint">The workspace's project.</p>
               )}
+              {projectHint && <p className="ctm__hint">{projectHint}</p>}
             </div>
+            {roomPicker && (
+              <div>
+                <label className="ctm__label">
+                  Room{roomRequired && <span className="ctm__req">*</span>}
+                </label>
+                <FormControl
+                  fullWidth
+                  size="small"
+                  sx={roomPicker.disabled ? fixedSelectSx : selectSx}
+                  error={roomMissing}
+                >
+                  <Select
+                    displayEmpty
+                    disabled={roomPicker.disabled}
+                    value={roomPicker.value}
+                    onChange={(e) => roomPicker.onChange(String(e.target.value))}
+                    startAdornment={adornment(MeetingRoomOutlinedIcon)}
+                    MenuProps={menuProps}
+                    renderValue={(v) =>
+                      (v && roomPicker.options.find((o) => o.id === v)?.name) ||
+                      placeholder(roomPicker.emptyLabel ?? "Select a room")
+                    }
+                  >
+                    {roomPicker.options.map((o) => (
+                      <MenuItem key={o.id} value={o.id}>
+                        {o.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                {roomMissing && <p className="ctm__hint">Pick the room this task goes in.</p>}
+              </div>
+            )}
           </div>
 
           <div className="ctm__row ctm__row--3">

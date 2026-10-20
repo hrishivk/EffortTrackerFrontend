@@ -15,6 +15,7 @@ const WorkspaceDetail=React.lazy(()=>import('../../modules/workspace/components/
 const WorkspaceList=React.lazy(()=>import('../../modules/workspace/components/WorkspaceList'))
 const RoomDetail=React.lazy(()=>import('../../modules/workspace/components/RoomDetail'))
 const RoomMemberTasks=React.lazy(()=>import('../../modules/workspace/components/RoomMemberTasks'))
+const General=React.lazy(()=>import('../../modules/general/components/General'))
 const RxSpinnerPreview=React.lazy(()=>import('../../presentation/RxSpinnerPreview'))
 const routes = [
   {
@@ -70,6 +71,12 @@ const routes = [
     name: 'Room Member Tasks',
     element: RoomMemberTasks,
     roles: ['SP', 'AM', 'USER', 'DEVLOPER'],
+  },
+  {
+    path: '/:role/general',
+    name: 'General',
+    element: General,
+    roles: ['AM', 'USER', 'DEVLOPER'],
   },
   {
     path: '/:role/rxspinner',

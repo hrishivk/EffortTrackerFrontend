@@ -23,7 +23,7 @@ export type ProjectColor = { bg: string; text: string; dot: string };
 export type GroupedTask = {
   key: string;
   description: string;
-  project: string | { id: string; name: string };
+  project: string | { id: string; name: string } | null;
   priority: string;
   start_time?: string | null;
   end_time?: string | null;

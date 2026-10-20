@@ -115,7 +115,7 @@ export interface BoardColumnDef {
 export interface BoardTask {
   key: string;
   description: string;
-  project: string | { id: string; name: string };
+  project: string | { id: string; name: string } | null;
   priority: string;
   start_time?: string | null;
   end_time?: string | null;

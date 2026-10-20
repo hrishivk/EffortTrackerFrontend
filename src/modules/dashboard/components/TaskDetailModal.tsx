@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Dialog, CircularProgress } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { taskProjectName } from "../../../shared/utils/projectName";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import type { taskList } from "../../user/types";
@@ -48,8 +49,7 @@ export default function TaskDetailModal({
   const isInProgress = normalizedStatus === "in_progress";
   const isYetToStart = normalizedStatus === "yet_to_start" || normalizedStatus === "pending" || !task.status;
 
-  const projName = typeof task.project === "object" && task.project !== null
-    ? (task.project as any).name : (task.project || "");
+  const projName = taskProjectName(task.project);
   const projColor = projectColorMap[projName] || PROJECT_COLORS[0];
 
   const assignee = assigneeOf(task);

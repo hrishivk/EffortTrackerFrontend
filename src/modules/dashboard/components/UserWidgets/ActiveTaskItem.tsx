@@ -1,5 +1,6 @@
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import type { taskList } from "../../../user/types";
+import { taskProjectName } from "../../../../shared/utils/projectName";
 import { normalizeStatus } from "./weeklyChartConfig";
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -28,10 +29,7 @@ function formatDueLabel(dateStr?: string | null): string {
 
 const ActiveTaskItem = ({ task }: { task: taskList }) => {
   const prio = PRIORITY_CONFIG[(task.priority || "").toUpperCase()] || PRIORITY_CONFIG.LOW;
-  const projName =
-    typeof task.project === "object" && task.project !== null
-      ? task.project.name
-      : task.project || "";
+  const projName = taskProjectName(task.project);
   const dueLabel = formatDueLabel(task.end_time);
   const isInProgress = normalizeStatus(task.status) === "in_progress";
 

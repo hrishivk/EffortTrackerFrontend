@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { GENERAL_PROJECT } from "../../../shared/utils/projectName";
 
 import type {
   ReportDay,
@@ -141,7 +142,7 @@ export async function exportReportXlsx(
     for (const r of tasks) {
       t.addRow({
         description: r.description,
-        project: r.project || "—",
+        project: r.project || GENERAL_PROJECT,
         status: r.status || "—",
         start: r.start_time ? when(r.start_time) : day(r.start_date),
         end: when(r.end_time),

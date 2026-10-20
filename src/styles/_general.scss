@@ -1,0 +1,67 @@
+// ─── General: tasks across every workspace room ─────────────────
+.gen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(115deg, #7c3aed 0%, #ad21db 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 0.92;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &--ghost {
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+  }
+}
+
+// Workspace / room, on the right of the My Tasks date bar.
+.gen-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+
+  &__select {
+    width: 190px;
+  }
+}
+
+// Workspace and Room columns.
+.gen-chip {
+  display: inline-block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background-color: rgba(100, 116, 139, 0.12);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+
+  &--ws {
+    background-color: rgba(124, 58, 237, 0.1);
+    color: #7c3aed;
+  }
+}
